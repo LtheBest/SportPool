@@ -1,0 +1,22 @@
+Create a complete sports carpooling (CovoitSport) web application with frontend, backend, and a fully functional database. The main features and user flow must include:
+Homepage: Presents the platform overview and purpose, with a clear, user-friendly design. Include a button to watch a demo video of the dashboard.
+User Registration: Allow new users to register as either a club, association, or company. Ensure the registration process captures essential information.
+Login: Registered users can log in and are redirected to their personalized dashboard.
+Dashboard: After login, users (clubs, associations, or companies) access a dashboard to manage carpooling events and their profile. The dashboard should have:
+Editable user profile fields suitable for the organization type.
+Event management capabilities to create and manage both one-time and recurring events.
+When creating an event, users can add or invite members by email.
+Members can have roles: passenger or driver.
+Passengers have a "passenger" status in the member list.
+Drivers must specify the number of available seats in their vehicle (between 1 to 7).
+Invitations: Email invitations must include a link directing invitees to a dedicated site page. This page should:
+Auto-fill email, meeting location, and event location.
+Allow the invitee to enter their name and select their role.
+If the role is "passenger," notify the event creator and automatically add the member to the event.
+If the role is "driver," display a seat selector to indicate available seats.
+Messaging System: An integrated messaging area on the dashboard where members can send messages to event creators. Example uses include:
+Informing the creator about inability to attend (allowing the creator to remove the member).
+Suggesting additional drivers or other event-related communications.
+Responsiveness and Usability: The entire platform must be responsive, intuitive, and provide an excellent user experience on all devices.
+Competitor Reference: The platform should match or exceed the features and design quality of https://www.coolrool.com/.
+Technology Stack: Generate frontend code (React), backend code (Node.js/Express), and a database schema (SQL or NoSQL) ready to be deployed.
