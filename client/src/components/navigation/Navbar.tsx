@@ -24,7 +24,7 @@ export default function Navbar({
             <div className="flex-shrink-0">
               <div className="flex items-center space-x-2">
                 <i className="fas fa-car text-primary text-2xl"></i>
-                <span className="text-xl font-bold text-gray-900">CovoitSport</span>
+                <span className="text-xl font-bold text-gray-900">Covoit'Sports</span>
               </div>
             </div>
             {!isAuthenticated && (
@@ -63,9 +63,9 @@ export default function Navbar({
             ) : (
               <>
                 <Button 
-                  variant="ghost"
+                  //variant="ghost"
                   onClick={onShowLogin}
-                  className="text-gray-600 hover:text-primary"
+                  className="bg-white text-gray-600 hover:text-primary"
                 >
                   Se connecter
                 </Button>

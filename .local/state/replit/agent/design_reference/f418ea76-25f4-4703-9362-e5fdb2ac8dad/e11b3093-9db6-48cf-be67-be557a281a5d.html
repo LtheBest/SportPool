@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CovoitSport - Plateforme de Covoiturage Sportif</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563EB',
+                        secondary: '#059669',
+                        accent: '#DC2626'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    </style>
+</head>
+<body class="font-sans bg-gray-50">
+
+    <!-- @COMPONENT: NavigationBar [logged-out state] -->
+    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-car text-primary text-2xl"></i>
+                            <span class="text-xl font-bold text-gray-900">CovoitSport</span>
+                        </div>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-6">
+                        <a href="#features" class="text-gray-600 hover:text-primary transition-colors">Fonctionnalités</a>
+                        <a href="#how-it-works" class="text-gray-600 hover:text-primary transition-colors">Comment ça marche</a>
+                        <a href="#pricing" class="text-gray-600 hover:text-primary transition-colors">Tarifs</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="showLogin()" class="text-gray-600 hover:text-primary font-medium transition-colors">Se connecter</button>
+                    <button onclick="showRegistration()" class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">S'inscrire</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- @END_COMPONENT: NavigationBar -->
+
+    <!-- @COMPONENT: HomePage [hero, features, demo] -->
+    <main id="homepage" class="min-h-screen">
+        <!-- Hero Section -->
+        <section class="relative py-20 bg-gradient-to-r from-primary to-secondary">
+            <!-- Panoramic view of cyclists on a mountain road at sunrise -->
+            <div class="absolute inset-0 bg-black/20"></div>
+            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h1 class="text-4xl md:text-6xl font-bold text-white mb-6">
+                    Organisez vos covoiturages sportifs en toute simplicité
+                </h1>
+                <p class="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
+                    La plateforme dédiée aux clubs, associations et entreprises sportives pour organiser efficacement leurs déplacements en covoiturage.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <button onclick="showRegistration()" class="bg-white text-primary px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                        Commencer gratuitement
+                    </button>
+                    <button onclick="showDemoModal()" class="flex items-center space-x-2 text-white border-2 border-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary transition-colors">
+                        <i class="fas fa-play"></i>
+                        <span>Voir la démo</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="py-20 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                        Tout ce dont vous avez besoin pour vos covoiturages
+                    </h2>
+                    <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                        Une solution complète pour gérer vos événements sportifs et organiser les déplacements de vos membres.
+                    </p>
+                </div>
+                
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="text-center p-6">
+                        <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-calendar-alt text-primary text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Gestion d'événements</h3>
+                        <p class="text-gray-600">Créez et gérez facilement vos événements ponctuels ou récurrents avec tous les détails nécessaires.</p>
+                    </div>
+                    
+                    <div class="text-center p-6">
+                        <div class="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-users text-secondary text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Invitations automatiques</h3>
+                        <p class="text-gray-600">Invitez vos membres par email avec des liens personnalisés et une inscription simplifiée.</p>
+                    </div>
+                    
+                    <div class="text-center p-6">
+                        <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-car-side text-accent text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Optimisation des trajets</h3>
+                        <p class="text-gray-600">Système intelligent de correspondance entre conducteurs et passagers selon les places disponibles.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How it works -->
+        <section id="how-it-works" class="py-20 bg-gray-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Comment ça marche ?</h2>
+                </div>
+                
+                <div class="grid md:grid-cols-4 gap-8">
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Créez votre compte</h3>
+                        <p class="text-gray-600">Inscrivez votre club, association ou entreprise en quelques clics.</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Planifiez vos événements</h3>
+                        <p class="text-gray-600">Créez vos événements sportifs avec lieu de rendez-vous et destination.</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Invitez vos membres</h3>
+                        <p class="text-gray-600">Envoyez des invitations par email avec inscription automatique.</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">4</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Organisez le covoiturage</h3>
+                        <p class="text-gray-600">Les membres choisissent leur rôle et les conducteurs indiquent leurs places disponibles.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <!-- @END_COMPONENT: HomePage -->
+
+    <!-- @COMPONENT: LoginModal [modal overlay with form] -->
+    <div id="loginModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Connexion</h2>
+                    <button onclick="hideLogin()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="votre@email.com" data-mock="true">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+                        <input type="password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="••••••••" data-mock="true">
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center">
+                            <input type="checkbox" class="rounded border-gray-300 text-primary focus:ring-primary">
+                            <span class="ml-2 text-sm text-gray-600">Se souvenir de moi</span>
+                        </label>
+                        <a href="#" class="text-sm text-primary hover:text-blue-700">Mot de passe oublié ?</a>
+                    </div>
+                    
+                    <button type="button" onclick="showDashboard()" class="w-full bg-primary text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors" data-event="click:handleLogin">
+                        Se connecter
+                    </button>
+                </form>
+                
+                <div class="mt-6 text-center">
+                    <p class="text-gray-600">Pas encore de compte ? 
+                        <button onclick="hideLogin(); showRegistration();" class="text-primary hover:text-blue-700 font-medium">S'inscrire</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: LoginModal -->
+
+    <!-- @COMPONENT: RegistrationModal [modal with organization type selection] -->
+    <div id="registrationModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Créer un compte</h2>
+                    <button onclick="hideRegistration()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Organization Type Selection -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Type d'organisation</h3>
+                    <div class="grid md:grid-cols-3 gap-4" data-mock="true">
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="orgType" value="club" class="sr-only peer">
+                            <div class="border-2 border-gray-200 rounded-lg p-4 text-center hover:border-primary peer-checked:border-primary peer-checked:bg-primary/5 transition-colors">
+                                <i class="fas fa-users text-2xl text-primary mb-2"></i>
+                                <div class="font-semibold text-gray-900">Club sportif</div>
+                                <div class="text-sm text-gray-600">Association sportive locale</div>
+                            </div>
+                        </label>
+                        
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="orgType" value="association" class="sr-only peer">
+                            <div class="border-2 border-gray-200 rounded-lg p-4 text-center hover:border-primary peer-checked:border-primary peer-checked:bg-primary/5 transition-colors">
+                                <i class="fas fa-heart text-2xl text-secondary mb-2"></i>
+                                <div class="font-semibold text-gray-900">Association</div>
+                                <div class="text-sm text-gray-600">Organisation à but non lucratif</div>
+                            </div>
+                        </label>
+                        
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="orgType" value="company" class="sr-only peer">
+                            <div class="border-2 border-gray-200 rounded-lg p-4 text-center hover:border-primary peer-checked:border-primary peer-checked:bg-primary/5 transition-colors">
+                                <i class="fas fa-building text-2xl text-accent mb-2"></i>
+                                <div class="font-semibold text-gray-900">Entreprise</div>
+                                <div class="text-sm text-gray-600">Société avec activités sportives</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <form class="space-y-4" data-mock="true">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nom de l'organisation</label>
+                            <input type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="FC Barcelona" data-mock="true">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email de contact</label>
+                            <input type="email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="contact@fcbarcelona.fr" data-mock="true">
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+                            <input type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Jean" data-mock="true">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+                            <input type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Dupont" data-mock="true">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
+                        <input type="tel" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="06 12 34 56 78" data-mock="true">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Adresse</label>
+                        <textarea rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="123 Rue du Sport, 75001 Paris" data-mock="true"></textarea>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+                            <input type="password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="••••••••" data-mock="true">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
+                            <input type="password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="••••••••" data-mock="true">
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <input type="checkbox" required class="mt-1 rounded border-gray-300 text-primary focus:ring-primary">
+                        <label class="ml-2 text-sm text-gray-600">
+                            J'accepte les <a href="#" class="text-primary hover:text-blue-700">conditions d'utilisation</a> et la <a href="#" class="text-primary hover:text-blue-700">politique de confidentialité</a>
+                        </label>
+                    </div>
+                    
+                    <button type="button" onclick="showDashboard()" class="w-full bg-primary text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors" data-event="click:handleRegistration">
+                        Créer mon compte
+                    </button>
+                </form>
+                
+                <div class="mt-6 text-center">
+                    <p class="text-gray-600">Déjà un compte ? 
+                        <button onclick="hideRegistration(); showLogin();" class="text-primary hover:text-blue-700 font-medium">Se connecter</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: RegistrationModal -->
+
+    <!-- @COMPONENT: DemoModal [video demo modal] -->
+    <div id="demoModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-900">Démonstration de la plateforme</h2>
+                    <button onclick="hideDemoModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
+                    <!-- Modern sports facility with people exercising in a bright gym -->
+                    <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1200&h=675" alt="Démonstration de la plateforme CovoitSport" class="w-full h-full object-cover rounded-lg" />
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <button class="bg-primary text-white w-20 h-20 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors" data-implementation="Should play demo video">
+                            <i class="fas fa-play text-2xl ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <p class="text-gray-600 mt-4 text-center">
+                    Découvrez comment CovoitSport simplifie l'organisation de vos covoiturages sportifs en 3 minutes.
+                </p>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: DemoModal -->
+
+    <!-- @COMPONENT: Dashboard [main dashboard interface] -->
+    <div id="dashboard" class="hidden min-h-screen bg-gray-50">
+        <!-- Dashboard Navigation -->
+        <nav class="bg-white shadow-sm border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-8">
+                        <div class="flex-shrink-0">
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-car text-primary text-2xl"></i>
+                                <span class="text-xl font-bold text-gray-900">CovoitSport</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <!-- Friendly business professional headshot in an office setting -->
+                            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="Profile" class="w-10 h-10 rounded-full object-cover" data-bind="user.avatar">
+                            <span class="font-medium text-gray-900" data-bind="user.name">FC Barcelona</span>
+                        </div>
+                        <button onclick="showHomepage()" class="text-gray-400 hover:text-gray-600" title="Déconnexion">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Sidebar -->
+                <div class="lg:w-64 flex-shrink-0">
+                    <div class="bg-white rounded-xl shadow-sm p-6 sticky top-24">
+                        <nav class="space-y-2">
+                            <button onclick="showDashboardSection('overview')" id="nav-overview" class="w-full text-left px-4 py-2 rounded-lg bg-primary text-white font-medium dashboard-nav">
+                                <i class="fas fa-chart-line mr-2"></i>
+                                Vue d'ensemble
+                            </button>
+                            <button onclick="showDashboardSection('events')" id="nav-events" class="w-full text-left px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dashboard-nav">
+                                <i class="fas fa-calendar-alt mr-2"></i>
+                                Mes événements
+                            </button>
+                            <button onclick="showDashboardSection('messages')" id="nav-messages" class="w-full text-left px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dashboard-nav">
+                                <i class="fas fa-comments mr-2"></i>
+                                Messages
+                                <span class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full" data-bind="messages.unreadCount">3</span>
+                            </button>
+                            <button onclick="showDashboardSection('profile')" id="nav-profile" class="w-full text-left px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dashboard-nav">
+                                <i class="fas fa-user mr-2"></i>
+                                Mon profil
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="flex-1">
+                    <!-- Overview Section -->
+                    <div id="dashboard-overview" class="dashboard-section">
+                        <div class="mb-8">
+                            <h1 class="text-3xl font-bold text-gray-900 mb-2" data-bind="user.name">Bienvenue, FC Barcelona</h1>
+                            <p class="text-gray-600">Gérez vos événements et covoiturages en un coup d'œil.</p>
+                        </div>
+
+                        <!-- Stats Cards -->
+                        <div class="grid md:grid-cols-4 gap-6 mb-8">
+                            <div class="bg-white rounded-xl shadow-sm p-6">
+                                <div class="flex items-center">
+                                    <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-calendar-check text-primary"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-gray-600 text-sm">Événements actifs</p>
+                                        <p class="text-2xl font-bold text-gray-900" data-bind="stats.activeEvents">12</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-xl shadow-sm p-6">
+                                <div class="flex items-center">
+                                    <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-users text-secondary"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-gray-600 text-sm">Membres participants</p>
+                                        <p class="text-2xl font-bold text-gray-900" data-bind="stats.activeMembers">187</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-xl shadow-sm p-6">
+                                <div class="flex items-center">
+                                    <div class="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-car-side text-accent"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-gray-600 text-sm">Trajets organisés</p>
+                                        <p class="text-2xl font-bold text-gray-900" data-bind="stats.rides">45</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-xl shadow-sm p-6">
+                                <div class="flex items-center">
+                                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-leaf text-green-600"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-gray-600 text-sm">CO² économisé</p>
+                                        <p class="text-2xl font-bold text-gray-900">2.3t</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Events -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h2 class="text-xl font-semibold text-gray-900">Événements récents</h2>
+                                <button onclick="showDashboardSection('events')" class="text-primary hover:text-blue-700 font-medium">
+                                    Voir tout <i class="fas fa-arrow-right ml-1"></i>
+                                </button>
+                            </div>
+
+                            <!-- @MAP: recentEvents.map(event => ( -->
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-running text-primary"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900" data-bind="event.name">Match contre Real Madrid</h3>
+                                            <p class="text-sm text-gray-600">
+                                                <i class="fas fa-calendar mr-1"></i>
+                                                <span data-bind="event.date">15 mars 2024</span>
+                                                <i class="fas fa-map-marker-alt ml-4 mr-1"></i>
+                                                <span data-bind="event.location">Stade Santiago Bernabéu</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-4">
+                                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                                            <span data-bind="event.participantCount">24</span> participants
+                                        </span>
+                                        <span class="text-primary font-medium" data-bind="event.status">Confirmé</span>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-dumbbell text-secondary"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Entraînement hebdomadaire</h3>
+                                            <p class="text-sm text-gray-600">
+                                                <i class="fas fa-calendar mr-1"></i>
+                                                Tous les mercredis
+                                                <i class="fas fa-map-marker-alt ml-4 mr-1"></i>
+                                                Centre d'entraînement Ciutat Esportiva
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-4">
+                                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">15 participants</span>
+                                        <span class="text-secondary font-medium">Récurrent</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+
+                    <!-- Events Section -->
+                    <div id="dashboard-events" class="dashboard-section hidden">
+                        <div class="flex items-center justify-between mb-8">
+                            <div>
+                                <h1 class="text-3xl font-bold text-gray-900 mb-2">Mes événements</h1>
+                                <p class="text-gray-600">Créez et gérez tous vos événements sportifs.</p>
+                            </div>
+                            <button onclick="showEventModal()" class="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-plus mr-2"></i>
+                                Nouvel événement
+                            </button>
+                        </div>
+
+                        <!-- Events Filter -->
+                        <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+                            <div class="flex flex-wrap gap-4">
+                                <div class="flex items-center space-x-2">
+                                    <label class="text-sm font-medium text-gray-700">Filtrer :</label>
+                                    <select class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option>Tous les événements</option>
+                                        <option>À venir</option>
+                                        <option>Passés</option>
+                                        <option>Récurrents</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <label class="text-sm font-medium text-gray-700">Sport :</label>
+                                    <select class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option>Tous les sports</option>
+                                        <option>Football</option>
+                                        <option>Basketball</option>
+                                        <option>Tennis</option>
+                                        <option>Running</option>
+                                    </select>
+                                </div>
+                                <button class="ml-auto px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <i class="fas fa-download mr-2"></i>
+                                    Exporter
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Events List -->
+                        <div class="space-y-6">
+                            <!-- @MAP: events.map(event => ( -->
+                            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                                <div class="p-6">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-center space-x-4">
+                                            <div class="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center">
+                                                <i class="fas fa-running text-primary text-2xl"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="text-xl font-semibold text-gray-900" data-bind="event.title">Match contre Real Madrid</h3>
+                                                <p class="text-gray-600 mt-1">
+                                                    <i class="fas fa-calendar mr-2"></i>
+                                                    <span data-bind="event.date">Samedi 15 mars 2024</span>
+                                                    <span class="mx-2">•</span>
+                                                    <i class="fas fa-clock mr-2"></i>
+                                                    <span data-bind="event.time">15:00</span>
+                                                </p>
+                                                <div class="flex items-center mt-2 text-sm text-gray-600">
+                                                    <i class="fas fa-map-marker-alt mr-2"></i>
+                                                    <span data-bind="event.meetingPoint">Parking Camp Nou</span>
+                                                    <i class="fas fa-arrow-right mx-3"></i>
+                                                    <span data-bind="event.destination">Stade Santiago Bernabéu, Madrid</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium" data-bind="event.status">Confirmé</span>
+                                            <div class="flex items-center space-x-2">
+                                                <button class="p-2 text-gray-400 hover:text-primary transition-colors" title="Modifier">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Supprimer">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid md:grid-cols-3 gap-6 mt-6">
+                                        <div class="space-y-2">
+                                            <h4 class="font-medium text-gray-900">Participants</h4>
+                                            <div class="text-2xl font-bold text-primary" data-bind="event.participantCount">24</div>
+                                            <div class="text-sm text-gray-600">
+                                                <span data-bind="event.driverCount">6</span> conducteurs • 
+                                                <span data-bind="event.passengerCount">18</span> passagers
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="space-y-2">
+                                            <h4 class="font-medium text-gray-900">Places disponibles</h4>
+                                            <div class="text-2xl font-bold text-secondary" data-bind="event.availableSeats">8</div>
+                                            <div class="text-sm text-gray-600">dans <span data-bind="event.availableCars">3</span> véhicules</div>
+                                        </div>
+                                        
+                                        <div class="space-y-2">
+                                            <h4 class="font-medium text-gray-900">Actions</h4>
+                                            <div class="flex flex-wrap gap-2">
+                                                <button class="px-3 py-1 bg-primary text-white text-sm rounded-lg hover:bg-blue-700 transition-colors" onclick="showInviteModal()">
+                                                    <i class="fas fa-user-plus mr-1"></i>
+                                                    Inviter
+                                                </button>
+                                                <button class="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors">
+                                                    <i class="fas fa-eye mr-1"></i>
+                                                    Détails
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Member List Preview -->
+                                    <div class="mt-6 pt-6 border-t border-gray-200">
+                                        <h4 class="font-medium text-gray-900 mb-3">Participants récents</h4>
+                                        <div class="flex items-center space-x-4 text-sm">
+                                            <!-- @MAP: event.recentParticipants.map(participant => ( -->
+                                            <div class="flex items-center space-x-2">
+                                                <!-- Professional athlete headshot with sports uniform -->
+                                                <img src="https://images.unsplash.com/photo-1566753323558-f4e0952af115?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=32&h=32" alt="Participant" class="w-8 h-8 rounded-full object-cover" data-bind="participant.avatar">
+                                                <span class="text-gray-700" data-bind="participant.name">Lionel Messi</span>
+                                                <span class="px-2 py-1 bg-primary text-white rounded-full text-xs" data-bind="participant.role">Conducteur</span>
+                                            </div>
+                                            <div class="flex items-center space-x-2">
+                                                <!-- Young female athlete portrait in sports attire -->
+                                                <img src="https://pixabay.com/get/gc57dba4fe4012ab56655053e8381f9127c6ae984c35f205fc9212a3a8ad16da98f5679c02a97118c929350535f202144b422738f77ba644f11ac35daddd85254_1280.jpg" alt="Participant" class="w-8 h-8 rounded-full object-cover">
+                                                <span class="text-gray-700">Ana García</span>
+                                                <span class="px-2 py-1 bg-gray-200 text-gray-700 rounded-full text-xs">Passagère</span>
+                                            </div>
+                                            <!-- @END_MAP )) -->
+                                            <button class="text-primary hover:text-blue-700 font-medium">
+                                                +<span data-bind="event.remainingParticipants">22</span> autres
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+
+                    <!-- Messages Section -->
+                    <div id="dashboard-messages" class="dashboard-section hidden">
+                        <div class="mb-8">
+                            <h1 class="text-3xl font-bold text-gray-900 mb-2">Messages</h1>
+                            <p class="text-gray-600">Communiquez avec les participants de vos événements.</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm h-96 flex">
+                            <!-- Messages List -->
+                            <div class="w-1/3 border-r border-gray-200 overflow-y-auto">
+                                <div class="p-4 border-b border-gray-200">
+                                    <div class="relative">
+                                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                                        <input type="text" placeholder="Rechercher..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    </div>
+                                </div>
+
+                                <!-- @MAP: conversations.map(conversation => ( -->
+                                <div class="message-conversation p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer" onclick="selectConversation(this)">
+                                    <div class="flex items-center space-x-3">
+                                        <!-- Athletic person smiling in casual sports wear -->
+                                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="Contact" class="w-10 h-10 rounded-full object-cover" data-bind="conversation.contact.avatar">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between">
+                                                <p class="font-medium text-gray-900 truncate" data-bind="conversation.contact.name">Carlos Rodriguez</p>
+                                                <span class="text-xs text-gray-500" data-bind="conversation.lastMessageTime">14:32</span>
+                                            </div>
+                                            <p class="text-sm text-gray-600 truncate" data-bind="conversation.lastMessage">Je ne pourrai pas participer au match de demain...</p>
+                                            <div class="flex items-center justify-between mt-1">
+                                                <span class="text-xs text-gray-500" data-bind="conversation.eventName">Match contre Real Madrid</span>
+                                                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- @END_MAP )) -->
+                            </div>
+
+                            <!-- Chat Area -->
+                            <div class="flex-1 flex flex-col">
+                                <div class="p-4 border-b border-gray-200 bg-gray-50">
+                                    <div class="flex items-center space-x-3">
+                                        <!-- Athletic person smiling in casual sports wear -->
+                                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="Contact" class="w-10 h-10 rounded-full object-cover">
+                                        <div>
+                                            <p class="font-medium text-gray-900" data-bind="selectedConversation.contact.name">Carlos Rodriguez</p>
+                                            <p class="text-sm text-gray-600">
+                                                Concernant: <span data-bind="selectedConversation.eventName">Match contre Real Madrid</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Messages -->
+                                <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                                    <!-- @MAP: messages.map(message => ( -->
+                                    <div class="flex items-start space-x-2">
+                                        <!-- Athletic person smiling in casual sports wear -->
+                                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=32&h=32" alt="Sender" class="w-8 h-8 rounded-full object-cover" data-bind="message.sender.avatar">
+                                        <div class="flex-1">
+                                            <div class="bg-gray-100 rounded-lg p-3 max-w-md">
+                                                <p class="text-sm text-gray-900" data-bind="message.content">Bonjour, malheureusement je ne pourrai pas participer au match de demain. Un imprévu familial. Pouvez-vous me retirer de la liste s'il vous plaît ?</p>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1" data-bind="message.timestamp">Aujourd'hui à 14:32</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-start space-x-2 justify-end">
+                                        <div class="flex-1 flex justify-end">
+                                            <div class="bg-primary text-white rounded-lg p-3 max-w-md">
+                                                <p class="text-sm">Pas de problème Carlos, je te retire de la liste. J'espère que tout va bien pour toi.</p>
+                                            </div>
+                                        </div>
+                                        <!-- Friendly business professional headshot in an office setting -->
+                                        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=32&h=32" alt="You" class="w-8 h-8 rounded-full object-cover">
+                                    </div>
+                                    <!-- @END_MAP )) -->
+                                </div>
+
+                                <!-- Message Input -->
+                                <div class="p-4 border-t border-gray-200">
+                                    <div class="flex items-center space-x-3">
+                                        <input type="text" placeholder="Tapez votre message..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" data-mock="true">
+                                        <button class="p-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors" data-event="click:sendMessage">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profile Section -->
+                    <div id="dashboard-profile" class="dashboard-section hidden">
+                        <div class="mb-8">
+                            <h1 class="text-3xl font-bold text-gray-900 mb-2">Mon profil</h1>
+                            <p class="text-gray-600">Gérez les informations de votre organisation.</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <form class="space-y-6" data-mock="true">
+                                <!-- Profile Image -->
+                                <div class="flex items-center space-x-6">
+                                    <!-- Modern corporate office building exterior with glass facade -->
+                                    <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&h=100" alt="Logo organisation" class="w-24 h-24 rounded-full object-cover border-4 border-gray-200" data-bind="organization.logo">
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-gray-900">Photo de profil</h3>
+                                        <p class="text-gray-600 text-sm">Téléchargez le logo de votre organisation</p>
+                                        <button type="button" class="mt-2 px-4 py-2 text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors">
+                                            Changer la photo
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Organization Info -->
+                                <div class="grid md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Nom de l'organisation</label>
+                                        <input type="text" value="FC Barcelona" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" data-bind="organization.name">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Type d'organisation</label>
+                                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" data-bind="organization.type">
+                                            <option value="club" selected>Club sportif</option>
+                                            <option value="association">Association</option>
+                                            <option value="company">Entreprise</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="grid md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Email de contact</label>
+                                        <input type="email" value="contact@fcbarcelona.fr" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" data-bind="organization.email">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
+                                        <input type="tel" value="01 23 45 67 89" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" data-bind="organization.phone">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Adresse</label>
+                                    <textarea rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" data-bind="organization.address">Camp Nou, Carrer d'Arístides Maillol, 12, 08028 Barcelona, Spain</textarea>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                                    <textarea rows="4" placeholder="Décrivez votre organisation, ses activités, ses valeurs..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" data-bind="organization.description">Le FC Barcelona est un club de football professionnel basé à Barcelone, en Espagne. Fondé en 1899, c'est l'un des clubs les plus titrés au monde avec une philosophie de jeu unique.</textarea>
+                                </div>
+
+                                <!-- Sports & Activities -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Sports pratiqués</label>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" checked class="rounded border-gray-300 text-primary focus:ring-primary">
+                                            <span class="ml-2 text-sm text-gray-700">Football</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" checked class="rounded border-gray-300 text-primary focus:ring-primary">
+                                            <span class="ml-2 text-sm text-gray-700">Basketball</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" class="rounded border-gray-300 text-primary focus:ring-primary">
+                                            <span class="ml-2 text-sm text-gray-700">Handball</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" class="rounded border-gray-300 text-primary focus:ring-primary">
+                                            <span class="ml-2 text-sm text-gray-700">Hockey</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Security Settings -->
+                                <div class="border-t border-gray-200 pt-6">
+                                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Paramètres de sécurité</h3>
+                                    
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe actuel</label>
+                                            <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="••••••••">
+                                        </div>
+                                        
+                                        <div class="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">Nouveau mot de passe</label>
+                                                <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="••••••••">
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
+                                                <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="••••••••">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-end space-x-4">
+                                    <button type="button" class="px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                        Annuler
+                                    </button>
+                                    <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors" data-event="click:updateProfile">
+                                        Sauvegarder les modifications
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: Dashboard -->
+
+    <!-- @COMPONENT: EventModal [create/edit event modal] -->
+    <div id="eventModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Créer un nouvel événement</h2>
+                    <button onclick="hideEventModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form class="space-y-6" data-mock="true">
+                    <!-- Event Type -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Type d'événement</h3>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <label class="relative cursor-pointer">
+                                <input type="radio" name="eventType" value="one-time" checked class="sr-only peer">
+                                <div class="border-2 border-gray-200 rounded-lg p-4 text-center hover:border-primary peer-checked:border-primary peer-checked:bg-primary/5 transition-colors">
+                                    <i class="fas fa-calendar-day text-2xl text-primary mb-2"></i>
+                                    <div class="font-semibold text-gray-900">Événement ponctuel</div>
+                                    <div class="text-sm text-gray-600">Match, compétition, sortie unique</div>
+                                </div>
+                            </label>
+                            
+                            <label class="relative cursor-pointer">
+                                <input type="radio" name="eventType" value="recurring" class="sr-only peer">
+                                <div class="border-2 border-gray-200 rounded-lg p-4 text-center hover:border-primary peer-checked:border-primary peer-checked:bg-primary/5 transition-colors">
+                                    <i class="fas fa-calendar-alt text-2xl text-secondary mb-2"></i>
+                                    <div class="font-semibold text-gray-900">Événement récurrent</div>
+                                    <div class="text-sm text-gray-600">Entraînement, cours régulier</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Basic Info -->
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nom de l'événement</label>
+                            <input type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Match contre Real Madrid">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Sport</label>
+                            <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="football">Football</option>
+                                <option value="basketball">Basketball</option>
+                                <option value="tennis">Tennis</option>
+                                <option value="running">Course à pied</option>
+                                <option value="other">Autre</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Date & Time -->
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                            <input type="date" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Heure de départ</label>
+                            <input type="time" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Durée estimée</label>
+                            <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="3h">
+                        </div>
+                    </div>
+
+                    <!-- Locations -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Lieu de rendez-vous</label>
+                            <input type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Parking Camp Nou, Barcelona">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Destination</label>
+                            <input type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Stade Santiago Bernabéu, Madrid">
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Détails sur l'événement, équipement nécessaire, consignes particulières..."></textarea>
+                    </div>
+
+                    <!-- Members to Invite -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Inviter des membres</label>
+                        <div class="space-y-2">
+                            <input type="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Entrez une adresse email">
+                            <div class="flex flex-wrap gap-2 mt-2" id="invitedEmails">
+                                <!-- Invited emails will appear here as tags -->
+                            </div>
+                            <button type="button" class="text-primary hover:text-blue-700 font-medium">
+                                <i class="fas fa-plus mr-2"></i>
+                                Ajouter une autre adresse
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" onclick="hideEventModal()" class="px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            Annuler
+                        </button>
+                        <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors" data-event="click:createEvent">
+                            Créer l'événement et envoyer les invitations
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: EventModal -->
+
+    <!-- @COMPONENT: InviteModal [member invitation modal] -->
+    <div id="inviteModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-gray-900">Inviter des membres</h2>
+                    <button onclick="hideInviteModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form class="space-y-4" data-mock="true">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Adresses email (séparées par des virgules)</label>
+                        <textarea rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="membre1@email.com, membre2@email.com, membre3@email.com"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Message d'invitation (optionnel)</label>
+                        <textarea rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Bonjour, je vous invite à participer à notre événement..."></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="hideInviteModal()" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            Annuler
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors" data-event="click:sendInvitations">
+                            Envoyer les invitations
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: InviteModal -->
+
+    <!-- @COMPONENT: InvitationPage [standalone invitation response page] -->
+    <div id="invitationPage" class="hidden min-h-screen bg-gray-50">
+        <div class="max-w-2xl mx-auto px-4 py-12">
+            <div class="bg-white rounded-xl shadow-sm p-8">
+                <!-- Header -->
+                <div class="text-center mb-8">
+                    <div class="flex items-center justify-center space-x-2 mb-4">
+                        <i class="fas fa-car text-primary text-3xl"></i>
+                        <span class="text-2xl font-bold text-gray-900">CovoitSport</span>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Invitation à un événement</h1>
+                    <p class="text-gray-600">Vous êtes invité(e) à participer à un événement sportif</p>
+                </div>
+
+                <!-- Event Details -->
+                <div class="bg-gray-50 rounded-lg p-6 mb-8">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4" data-bind="invitation.eventName">Match contre Real Madrid</h2>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-center text-gray-600">
+                            <i class="fas fa-calendar mr-3 w-5"></i>
+                            <span data-bind="invitation.date">Samedi 15 mars 2024 à 15:00</span>
+                        </div>
+                        
+                        <div class="flex items-center text-gray-600">
+                            <i class="fas fa-map-marker-alt mr-3 w-5"></i>
+                            <span>RDV: <span data-bind="invitation.meetingPoint">Parking Camp Nou</span></span>
+                        </div>
+                        
+                        <div class="flex items-center text-gray-600">
+                            <i class="fas fa-flag-checkered mr-3 w-5"></i>
+                            <span>Destination: <span data-bind="invitation.destination">Stade Santiago Bernabéu, Madrid</span></span>
+                        </div>
+                        
+                        <div class="flex items-center text-gray-600">
+                            <i class="fas fa-user mr-3 w-5"></i>
+                            <span>Organisé par: <span data-bind="invitation.organizerName">FC Barcelona</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Response Form -->
+                <form class="space-y-6" data-mock="true">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Votre nom complet *</label>
+                        <input type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Jean Dupont" data-bind="invitation.prefillName">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                        <input type="email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-gray-100" value="jean.dupont@email.com" data-bind="invitation.email" readonly>
+                    </div>
+                    
+                    <!-- Role Selection -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Votre participation *</h3>
+                        <div class="space-y-3">
+                            <label class="flex items-start space-x-3 p-4 border-2 border-gray-200 rounded-lg hover:border-primary cursor-pointer transition-colors">
+                                <input type="radio" name="role" value="passenger" class="mt-1 text-primary focus:ring-primary">
+                                <div>
+                                    <div class="font-semibold text-gray-900">Passager</div>
+                                    <div class="text-sm text-gray-600">Je souhaite être transporté(e) par un conducteur</div>
+                                </div>
+                            </label>
+                            
+                            <label class="flex items-start space-x-3 p-4 border-2 border-gray-200 rounded-lg hover:border-primary cursor-pointer transition-colors">
+                                <input type="radio" name="role" value="driver" class="mt-1 text-primary focus:ring-primary">
+                                <div class="flex-1">
+                                    <div class="font-semibold text-gray-900">Conducteur</div>
+                                    <div class="text-sm text-gray-600 mb-3">Je peux transporter d'autres participants</div>
+                                    
+                                    <!-- Seat Selection (shown only when driver is selected) -->
+                                    <div id="seatSelection" class="hidden mt-3">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Nombre de places disponibles dans votre véhicule *</label>
+                                        <div class="grid grid-cols-7 gap-2">
+                                            <!-- @FUNCTIONALITY: Seat selector should allow selection of 1-7 seats with visual feedback -->
+                                            <button type="button" class="seat-selector w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors" data-seats="1">1</button>
+                                            <button type="button" class="seat-selector w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors" data-seats="2">2</button>
+                                            <button type="button" class="seat-selector w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors" data-seats="3">3</button>
+                                            <button type="button" class="seat-selector w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors" data-seats="4">4</button>
+                                            <button type="button" class="seat-selector w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors" data-seats="5">5</button>
+                                            <button type="button" class="seat-selector w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors" data-seats="6">6</button>
+                                            <button type="button" class="seat-selector w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors" data-seats="7">7</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Commentaire (optionnel)</label>
+                        <textarea rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Message pour l'organisateur..."></textarea>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <input type="checkbox" required class="mt-1 rounded border-gray-300 text-primary focus:ring-primary">
+                        <label class="ml-2 text-sm text-gray-600">
+                            J'accepte de participer à cet événement et de respecter les conditions de covoiturage
+                        </label>
+                    </div>
+                    
+                    <div class="flex justify-center">
+                        <button type="submit" class="px-8 py-3 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors" data-event="click:respondToInvitation">
+                            Confirmer ma participation
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: InvitationPage -->
+
+    <script>
+        (function() {
+            // TODO: Implement business logic, API calls, and state management
+            
+            // Navigation functions
+            window.showLogin = function() {
+                document.getElementById('loginModal').classList.remove('hidden');
+            };
+            
+            window.hideLogin = function() {
+                document.getElementById('loginModal').classList.add('hidden');
+            };
+            
+            window.showRegistration = function() {
+                document.getElementById('registrationModal').classList.remove('hidden');
+            };
+            
+            window.hideRegistration = function() {
+                document.getElementById('registrationModal').classList.add('hidden');
+            };
+            
+            window.showDemoModal = function() {
+                document.getElementById('demoModal').classList.remove('hidden');
+            };
+            
+            window.hideDemoModal = function() {
+                document.getElementById('demoModal').classList.add('hidden');
+            };
+            
+            window.showHomepage = function() {
+                document.getElementById('homepage').classList.remove('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+                document.getElementById('invitationPage').classList.add('hidden');
+            };
+            
+            window.showDashboard = function() {
+                document.getElementById('homepage').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                document.getElementById('invitationPage').classList.add('hidden');
+                hideLogin();
+                hideRegistration();
+                showDashboardSection('overview');
+            };
+            
+            window.showInvitationPage = function() {
+                document.getElementById('homepage').classList.add('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+                document.getElementById('invitationPage').classList.remove('hidden');
+            };
+            
+            // Dashboard navigation
+            window.showDashboardSection = function(section) {
+                // Hide all sections
+                document.querySelectorAll('.dashboard-section').forEach(el => el.classList.add('hidden'));
+                // Show selected section
+                document.getElementById('dashboard-' + section).classList.remove('hidden');
+                
+                // Update navigation
+                document.querySelectorAll('.dashboard-nav').forEach(el => {
+                    el.classList.remove('bg-primary', 'text-white');
+                    el.classList.add('text-gray-600', 'hover:bg-gray-100');
+                });
+                document.getElementById('nav-' + section).classList.remove('text-gray-600', 'hover:bg-gray-100');
+                document.getElementById('nav-' + section).classList.add('bg-primary', 'text-white');
+            };
+            
+            // Modal functions
+            window.showEventModal = function() {
+                document.getElementById('eventModal').classList.remove('hidden');
+            };
+            
+            window.hideEventModal = function() {
+                document.getElementById('eventModal').classList.add('hidden');
+            };
+            
+            window.showInviteModal = function() {
+                document.getElementById('inviteModal').classList.remove('hidden');
+            };
+            
+            window.hideInviteModal = function() {
+                document.getElementById('inviteModal').classList.add('hidden');
+            };
+            
+            // Message functions
+            window.selectConversation = function(element) {
+                document.querySelectorAll('.message-conversation').forEach(el => el.classList.remove('bg-blue-50'));
+                element.classList.add('bg-blue-50');
+            };
+            
+            // Role selection in invitation form
+            document.addEventListener('change', function(e) {
+                if (e.target.name === 'role') {
+                    const seatSelection = document.getElementById('seatSelection');
+                    if (e.target.value === 'driver') {
+                        seatSelection.classList.remove('hidden');
+                    } else {
+                        seatSelection.classList.add('hidden');
+                    }
+                }
+            });
+            
+            // Seat selection
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('seat-selector')) {
+                    document.querySelectorAll('.seat-selector').forEach(el => {
+                        el.classList.remove('border-primary', 'bg-primary', 'text-white');
+                        el.classList.add('border-gray-300');
+                    });
+                    e.target.classList.remove('border-gray-300');
+                    e.target.classList.add('border-primary', 'bg-primary', 'text-white');
+                }
+            });
+        })();
+    </script>
+
+</body>
+</html>

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { Event, Message } from "@shared/schema";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Conversation {
   eventId: string;
@@ -22,6 +23,49 @@ export default function Messages() {
     queryKey: ["/api/events"],
   });
 
+
+
+  const queryClient = useQueryClient();
+
+  const sendMessageMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/events/${selectedConversation}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: messageContent }),
+      });
+      if (!res.ok) {
+        throw new Error("Erreur lors de l'envoi du message");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setMessageContent("");
+      queryClient.invalidateQueries([`/api/events/${selectedConversation}/messages`]);
+    },
+  });
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      const res = await fetch(`/api/events/${selectedConversation}/messages/${messageId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Erreur lors de la suppression");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries([`/api/events/${selectedConversation}/messages`]);
+    },
+  });
+
+  const handleDeleteMessage = (id: string) => {
+    if (confirm("Supprimer ce message ?")) {
+      deleteMessageMutation.mutate(id);
+    }
+  };
+
+
+
   // Group messages by event and get conversations
   const conversations: Conversation[] = events.map((event) => ({
     eventId: event.id,
@@ -38,9 +82,9 @@ export default function Messages() {
 
   const handleSendMessage = () => {
     if (!messageContent.trim() || !selectedConversation) return;
-    
+
     // TODO: Send message via API
-    setMessageContent("");
+    sendMessageMutation.mutate();
   };
 
   return (
@@ -56,8 +100,8 @@ export default function Messages() {
           <div className="p-4 border-b border-gray-200">
             <div className="relative">
               <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-              <Input 
-                placeholder="Rechercher..." 
+              <Input
+                placeholder="Rechercher..."
                 className="pl-10"
               />
             </div>
@@ -73,9 +117,8 @@ export default function Messages() {
             conversations.map((conversation) => (
               <div
                 key={conversation.eventId}
-                className={`p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors ${
-                  selectedConversation === conversation.eventId ? "bg-blue-50" : ""
-                }`}
+                className={`p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors ${selectedConversation === conversation.eventId ? "bg-blue-50" : ""
+                  }`}
                 onClick={() => setSelectedConversation(conversation.eventId)}
               >
                 <div className="flex items-center space-x-3">
@@ -130,56 +173,60 @@ export default function Messages() {
                     <i className="fas fa-comment-dots text-gray-400 text-3xl mb-2"></i>
                     <p className="text-gray-600">Aucun message pour cet événement</p>
                   </div>
-                ) : (
-                  messages.map((message: any) => (
-                    <div 
-                      key={message.id}
-                      className={`flex items-start space-x-2 ${
-                        message.isFromOrganizer ? "justify-end" : ""
-                      }`}
-                    >
-                      {!message.isFromOrganizer && (
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback>
-                            {message.senderName.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div className={`flex-1 ${message.isFromOrganizer ? "flex justify-end" : ""}`}>
-                        <div className={`rounded-lg p-3 max-w-md ${
-                          message.isFromOrganizer 
-                            ? "bg-primary text-white" 
-                            : "bg-gray-100"
-                        }`}>
+                ) : ([...messages].reverse().map((message: any) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.isFromOrganizer ? "justify-end" : "justify-start"}`}
+                      >
+                        {!message.isFromOrganizer && (
+                          <Avatar className="w-8 h-8 mr-2">
+                            <AvatarFallback>
+                              {message.senderName.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+
+                        <div
+                          className={`relative rounded-2xl p-3 max-w-xs sm:max-w-sm md:max-w-md ${message.isFromOrganizer
+                            ? "bg-blue-500 text-white rounded-br-none"
+                            : "bg-gray-200 text-gray-900 rounded-bl-none"
+                            }`}
+                        >
                           <p className="text-sm">{message.content}</p>
+                          <p className="text-[10px] opacity-70 mt-1">
+                            {message.senderName} •{" "}
+                            {new Date(message.createdAt).toLocaleTimeString("fr-FR", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+
+                          {message.isFromOrganizer && (
+                            <button
+                              onClick={() => handleDeleteMessage(message.id)}
+                              className="text-red-600 hover:text-red-800"
+                              title="Supprimer ce message"
+                            >
+                              <i className="fas fa-trash text-xs"></i>
+                            </button>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {message.senderName} • {new Date(message.createdAt).toLocaleTimeString('fr-FR', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </p>
                       </div>
-                      {message.isFromOrganizer && (
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback>VO</AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  ))
+                    ))
+
                 )}
               </div>
 
               {/* Message Input */}
               <div className="p-4 border-t border-gray-200">
                 <div className="flex items-center space-x-3">
-                  <Input 
+                  <Input
                     value={messageContent}
                     onChange={(e) => setMessageContent(e.target.value)}
                     placeholder="Tapez votre message..."
                     onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                   />
-                  <Button 
+                  <Button
                     onClick={handleSendMessage}
                     disabled={!messageContent.trim()}
                     className="bg-primary hover:bg-blue-700"

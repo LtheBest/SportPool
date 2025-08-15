@@ -171,6 +171,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Messages
+  async getMessage(id: string): Promise<Message | undefined> {
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, id));
+    return message;
+  }
+
+  async deleteMessage(id: string): Promise<void> {
+    await db.delete(messages).where(eq(messages.id, id));
+  }
+  
   async getEventMessages(eventId: string): Promise<Message[]> {
     return await db
       .select()

@@ -4,6 +4,7 @@ export function useAuth() {
   const { data: organization, isLoading, error } = useQuery({
     queryKey: ["/api/me"],
     retry: false,
+    staleTime: 0,
   });
 
   return {

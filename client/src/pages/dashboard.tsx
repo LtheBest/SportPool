@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/navigation/Navbar";
 import DashboardSidebar from "@/components/navigation/DashboardSidebar";
 import Overview from "@/components/dashboard/Overview";
@@ -13,13 +14,26 @@ import { useToast } from "@/hooks/use-toast";
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState("overview");
   const [, setLocation] = useLocation();
-  const { organization } = useAuth();
+  const queryClient = useQueryClient();
+  const { organization, isAuthenticated } = useAuth();
   const { toast } = useToast();
+
+  // 🔹 Redirection automatique si non connecté
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLocation("/");
+    }
+  }, [isAuthenticated, setLocation]);
 
   const handleLogout = async () => {
     try {
       await apiRequest("POST", "/api/logout");
+
+      // 🔹 On invalide la requête pour déclencher un nouveau fetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+
       setLocation("/");
+
       toast({
         title: "Déconnexion réussie",
         description: "Vous avez été déconnecté avec succès.",
@@ -32,6 +46,7 @@ export default function Dashboard() {
       });
     }
   };
+
 
   const renderContent = () => {
     switch (activeSection) {
@@ -50,7 +65,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar 
+      <Navbar
         isAuthenticated
         organization={organization}
         onLogout={handleLogout}
@@ -58,11 +73,10 @@ export default function Dashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          <DashboardSidebar 
+          <DashboardSidebar
             activeSection={activeSection}
             onSectionChange={setActiveSection}
           />
-          
           <div className="flex-1">
             {renderContent()}
           </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,6 +45,21 @@ export default function Profile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  // stable ref for file input
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // preview URL (local preview or server URL with bust query)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    // If org provides a logo, initialize preview with bust to avoid stale cache
+    if (organization?.logoUrl) {
+      setLogoPreview(`${organization.logoUrl}?t=${Date.now()}`);
+    } else {
+      setLogoPreview(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.logoUrl]);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -117,6 +132,17 @@ export default function Profile() {
 
   const sports = ["Football", "Basketball", "Tennis", "Handball", "Hockey", "Course à pied", "Cyclisme", "Natation"];
 
+  // cleanup: revoke local object URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // revoke if logoPreview is a blob url
+      if (logoPreview && logoPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="animate-fade-in">
       <div className="mb-8">
@@ -130,13 +156,84 @@ export default function Profile() {
             <form onSubmit={form.handleSubmit(onSubmitProfile)} className="space-y-6">
               {/* Profile Image */}
               <div className="flex items-center space-x-6">
-                <div className="w-24 h-24 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                  {organization?.name?.slice(0, 2).toUpperCase()}
-                </div>
+                <img
+                  src={logoPreview || organization?.logoUrl || "/placeholder_logo.png"}
+                  alt="logo"
+                  className="w-24 h-24 rounded-full object-cover"
+                />
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Photo de profil</h3>
                   <p className="text-gray-600 text-sm">Téléchargez le logo de votre organisation</p>
-                  <Button type="button" variant="outline" className="mt-2">
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      // immediate local preview
+                      const localUrl = URL.createObjectURL(file);
+                      // revoke previous blob if any
+                      if (logoPreview && logoPreview.startsWith("blob:")) {
+                        URL.revokeObjectURL(logoPreview);
+                      }
+                      setLogoPreview(localUrl);
+
+                      const fd = new FormData();
+                      fd.append("logo", file);
+
+                      try {
+                        const res = await fetch("/api/profile/logo", {
+                          method: "POST",
+                          body: fd,
+                          credentials: "include", // important for session cookie
+                        });
+                        if (!res.ok) {
+                          const text = await res.text().catch(() => null);
+                          throw new Error(text || "Upload échoué");
+                        }
+                        const { url } = await res.json(); // ex: /uploads/xxx.png
+
+                        // update React Query cache immediately (more reactive)
+                        queryClient.setQueryData(["/api/me"], (old: any) => {
+                          if (!old) return old;
+                          return { ...old, logoUrl: `${url}?t=${Date.now()}` };
+                        });
+                        // also invalidate to trigger refetch elsewhere
+                        queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+
+                        // replace preview with server URL + cache bust
+                        // revoke local blob url
+                        if (localUrl.startsWith("blob:")) {
+                          URL.revokeObjectURL(localUrl);
+                        }
+                        setLogoPreview(`${url}?t=${Date.now()}`);
+
+                        toast({ title: "Logo mis à jour" });
+                      } catch (err: any) {
+                        // restore previous value on error
+                        setLogoPreview(organization?.logoUrl || null);
+                        toast({
+                          title: "Erreur",
+                          description: err?.message || "Upload échoué",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        // clear the file input value so same file can be re-uploaded if needed
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }
+                    }}
+                  />
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-2"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     Changer la photo
                   </Button>
                 </div>
@@ -157,7 +254,7 @@ export default function Profile() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="type"
@@ -196,7 +293,7 @@ export default function Profile() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="phone"
@@ -226,7 +323,7 @@ export default function Profile() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="contactLastName"
@@ -263,8 +360,8 @@ export default function Profile() {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        {...field} 
+                      <Textarea
+                        {...field}
                         rows={4}
                         placeholder="Décrivez votre organisation, ses activités, ses valeurs..."
                       />
@@ -280,7 +377,7 @@ export default function Profile() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {sports.map((sport) => (
                     <div key={sport} className="flex items-center space-x-2">
-                      <Checkbox 
+                      <Checkbox
                         id={sport}
                         checked={form.watch("sports")?.includes(sport)}
                         onCheckedChange={(checked) => {
@@ -302,8 +399,8 @@ export default function Profile() {
                 <Button type="button" variant="outline">
                   Annuler
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={updateProfileMutation.isPending}
                   className="bg-primary hover:bg-blue-700"
                 >
@@ -317,15 +414,15 @@ export default function Profile() {
           <div className="border-t border-gray-200 pt-6 mt-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Paramètres de sécurité</h3>
-              <Button 
-                type="button" 
+              <Button
+                type="button"
                 variant="outline"
                 onClick={() => setShowPasswordForm(!showPasswordForm)}
               >
                 {showPasswordForm ? "Annuler" : "Modifier le mot de passe"}
               </Button>
             </div>
-            
+
             {showPasswordForm && (
               <Form {...passwordForm}>
                 <form onSubmit={passwordForm.handleSubmit(onSubmitPassword)} className="space-y-4">
@@ -342,7 +439,7 @@ export default function Profile() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <div className="grid md:grid-cols-2 gap-4">
                     <FormField
                       control={passwordForm.control}
@@ -357,7 +454,7 @@ export default function Profile() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={passwordForm.control}
                       name="confirmPassword"
@@ -374,8 +471,8 @@ export default function Profile() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={updatePasswordMutation.isPending}
                       className="bg-primary hover:bg-blue-700"
                     >

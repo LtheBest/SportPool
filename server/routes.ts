@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import * as express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
@@ -6,6 +7,9 @@ import session from "express-session";
 import { randomUUID } from "crypto";
 import { insertOrganizationSchema, insertEventSchema, insertEventParticipantSchema, insertMessageSchema } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 // Session interface
 declare module "express-session" {
@@ -15,6 +19,13 @@ declare module "express-session" {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // ---------- uploads dir & static ----------
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  // Serve static files from the uploads directory
+  app.use("/uploads", express.static(uploadsDir));
   // Session middleware
   app.use(
     session({
@@ -40,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/register", async (req, res) => {
     try {
       const data = insertOrganizationSchema.parse(req.body);
-      
+
       // Check if organization already exists
       const existing = await storage.getOrganizationByEmail(data.email);
       if (existing) {
@@ -49,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Hash password
       const hashedPassword = await bcrypt.hash(data.password, 10);
-      
+
       // Create organization
       const organization = await storage.createOrganization({
         ...data,
@@ -59,9 +70,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set session
       req.session.organizationId = organization.id;
 
-      res.json({ 
+      res.json({
         organization: { ...organization, password: undefined },
-        message: "Organization registered successfully" 
+        message: "Organization registered successfully"
       });
     } catch (error) {
       console.error("Registration error:", error);
@@ -72,7 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      
+
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });
       }
@@ -92,9 +103,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set session
       req.session.organizationId = organization.id;
 
-      res.json({ 
+      res.json({
         organization: { ...organization, password: undefined },
-        message: "Login successful" 
+        message: "Login successful"
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -125,10 +136,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Organization routes
+
+
+  // ---------- Multer diskStorage (garde l'extension) ----------
+  const storageMulter = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadsDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || "";
+      const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+      cb(null, filename);
+    },
+  });
+  const upload = multer({ storage: storageMulter });
+
+  // Upload logo route
+  app.post("/api/profile/logo", requireAuth, upload.single("logo"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "Aucun fichier" });
+      // URL publique (servie par express.static ci-dessus)
+      const logoUrl = `/uploads/${req.file.filename}`;
+      await storage.updateOrganization(req.session.organizationId!, { logoUrl });
+      res.json({ url: logoUrl });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Upload failed" });
+    }
+  });
+
+
   app.put("/api/profile", requireAuth, async (req, res) => {
     try {
       const data = insertOrganizationSchema.partial().parse(req.body);
-      
+
       if (data.password) {
         data.password = await bcrypt.hash(data.password, 10);
       }
@@ -154,13 +193,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/events", requireAuth, async (req, res) => {
     try {
-      const data = insertEventSchema.parse({
+
+      const dataToValidate = {
         ...req.body,
         organizationId: req.session.organizationId!,
-      });
+      };
+
+      // Conversion explicite de la date (string -> Date)
+      if (typeof dataToValidate.date === "string") {
+        const parsedDate = new Date(dataToValidate.date);
+        if (isNaN(parsedDate.getTime())) {
+          return res.status(400).json({ message: "Invalid date format" });
+        }
+        dataToValidate.date = parsedDate;
+      }
+
+      const data = insertEventSchema.parse(dataToValidate);
 
       const event = await storage.createEvent(data);
-      
+
       // Send invitations if emails provided
       if (req.body.inviteEmails && Array.isArray(req.body.inviteEmails)) {
         for (const email of req.body.inviteEmails) {
@@ -170,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: email.trim(),
             token,
           });
-          
+
           // TODO: Send email invitation
           console.log(`Invitation sent to ${email} with token: ${token}`);
         }
@@ -294,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { name, role, availableSeats, comment } = req.body;
-      
+
       if (!name || !role) {
         return res.status(400).json({ message: "Name and role are required" });
       }
@@ -324,6 +375,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message: error instanceof Error ? error.message : "Failed to respond to invitation" });
     }
   });
+
+  // POST create shareable invitation token (auth required)
+  app.post("/api/events/:id/invitations", requireAuth, async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      const token = randomUUID();
+      // store an invitation with a placeholder email so we can reuse the invitation flow
+      const invitation = await storage.createEventInvitation({
+        eventId: event.id,
+        email: `sharedlink+${token}@local`,
+        token,
+        status: "pending",
+      });
+      res.json({ token: invitation.token });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Failed to create invitation link" });
+    }
+  });
+
 
   // Messages routes
   app.get("/api/events/:id/messages", requireAuth, async (req, res) => {
@@ -369,11 +443,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DELETE message
+  app.delete("/api/events/:eventId/messages/:messageId", requireAuth, async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.eventId);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const message = await storage.getMessage(req.params.messageId);
+      if (!message || message.eventId !== event.id) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+
+      await storage.deleteMessage(req.params.messageId);
+      res.json({ message: "Message deleted successfully" });
+    } catch (error) {
+      console.error("Delete message error:", error);
+      res.status(500).json({ message: "Failed to delete message" });
+    }
+  });
+
   // Public message endpoint for participants
   app.post("/api/events/:id/messages/participant", async (req, res) => {
     try {
       const { senderName, senderEmail, content } = req.body;
-      
+
       if (!senderName || !senderEmail || !content) {
         return res.status(400).json({ message: "Name, email, and content are required" });
       }
@@ -404,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const events = await storage.getEventsByOrganization(req.session.organizationId!);
       const activeEvents = events.filter(e => e.status === "confirmed" && new Date(e.date) >= new Date());
-      
+
       let totalParticipants = 0;
       let totalDrivers = 0;
       let totalSeats = 0;

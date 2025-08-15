@@ -37,8 +37,8 @@ export default function Home() {
             </Button>
             <Button 
               onClick={() => setShowDemo(true)}
-              variant="outline"
-              className="border-2 border-white text-white px-8 py-3 hover:bg-white hover:text-primary"
+              //variant="outline"
+              className="border-white text-white px-8 py-3 hover:bg-white hover:text-primary"
               size="lg"
             >
               <i className="fas fa-play mr-2"></i>
