@@ -111,6 +111,8 @@ export default function EventModal({ isOpen, onClose, event }: EventModalProps) 
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      // ⚡ Rafraîchit les statistiques du dashboard
+      await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] }); // 🔹 important
       onClose();
       form.reset();
       setInviteEmails([]);
@@ -238,11 +240,24 @@ export default function EventModal({ isOpen, onClose, event }: EventModalProps) 
                           <FormControl>
                             <RadioGroupItem value={type.value} id={type.value} className="sr-only peer" />
                           </FormControl>
-                          <Label htmlFor={type.value} className="relative cursor-pointer flex flex-col items-center p-4 border-2 border-gray-200 rounded-lg hover:border-primary peer-checked:border-primary peer-checked:bg-primary/5 transition-colors">
+                          <Label htmlFor={type.value}
+                            className={`relative cursor-pointer flex flex-col items-center p-4
+                              border-2 rounded-lg transition-all
+                              hover:border-primary hover:bg-primary/5
+                              peer-checked:border-primary peer-checked:bg-primary/10
+                              peer-checked:shadow-lg peer-checked:scale-[1.02]
+                            `}
+                          >
                             <i className={`${type.icon} text-2xl ${type.color} mb-2`}></i>
                             <div className="font-semibold text-gray-900">{type.title}</div>
                             <div className="text-sm text-gray-600 text-center">{type.description}</div>
+                            {field.value === type.value && (
+                              <span className="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-0.5 rounded-full">
+                                Sélectionné
+                              </span>
+                            )}
                           </Label>
+
                         </FormItem>
                       ))}
                     </RadioGroup>

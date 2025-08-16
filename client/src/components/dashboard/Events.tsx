@@ -48,10 +48,16 @@ export default function Events() {
       await apiRequest("DELETE", `/api/events/${eventId}`);
       toast({ title: "Événement supprimé" });
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] }); // 🔹 important
     } catch (err: any) {
-      toast({ title: "Erreur", description: err?.message || "Suppression impossible", variant: "destructive" });
+      toast({
+        title: "Erreur",
+        description: err?.message || "Suppression impossible",
+        variant: "destructive",
+      });
     }
   };
+
 
   const handleGenerateLink = async (eventId: string) => {
     try {

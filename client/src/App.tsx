@@ -8,6 +8,9 @@ import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import Invitation from "@/pages/invitation";
 import NotFound from "@/pages/not-found";
+import Cookies from "@/components/cookies/Cookies";
+import Chatbot from "./components/chatbot/Chatbot";
+import Footer from "./components/footer/footer";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -36,6 +39,9 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <Chatbot />
+        <Footer />
+        <Cookies />
       </TooltipProvider>
     </QueryClientProvider>
   );
