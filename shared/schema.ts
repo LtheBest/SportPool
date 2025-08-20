@@ -17,6 +17,7 @@ export const organizations = pgTable("organizations", {
   logoUrl: text("logo_url"),
   contactFirstName: text("contact_first_name").notNull(),
   contactLastName: text("contact_last_name").notNull(),
+  sirenNumber: varchar("siren_number", { length: 9 }), // Numéro SIREN (9 chiffres)
   password: text("password").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

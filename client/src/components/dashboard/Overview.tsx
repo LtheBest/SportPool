@@ -3,24 +3,40 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import type { Event } from "@shared/schema";
+import { useEffect } from "react";
 
 interface DashboardStats {
   activeEvents: number;
   totalParticipants: number;
   totalDrivers: number;
   totalSeats: number;
+  occupiedSeats?: number;
+  availableSeatsRemaining?: number;
 }
 
 export default function Overview() {
   const { organization } = useAuth();
   
-  const { data: stats } = useQuery<DashboardStats>({
-    queryKey: ["/api/dashboard/stats"],
+  // Use realtime stats endpoint for auto-updates
+  const { data: stats, refetch: refetchStats } = useQuery<DashboardStats>({
+    queryKey: ["/api/dashboard/stats/realtime"],
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true,
   });
 
   const { data: events = [] } = useQuery<Event[]>({
     queryKey: ["/api/events"],
+    refetchInterval: 60000, // Refetch every minute
   });
+
+  // Auto-refresh stats when component mounts
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetchStats();
+    }, 15000); // Refetch every 15 seconds
+
+    return () => clearInterval(interval);
+  }, [refetchStats]);
 
   const recentEvents = events.slice(0, 2);
 
@@ -43,7 +59,7 @@ export default function Overview() {
               </div>
               <div className="ml-4">
                 <p className="text-gray-600 text-sm">Événements actifs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats?.activeEvents || 0}</p>
+                <p className="text-2xl font-bold text-gray-900" data-testid="active-events-count">{stats?.activeEvents || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -57,7 +73,7 @@ export default function Overview() {
               </div>
               <div className="ml-4">
                 <p className="text-gray-600 text-sm">Participants</p>
-                <p className="text-2xl font-bold text-gray-900">{stats?.totalParticipants || 0}</p>
+                <p className="text-2xl font-bold text-gray-900" data-testid="participants-count">{stats?.totalParticipants || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -71,7 +87,7 @@ export default function Overview() {
               </div>
               <div className="ml-4">
                 <p className="text-gray-600 text-sm">Conducteurs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats?.totalDrivers || 0}</p>
+                <p className="text-2xl font-bold text-gray-900" data-testid="drivers-count">{stats?.totalDrivers || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -85,7 +101,7 @@ export default function Overview() {
               </div>
               <div className="ml-4">
                 <p className="text-gray-600 text-sm">Places disponibles</p>
-                <p className="text-2xl font-bold text-gray-900">{stats?.totalSeats || 0}</p>
+                <p className="text-2xl font-bold text-gray-900" data-testid="available-seats-count">{stats?.availableSeatsRemaining || stats?.totalSeats || 0}</p>
               </div>
             </div>
           </CardContent>

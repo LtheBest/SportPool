@@ -25,6 +25,11 @@ const registrationSchema = z.object({
   address: z.string().optional(),
   contactFirstName: z.string().min(1, "Le prénom est requis"),
   contactLastName: z.string().min(1, "Le nom est requis"),
+  sirenNumber: z.string()
+    .optional()
+    .refine((val) => !val || (val.length === 9 && /^\d{9}$/.test(val)), {
+      message: "Le numéro SIREN doit contenir exactement 9 chiffres"
+    }),
   password: z.string().min(6, "Le mot de passe doit faire au moins 6 caractères"),
   confirmPassword: z.string().min(1, "Veuillez confirmer le mot de passe"),
   acceptTerms: z.boolean().refine((val) => val === true, "Vous devez accepter les conditions"),
@@ -54,6 +59,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
       address: "",
       contactFirstName: "",
       contactLastName: "",
+      sirenNumber: "",
       password: "",
       confirmPassword: "",
       acceptTerms: false,
@@ -222,19 +228,45 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Téléphone (optionnel)</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="tel" placeholder="06 12 34 56 78" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Téléphone (optionnel)</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="tel" placeholder="06 12 34 56 78" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="sirenNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Numéro SIREN (optionnel)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        type="text" 
+                        placeholder="123456789" 
+                        maxLength={9}
+                        onInput={(e) => {
+                          // Only allow digits
+                          const target = e.target as HTMLInputElement;
+                          target.value = target.value.replace(/\D/g, '');
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}

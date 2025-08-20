@@ -7,6 +7,7 @@ import session from "express-session";
 import { randomUUID } from "crypto";
 import { insertOrganizationSchema, insertEventSchema, insertEventParticipantSchema, insertMessageSchema } from "@shared/schema";
 import { emailService } from "./email";
+import { chatbotService } from "./openai";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import multer from "multer";
@@ -851,6 +852,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get dashboard stats error:", error);
       res.status(500).json({ message: "Failed to get dashboard stats" });
+    }
+  });
+
+  // Chatbot routes
+  app.post("/api/chatbot/message", async (req, res) => {
+    try {
+      const { message, conversationHistory } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      const response = await chatbotService.sendMessage(message, conversationHistory || []);
+      res.json(response);
+    } catch (error) {
+      console.error("Chatbot error:", error);
+      res.status(500).json({ 
+        message: "Je rencontre un problème technique. Veuillez réessayer.",
+        success: false 
+      });
+    }
+  });
+
+  app.post("/api/chatbot/event-suggestions", async (req, res) => {
+    try {
+      const { query } = req.body;
+
+      if (!query) {
+        return res.status(400).json({ message: "Query is required" });
+      }
+
+      const response = await chatbotService.getEventSuggestions(query);
+      res.json(response);
+    } catch (error) {
+      console.error("Event suggestions error:", error);
+      res.status(500).json({ 
+        message: "Je ne peux pas générer de suggestions pour le moment.",
+        success: false 
+      });
+    }
+  });
+
+  app.post("/api/chatbot/organization-help", requireAuth, async (req, res) => {
+    try {
+      const { query } = req.body;
+
+      if (!query) {
+        return res.status(400).json({ message: "Query is required" });
+      }
+
+      // Get organization info
+      const organization = await storage.getOrganization(req.session.organizationId!);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const response = await chatbotService.getOrganizationHelp(query, organization.type);
+      res.json(response);
+    } catch (error) {
+      console.error("Organization help error:", error);
+      res.status(500).json({ 
+        message: "Je ne peux pas vous aider pour le moment.",
+        success: false 
+      });
+    }
+  });
+
+  // Enhanced dashboard stats with real-time updates
+  app.get("/api/dashboard/stats/realtime", requireAuth, async (req, res) => {
+    try {
+      const events = await storage.getEventsByOrganization(req.session.organizationId!);
+      const activeEvents = events.filter(e => e.status === "confirmed" && new Date(e.date) >= new Date());
+
+      let totalParticipants = 0;
+      let totalDrivers = 0;
+      let totalSeats = 0;
+      let occupiedSeats = 0;
+
+      const eventStats = [];
+
+      for (const event of activeEvents) {
+        const participants = await storage.getEventParticipants(event.id);
+        const eventParticipants = participants.length;
+        const drivers = participants.filter(p => p.role === "driver");
+        const passengers = participants.filter(p => p.role === "passenger");
+        const eventDrivers = drivers.length;
+        const eventSeats = drivers.reduce((sum, d) => sum + (d.availableSeats || 0), 0);
+        const eventOccupiedSeats = passengers.length;
+
+        totalParticipants += eventParticipants;
+        totalDrivers += eventDrivers;
+        totalSeats += eventSeats;
+        occupiedSeats += eventOccupiedSeats;
+
+        eventStats.push({
+          eventId: event.id,
+          eventName: event.name,
+          participants: eventParticipants,
+          drivers: eventDrivers,
+          availableSeats: eventSeats,
+          occupiedSeats: eventOccupiedSeats,
+          availableSeatsRemaining: eventSeats - eventOccupiedSeats
+        });
+      }
+
+      res.json({
+        activeEvents: activeEvents.length,
+        totalParticipants,
+        totalDrivers,
+        totalSeats,
+        occupiedSeats,
+        availableSeatsRemaining: totalSeats - occupiedSeats,
+        eventStats
+      });
+    } catch (error) {
+      console.error("Get realtime dashboard stats error:", error);
+      res.status(500).json({ message: "Failed to get dashboard stats" });
+    }
+  });
+
+  // Send email with custom template
+  app.post("/api/send-custom-email", requireAuth, async (req, res) => {
+    try {
+      const { email, name, content, subject } = req.body;
+
+      if (!email || !name || !content) {
+        return res.status(400).json({ message: "Email, name, and content are required" });
+      }
+
+      const success = await emailService.sendCustomTemplateEmail(email, name, content, subject);
+
+      if (success) {
+        res.json({ message: "Email sent successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to send email" });
+      }
+    } catch (error) {
+      console.error("Send custom email error:", error);
+      res.status(500).json({ message: "Failed to send email" });
     }
   });
 
