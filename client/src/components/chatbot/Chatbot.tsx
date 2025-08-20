@@ -21,18 +21,50 @@ export default function Chatbot() {
     const userMsg: Message = { id: Date.now(), role: "user", text: input.trim() };
     setMessages((m) => [...m, userMsg]);
     setInput("");
+    
+    // Add loading message
+    const loadingMsg: Message = { id: Date.now() + 1, role: "bot", text: "..." };
+    setMessages((m) => [...m, loadingMsg]);
+    
     try {
-      const res = await fetch("/api/chat", {
+      // Get conversation history for context
+      const conversationHistory = messages.map(msg => ({
+        role: msg.role === "bot" ? "assistant" : "user",
+        content: msg.text
+      }));
+
+      const res = await fetch("/api/chatbot/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg.text }),
+        body: JSON.stringify({ 
+          message: userMsg.text,
+          conversationHistory 
+        }),
       });
+      
       const data = await res.json();
-      const botMsg: Message = { id: Date.now() + 1, role: "bot", text: data.answer };
-      setMessages((m) => [...m, botMsg]);
-    } catch {
-      const errorMsg: Message = { id: Date.now() + 1, role: "bot", text: "Désolé, le service est indisponible." };
-      setMessages((m) => [...m, errorMsg]);
+      
+      // Remove loading message and add bot response
+      setMessages((m) => {
+        const withoutLoading = m.filter(msg => msg.id !== loadingMsg.id);
+        const botMsg: Message = { 
+          id: Date.now() + 2, 
+          role: "bot", 
+          text: data.success ? data.message : "Désolé, je rencontre des difficultés. Veuillez réessayer." 
+        };
+        return [...withoutLoading, botMsg];
+      });
+    } catch (error) {
+      // Remove loading message and add error
+      setMessages((m) => {
+        const withoutLoading = m.filter(msg => msg.id !== loadingMsg.id);
+        const errorMsg: Message = { 
+          id: Date.now() + 2, 
+          role: "bot", 
+          text: "Désolé, le service est temporairement indisponible. Veuillez réessayer plus tard." 
+        };
+        return [...withoutLoading, errorMsg];
+      });
     }
   }
 
@@ -97,7 +129,7 @@ export default function Chatbot() {
                 ×
               </button>
             </div>
-            <div className="flex-1 h-64 overflow-y-auto px-2 py-3 bg-gray-50 custom-scrollbar">
+            <div className="flex-1 h-64 overflow-y-auto px-2 py-3 bg-gray-50 custom-scrollbar" data-testid="chat-messages">
               {messages.length === 0 && (
                 <div className="text-sm text-gray-500 text-center">
                   Bonjour ! Posez-moi une question sur le site.
@@ -111,7 +143,7 @@ export default function Chatbot() {
                   } mb-2`}
                 >
                   <div
-                    className={`
+                    className={`message
                   px-3 py-2 rounded-2xl max-w-[75%] whitespace-pre-line break-words  
                   ${
                     m.role === "user"
@@ -147,12 +179,14 @@ export default function Chatbot() {
                 aria-label="Message"
                 placeholder="Écrire un message…"
                 autoComplete="off"
+                data-testid="chat-input"
               />
               <button
                 type="submit"
                 className="w-10 h-10 bg-primary hover:bg-primary/90 rounded-full p-0 flex items-center justify-center text-white disabled:opacity-50 transition"
                 disabled={!input.trim()}
                 aria-label="Envoyer"
+                data-testid="send-button"
               >
                 <svg viewBox="0 0 24 24" width={22} height={22} fill="currentColor">
                   <path d="M2 21l21-9-21-9v7l15 2-15 2z" />

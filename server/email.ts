@@ -22,6 +22,15 @@ export interface EmailData {
   fromName?: string;
 }
 
+export interface TemplateEmailData {
+  to: string;
+  toName?: string;
+  templateId: number;
+  variables: Record<string, any>;
+  fromEmail?: string;
+  fromName?: string;
+}
+
 class EmailService {
   private fromEmail: string;
   private fromName: string;
@@ -57,6 +66,34 @@ class EmailService {
       return true;
     } catch (error) {
       console.error('Failed to send email:', error);
+      return false;
+    }
+  }
+
+  async sendTemplateEmail(data: TemplateEmailData): Promise<boolean> {
+    try {
+      const request = await mailjetClient
+        .post("send", { version: 'v3.1' })
+        .request({
+          Messages: [{
+            From: {
+              Email: data.fromEmail || this.fromEmail,
+              Name: data.fromName || this.fromName
+            },
+            To: [{
+              Email: data.to,
+              Name: data.toName || data.to
+            }],
+            TemplateID: data.templateId,
+            TemplateLanguage: true,
+            Variables: data.variables
+          }]
+        });
+
+      console.log('Template email sent successfully:', request.body);
+      return true;
+    } catch (error) {
+      console.error('Failed to send template email:', error);
       return false;
     }
   }
@@ -252,6 +289,53 @@ class EmailService {
       htmlPart,
       textPart
     });
+  }
+
+  // Envoi d'email avec le template personnalisé (ID: 7243128)
+  async sendCustomTemplateEmail(
+    email: string, 
+    name: string, 
+    content: string,
+    subject?: string
+  ): Promise<boolean> {
+    const templateId = parseInt(process.env.MAILJET_TEMPLATE_ID || '7243128');
+    
+    return await this.sendTemplateEmail({
+      to: email,
+      toName: name,
+      templateId,
+      variables: {
+        content: content,
+        name: name,
+        subject: subject || 'Notification'
+      }
+    });
+  }
+
+  // Envoi de notification d'événement avec template
+  async sendEventNotificationTemplate(
+    email: string,
+    name: string,
+    eventName: string,
+    eventDate: string,
+    organizationName: string
+  ): Promise<boolean> {
+    const content = `
+      Bonjour ${name},
+      
+      Vous êtes invité(e) à l'événement "${eventName}" organisé par ${organizationName}.
+      
+      Date de l'événement : ${eventDate}
+      
+      Nous avons hâte de vous voir !
+    `;
+
+    return await this.sendCustomTemplateEmail(
+      email,
+      name,
+      content,
+      `Invitation à l'événement: ${eventName}`
+    );
   }
 }
 
