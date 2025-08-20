@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -101,7 +103,12 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
                 Se souvenir de moi
               </Label>
             </div>
-            <Button variant="link" className="text-sm text-primary hover:text-blue-700 p-0">
+            <Button 
+              variant="link" 
+              className="text-sm text-primary hover:text-blue-700 p-0"
+              onClick={() => setShowForgotPassword(true)}
+              type="button"
+            >
               Mot de passe oublié ?
             </Button>
           </div>
@@ -131,6 +138,11 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
           </p>
         </div>
       </DialogContent>
+
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
     </Dialog>
   );
 }

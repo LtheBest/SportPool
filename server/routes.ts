@@ -6,6 +6,8 @@ import bcrypt from "bcrypt";
 import session from "express-session";
 import { randomUUID } from "crypto";
 import { insertOrganizationSchema, insertEventSchema, insertEventParticipantSchema, insertMessageSchema } from "@shared/schema";
+import { emailService } from "./email";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -135,6 +137,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Password reset routes
+  app.post("/api/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Check if organization exists
+      const organization = await storage.getOrganizationByEmail(email);
+      if (!organization) {
+        // Don't reveal if email exists or not for security
+        return res.json({ message: "If an account with that email exists, we've sent password reset instructions." });
+      }
+
+      // Generate reset token
+      const resetToken = uuidv4();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+      // Save token to database
+      await storage.createPasswordResetToken({
+        email: email,
+        token: resetToken,
+        expiresAt: expiresAt,
+      });
+
+      // Send reset email
+      const emailSent = await emailService.sendPasswordResetEmail(
+        email,
+        `${organization.contactFirstName} ${organization.contactLastName}`,
+        resetToken
+      );
+
+      if (!emailSent) {
+        console.error("Failed to send password reset email");
+        return res.status(500).json({ message: "Failed to send password reset email" });
+      }
+
+      res.json({ message: "If an account with that email exists, we've sent password reset instructions." });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ message: "Failed to process password reset request" });
+    }
+  });
+
+  app.post("/api/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: "Token and new password are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters long" });
+      }
+
+      // Get and validate token
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      // Check if token is expired
+      if (new Date() > resetToken.expiresAt) {
+        return res.status(400).json({ message: "Reset token has expired" });
+      }
+
+      // Get organization
+      const organization = await storage.getOrganizationByEmail(resetToken.email);
+      if (!organization) {
+        return res.status(400).json({ message: "Associated account not found" });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await storage.updateOrganization(organization.id, {
+        password: hashedPassword,
+      });
+
+      // Mark token as used
+      await storage.markPasswordResetTokenAsUsed(resetToken.id);
+
+      // Clean up expired tokens
+      await storage.cleanupExpiredTokens();
+
+      res.json({ message: "Password has been reset successfully" });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  app.get("/api/validate-reset-token/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid token", valid: false });
+      }
+
+      if (new Date() > resetToken.expiresAt) {
+        return res.status(400).json({ message: "Token expired", valid: false });
+      }
+
+      res.json({ message: "Token is valid", valid: true });
+    } catch (error) {
+      console.error("Validate reset token error:", error);
+      res.status(500).json({ message: "Failed to validate token", valid: false });
+    }
+  });
+
   // Organization routes
 
 
@@ -214,6 +332,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send invitations if emails provided
       if (req.body.inviteEmails && Array.isArray(req.body.inviteEmails)) {
+        const organization = await storage.getOrganization(req.session.organizationId!);
+        
         for (const email of req.body.inviteEmails) {
           const token = randomUUID();
           await storage.createEventInvitation({
@@ -222,8 +342,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             token,
           });
 
-          // TODO: Send email invitation
-          console.log(`Invitation sent to ${email} with token: ${token}`);
+          // Send email invitation via Mailjet
+          if (organization) {
+            const emailSent = await emailService.sendEventInvitationEmail(
+              email.trim(),
+              event.name,
+              organization.name,
+              event.date,
+              token
+            );
+            
+            if (emailSent) {
+              console.log(`Invitation email sent to ${email} with token: ${token}`);
+            } else {
+              console.error(`Failed to send invitation email to ${email}`);
+            }
+          }
         }
       }
 
@@ -436,6 +570,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const message = await storage.createMessage(data);
+
+      // Send email notifications to all event participants
+      try {
+        const participants = await storage.getEventParticipants(event.id);
+        
+        for (const participant of participants) {
+          const emailSent = await emailService.sendMessageNotificationEmail(
+            participant.email,
+            participant.name,
+            event.name,
+            organization.name,
+            organization.name,
+            data.content,
+            event.id,
+            message.id
+          );
+          
+          if (emailSent) {
+            console.log(`Message notification sent to ${participant.email}`);
+          } else {
+            console.error(`Failed to send message notification to ${participant.email}`);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to send message notifications:", error);
+        // Don't fail the request if notification emails fail
+      }
+
       res.json(message);
     } catch (error) {
       console.error("Create message error:", error);
@@ -478,6 +640,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Event not found" });
       }
 
+      // Verify that the sender is a participant of this event
+      const participants = await storage.getEventParticipants(event.id);
+      const isParticipant = participants.some(p => p.email === senderEmail);
+      
+      if (!isParticipant) {
+        return res.status(403).json({ message: "Only event participants can send messages" });
+      }
+
       const data = insertMessageSchema.parse({
         eventId: req.params.id,
         senderName,
@@ -487,10 +657,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const message = await storage.createMessage(data);
+
+      // Notify the organizer of the new participant message
+      try {
+        const organization = await storage.getOrganization(event.organizationId);
+        if (organization) {
+          const emailSent = await emailService.sendMessageNotificationEmail(
+            organization.email,
+            `${organization.contactFirstName} ${organization.contactLastName}`,
+            event.name,
+            organization.name,
+            senderName,
+            content,
+            event.id,
+            message.id
+          );
+          
+          if (emailSent) {
+            console.log(`Participant message notification sent to organizer ${organization.email}`);
+          } else {
+            console.error(`Failed to send participant message notification to organizer`);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to send organizer notification:", error);
+        // Don't fail the request if notification email fails
+      }
+
       res.json(message);
     } catch (error) {
       console.error("Create participant message error:", error);
       res.status(400).json({ message: error instanceof Error ? error.message : "Failed to send message" });
+    }
+  });
+
+  // Reply to message via email (public endpoint)
+  app.get("/api/events/:eventId/reply", async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const { messageId, email } = req.query;
+
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const organization = await storage.getOrganization(event.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Verify participant
+      const participants = await storage.getEventParticipants(eventId);
+      const participant = participants.find(p => p.email === email);
+      
+      if (!participant) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get the original message if messageId provided
+      let originalMessage = null;
+      if (messageId) {
+        originalMessage = await storage.getMessage(messageId as string);
+      }
+
+      // Return HTML page for replying to message
+      const replyPageHtml = `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Répondre au message - ${event.name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+            .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { text-align: center; margin-bottom: 30px; }
+            .event-info { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+            .original-message { background-color: #e9ecef; padding: 15px; border-left: 4px solid #007bff; margin-bottom: 20px; }
+            .form-group { margin-bottom: 20px; }
+            label { display: block; margin-bottom: 5px; font-weight: bold; }
+            input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+            textarea { min-height: 120px; resize: vertical; }
+            .btn { background-color: #007bff; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+            .btn:hover { background-color: #0056b3; }
+            .success { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 20px; display: none; }
+            .error { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; display: none; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Répondre au message</h1>
+              <h2>${event.name}</h2>
+            </div>
+            
+            <div class="event-info">
+              <strong>Organisé par :</strong> ${organization.name}<br>
+              <strong>Date :</strong> ${event.date.toLocaleDateString('fr-FR')}<br>
+              <strong>Vous répondez en tant que :</strong> ${participant.name}
+            </div>
+            
+            ${originalMessage ? `
+              <div class="original-message">
+                <strong>Message original de ${originalMessage.senderName} :</strong><br>
+                "${originalMessage.content}"
+              </div>
+            ` : ''}
+            
+            <div id="success" class="success">Message envoyé avec succès !</div>
+            <div id="error" class="error">Erreur lors de l'envoi du message.</div>
+            
+            <form id="replyForm">
+              <div class="form-group">
+                <label for="content">Votre message :</label>
+                <textarea id="content" name="content" placeholder="Tapez votre message ici..." required></textarea>
+              </div>
+              
+              <button type="submit" class="btn">Envoyer la réponse</button>
+            </form>
+          </div>
+
+          <script>
+            document.getElementById('replyForm').addEventListener('submit', async (e) => {
+              e.preventDefault();
+              
+              const content = document.getElementById('content').value;
+              if (!content.trim()) return;
+              
+              try {
+                const response = await fetch('/api/events/${eventId}/messages/participant', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    senderName: '${participant.name}',
+                    senderEmail: '${participant.email}',
+                    content: content
+                  })
+                });
+                
+                if (response.ok) {
+                  document.getElementById('success').style.display = 'block';
+                  document.getElementById('error').style.display = 'none';
+                  document.getElementById('content').value = '';
+                } else {
+                  document.getElementById('error').style.display = 'block';
+                  document.getElementById('success').style.display = 'none';
+                }
+              } catch (error) {
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('success').style.display = 'none';
+              }
+            });
+          </script>
+        </body>
+        </html>
+      `;
+
+      res.setHeader('Content-Type', 'text/html');
+      res.send(replyPageHtml);
+    } catch (error) {
+      console.error("Reply page error:", error);
+      res.status(500).json({ message: "Failed to load reply page" });
     }
   });
 
