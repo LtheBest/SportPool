@@ -357,6 +357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`Invitation email sent to ${email} with token: ${token}`);
             } else {
               console.error(`Failed to send invitation email to ${email}`);
+              console.log(`Invitation link for ${email}: ${process.env.APP_URL || 'http://localhost:8080'}/invitation/${token}`);
             }
           }
         }
@@ -852,6 +853,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get dashboard stats error:", error);
       res.status(500).json({ message: "Failed to get dashboard stats" });
+    }
+  });
+
+  // Get invitations for an event with links (for debugging/manual sharing)
+  app.get("/api/events/:id/invitations", requireAuth, async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const invitations = await storage.getEventInvitations(req.params.id);
+      const invitationsWithLinks = invitations.map(invitation => ({
+        ...invitation,
+        invitationLink: `${process.env.APP_URL || 'http://localhost:8080'}/invitation/${invitation.token}`
+      }));
+
+      res.json(invitationsWithLinks);
+    } catch (error) {
+      console.error("Get event invitations error:", error);
+      res.status(500).json({ message: "Failed to get event invitations" });
     }
   });
 
