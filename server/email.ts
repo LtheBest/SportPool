@@ -1,32 +1,20 @@
-import mailjet from 'node-mailjet';
+import sgMail from '@sendgrid/mail';
 
-// Configuration Mailjet
-const mailjetClient = mailjet.apiConnect(
-  process.env.MAILJET_API_KEY || '',
-  process.env.MAILJET_SECRET_KEY || ''
-);
+// Configuration SendGrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
 export interface EmailTemplate {
   subject: string;
-  htmlPart: string;
-  textPart: string;
+  html: string;
+  text: string;
 }
 
 export interface EmailData {
   to: string;
   toName?: string;
   subject: string;
-  htmlPart: string;
-  textPart: string;
-  fromEmail?: string;
-  fromName?: string;
-}
-
-export interface TemplateEmailData {
-  to: string;
-  toName?: string;
-  templateId: number;
-  variables: Record<string, any>;
+  html: string;
+  text: string;
   fromEmail?: string;
   fromName?: string;
 }
@@ -37,63 +25,32 @@ class EmailService {
   private appUrl: string;
 
   constructor() {
-    this.fromEmail = process.env.MAILJET_FROM_EMAIL || 'noreply@yourapp.com';
-    this.fromName = process.env.MAILJET_FROM_NAME || 'YourApp';
+    this.fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@yourapp.com';
+    this.fromName = process.env.SENDGRID_FROM_NAME || 'YourApp';
     this.appUrl = process.env.APP_URL || 'http://localhost:3000';
   }
 
   async sendEmail(data: EmailData): Promise<boolean> {
     try {
-      const request = await mailjetClient
-        .post("send", { version: 'v3.1' })
-        .request({
-          Messages: [{
-            From: {
-              Email: data.fromEmail || this.fromEmail,
-              Name: data.fromName || this.fromName
-            },
-            To: [{
-              Email: data.to,
-              Name: data.toName || data.to
-            }],
-            Subject: data.subject,
-            TextPart: data.textPart,
-            HTMLPart: data.htmlPart
-          }]
-        });
+      const msg = {
+        to: {
+          email: data.to,
+          name: data.toName || data.to
+        },
+        from: {
+          email: data.fromEmail || this.fromEmail,
+          name: data.fromName || this.fromName
+        },
+        subject: data.subject,
+        text: data.text,
+        html: data.html,
+      };
 
-      console.log('Email sent successfully:', request.body);
+      await sgMail.send(msg);
+      console.log('Email sent successfully to:', data.to);
       return true;
     } catch (error) {
       console.error('Failed to send email:', error);
-      return false;
-    }
-  }
-
-  async sendTemplateEmail(data: TemplateEmailData): Promise<boolean> {
-    try {
-      const request = await mailjetClient
-        .post("send", { version: 'v3.1' })
-        .request({
-          Messages: [{
-            From: {
-              Email: data.fromEmail || this.fromEmail,
-              Name: data.fromName || this.fromName
-            },
-            To: [{
-              Email: data.to,
-              Name: data.toName || data.to
-            }],
-            TemplateID: data.templateId,
-            TemplateLanguage: true,
-            Variables: data.variables
-          }]
-        });
-
-      console.log('Template email sent successfully:', request.body);
-      return true;
-    } catch (error) {
-      console.error('Failed to send template email:', error);
       return false;
     }
   }
@@ -102,7 +59,7 @@ class EmailService {
   async sendPasswordResetEmail(email: string, name: string, resetToken: string): Promise<boolean> {
     const resetUrl = `${this.appUrl}/reset-password?token=${resetToken}`;
     
-    const htmlPart = `
+    const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #f8f9fa; padding: 30px; border-radius: 8px; text-align: center;">
           <h1 style="color: #333; margin-bottom: 30px;">Réinitialisation de votre mot de passe</h1>
@@ -125,7 +82,7 @@ class EmailService {
       </div>
     `;
 
-    const textPart = `
+    const text = `
       Réinitialisation de votre mot de passe
       
       Bonjour ${name},
@@ -142,8 +99,8 @@ class EmailService {
       to: email,
       toName: name,
       subject: 'Réinitialisation de votre mot de passe',
-      htmlPart,
-      textPart
+      html,
+      text
     });
   }
 
@@ -165,7 +122,7 @@ class EmailService {
       minute: '2-digit'
     });
 
-    const htmlPart = `
+    const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #f8f9fa; padding: 30px; border-radius: 8px;">
           <h1 style="color: #333; margin-bottom: 20px; text-align: center;">
@@ -196,7 +153,7 @@ class EmailService {
       </div>
     `;
 
-    const textPart = `
+    const text = `
       Invitation à un événement
       
       Événement : ${eventName}
@@ -212,8 +169,8 @@ class EmailService {
     return await this.sendEmail({
       to: email,
       subject: `Invitation à l'événement: ${eventName}`,
-      htmlPart,
-      textPart
+      html,
+      text
     });
   }
 
@@ -236,7 +193,7 @@ class EmailService {
       ? messageContent.substring(0, 200) + '...' 
       : messageContent;
 
-    const htmlPart = `
+    const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #f8f9fa; padding: 30px; border-radius: 8px;">
           <h1 style="color: #333; margin-bottom: 20px; text-align: center;">
@@ -268,7 +225,7 @@ class EmailService {
       </div>
     `;
 
-    const textPart = `
+    const text = `
       Nouveau message de ${organizationName}
       
       Événement : ${eventName}
@@ -286,56 +243,116 @@ class EmailService {
       to: participantEmail,
       toName: participantName,
       subject: `${eventName} - Nouveau message de ${organizationName}`,
-      htmlPart,
-      textPart
+      html,
+      text
     });
   }
 
-  // Envoi d'email avec le template personnalisé (ID: 7243128)
-  async sendCustomTemplateEmail(
-    email: string, 
-    name: string, 
-    content: string,
-    subject?: string
-  ): Promise<boolean> {
-    const templateId = parseInt(process.env.MAILJET_TEMPLATE_ID || '7243128');
-    
-    return await this.sendTemplateEmail({
-      to: email,
-      toName: name,
-      templateId,
-      variables: {
-        content: content,
-        name: name,
-        subject: subject || 'Notification'
-      }
-    });
-  }
-
-  // Envoi de notification d'événement avec template
-  async sendEventNotificationTemplate(
+  // Envoi d'invitation automatique avec liens personnalisés
+  async sendEventInvitationWithLink(
     email: string,
-    name: string,
     eventName: string,
-    eventDate: string,
-    organizationName: string
+    organizationName: string,
+    eventDate: Date,
+    eventLink: string
   ): Promise<boolean> {
-    const content = `
-      Bonjour ${name},
-      
-      Vous êtes invité(e) à l'événement "${eventName}" organisé par ${organizationName}.
-      
-      Date de l'événement : ${eventDate}
-      
-      Nous avons hâte de vous voir !
+    const formattedDate = eventDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #f8f9fa; padding: 30px; border-radius: 8px;">
+          <h1 style="color: #333; margin-bottom: 20px; text-align: center;">
+            🎯 Vous êtes invité à un événement !
+          </h1>
+          <div style="background-color: white; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
+            <h2 style="color: #007bff; margin-bottom: 15px;">${eventName}</h2>
+            <p style="color: #666; font-size: 16px; margin-bottom: 10px;">
+              <strong>Organisé par :</strong> ${organizationName}
+            </p>
+            <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+              <strong>Date :</strong> ${formattedDate}
+            </p>
+            <p style="color: #666; font-size: 16px; margin-bottom: 30px;">
+              Un nouvel événement vient d'être créé et vous êtes automatiquement invité ! 
+              Cliquez sur le lien ci-dessous pour voir tous les détails et confirmer votre participation.
+            </p>
+            <div style="text-align: center;">
+              <a href="${eventLink}" style="display: inline-block; background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Voir l'événement et participer
+              </a>
+            </div>
+          </div>
+          <p style="color: #666; font-size: 12px; text-align: center;">
+            Si le bouton ne fonctionne pas, copiez ce lien :<br>
+            <a href="${eventLink}" style="color: #007bff;">${eventLink}</a>
+          </p>
+        </div>
+      </div>
     `;
 
-    return await this.sendCustomTemplateEmail(
-      email,
-      name,
-      content,
-      `Invitation à l'événement: ${eventName}`
-    );
+    const text = `
+      Vous êtes invité à un événement !
+      
+      Événement : ${eventName}
+      Organisé par : ${organizationName}
+      Date : ${formattedDate}
+      
+      Un nouvel événement vient d'être créé et vous êtes automatiquement invité !
+      Cliquez sur ce lien pour voir tous les détails et confirmer votre participation :
+      
+      ${eventLink}
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      subject: `Nouvel événement: ${eventName} - ${organizationName}`,
+      html,
+      text
+    });
+  }
+
+  // Envoi groupé d'invitations
+  async sendBulkEventInvitations(
+    emails: string[],
+    eventName: string,
+    organizationName: string,
+    eventDate: Date,
+    eventLink: string
+  ): Promise<{ success: number; failed: string[] }> {
+    const results = {
+      success: 0,
+      failed: [] as string[]
+    };
+
+    for (const email of emails) {
+      try {
+        const sent = await this.sendEventInvitationWithLink(
+          email,
+          eventName,
+          organizationName,
+          eventDate,
+          eventLink
+        );
+        
+        if (sent) {
+          results.success++;
+        } else {
+          results.failed.push(email);
+        }
+      } catch (error) {
+        console.error(`Failed to send invitation to ${email}:`, error);
+        results.failed.push(email);
+      }
+    }
+
+    return results;
   }
 }
 

@@ -28,6 +28,10 @@ const profileSchema = z.object({
   description: z.string().optional(),
   contactFirstName: z.string().min(1, "Le prénom est requis"),
   contactLastName: z.string().min(1, "Le nom est requis"),
+  sirenNumber: z.string().optional().refine((val) => {
+    if (!val || val === "") return true; // Optional field
+    return /^\d{9}$/.test(val);
+  }, "Le numéro SIREN doit contenir exactement 9 chiffres"),
   sports: z.array(z.string()).optional(),
 });
 
@@ -72,6 +76,7 @@ export default function Profile() {
       description: organization?.description || "",
       contactFirstName: organization?.contactFirstName || "",
       contactLastName: organization?.contactLastName || "",
+      sirenNumber: organization?.sirenNumber || "",
       sports: organization?.sports || [],
     },
   });
@@ -338,6 +343,31 @@ export default function Profile() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="sirenNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Numéro SIREN (optionnel)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder="123456789"
+                        maxLength={9}
+                        pattern="[0-9]*"
+                        onInput={(e) => {
+                          // Ne permettre que les chiffres
+                          const input = e.target as HTMLInputElement;
+                          input.value = input.value.replace(/[^0-9]/g, '');
+                        }}
+                      />
+                    </FormControl>
+                    <p className="text-sm text-gray-500">Numéro d'identification de votre organisation (9 chiffres)</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

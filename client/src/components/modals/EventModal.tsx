@@ -120,8 +120,8 @@ export default function EventModal({ isOpen, onClose, event }: EventModalProps) 
       toast({
         title: "Événement créé",
         description: inviteEmails.length > 0
-          ? `Événement créé et ${inviteEmails.length} invitations envoyées.`
-          : "Événement créé avec succès.",
+          ? `Événement créé avec succès ! Invitations envoyées à ${inviteEmails.length} adresses + tous les membres existants.`
+          : "Événement créé avec succès ! Invitations automatiquement envoyées à tous les membres existants.",
       });
     },
     onError: (error: any) => {
@@ -368,7 +368,11 @@ export default function EventModal({ isOpen, onClose, event }: EventModalProps) 
 
             {/* Invite emails */}
             <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">Inviter des membres (optionnel)</Label>
+              <Label className="text-sm font-medium text-gray-700 mb-2 block">Inviter de nouveaux membres (optionnel)</Label>
+              <p className="text-xs text-gray-500 mb-3">
+                💡 Tous les membres existants de vos événements précédents recevront automatiquement une invitation. 
+                Ajoutez ici uniquement de nouvelles adresses email.
+              </p>
               <div className="space-y-2">
                 <div className="flex space-x-2">
                   <Input type="email" value={currentEmail} onChange={(e) => setCurrentEmail(e.target.value)} placeholder="Entrez une adresse email" onKeyPress={handleKeyPress} className="flex-1" />

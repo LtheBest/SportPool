@@ -331,32 +331,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const event = await storage.createEvent(data);
 
-      // Send invitations if emails provided
-      if (req.body.inviteEmails && Array.isArray(req.body.inviteEmails)) {
-        const organization = await storage.getOrganization(req.session.organizationId!);
+      // Automatically send invitations to all existing participants and new emails
+      const organization = await storage.getOrganization(req.session.organizationId!);
+      if (organization) {
+        let emailsToInvite: string[] = [];
         
-        for (const email of req.body.inviteEmails) {
-          const token = randomUUID();
-          await storage.createEventInvitation({
-            eventId: event.id,
-            email: email.trim(),
-            token,
-          });
-
-          // Send email invitation via Mailjet
-          if (organization) {
-            const emailSent = await emailService.sendEventInvitationEmail(
-              email.trim(),
-              event.name,
-              organization.name,
-              event.date,
-              token
-            );
-            
-            if (emailSent) {
-              console.log(`Invitation email sent to ${email} with token: ${token}`);
-            } else {
-              console.error(`Failed to send invitation email to ${email}`);
+        // Add emails from existing participants in other events
+        const existingEvents = await storage.getEventsByOrganization(req.session.organizationId!);
+        const existingEmails = new Set<string>();
+        
+        for (const existingEvent of existingEvents) {
+          const participants = await storage.getEventParticipants(existingEvent.id);
+          participants.forEach(p => existingEmails.add(p.email));
+        }
+        
+        // Add existing participants emails
+        emailsToInvite.push(...Array.from(existingEmails));
+        
+        // Add new emails from the request if provided
+        if (req.body.inviteEmails && Array.isArray(req.body.inviteEmails)) {
+          const newEmails = req.body.inviteEmails.map((email: string) => email.trim()).filter(Boolean);
+          emailsToInvite.push(...newEmails);
+        }
+        
+        // Remove duplicates
+        emailsToInvite = Array.from(new Set(emailsToInvite));
+        
+        // Generate event link (public link to view event details)
+        const eventLink = `${process.env.APP_URL || 'http://localhost:3000'}/events/${event.id}`;
+        
+        // Send invitations using bulk email function
+        if (emailsToInvite.length > 0) {
+          const results = await emailService.sendBulkEventInvitations(
+            emailsToInvite,
+            event.name,
+            organization.name,
+            event.date,
+            eventLink
+          );
+          
+          console.log(`Event invitations sent: ${results.success} successful, ${results.failed.length} failed`);
+          if (results.failed.length > 0) {
+            console.error('Failed to send invitations to:', results.failed);
+          }
+          
+          // Create invitation records for tracking
+          for (const email of emailsToInvite) {
+            try {
+              const token = randomUUID();
+              await storage.createEventInvitation({
+                eventId: event.id,
+                email: email.trim(),
+                token,
+              });
+            } catch (error) {
+              console.error(`Failed to create invitation record for ${email}:`, error);
             }
           }
         }
@@ -378,6 +407,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(event);
     } catch (error) {
       console.error("Get event error:", error);
+      res.status(500).json({ message: "Failed to get event" });
+    }
+  });
+
+  // Public route to view event details (for invitations)
+  app.get("/api/events/:id/public", async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      // Get organization info
+      const organization = await storage.getOrganization(event.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+      
+      // Get participants count
+      const participants = await storage.getEventParticipants(event.id);
+      
+      res.json({
+        ...event,
+        organization: {
+          name: organization.name,
+          logoUrl: organization.logoUrl,
+          contactFirstName: organization.contactFirstName,
+          contactLastName: organization.contactLastName
+        },
+        participantsCount: participants.length,
+        participants: participants.map(p => ({
+          name: p.name,
+          role: p.role,
+          availableSeats: p.availableSeats
+        }))
+      });
+    } catch (error) {
+      console.error("Get public event error:", error);
       res.status(500).json({ message: "Failed to get event" });
     }
   });
@@ -508,6 +575,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Respond to invitation error:", error);
       res.status(400).json({ message: error instanceof Error ? error.message : "Failed to respond to invitation" });
+    }
+  });
+
+  // Public route to join event directly (without token)
+  app.post("/api/events/:id/join", async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const { name, email, role, availableSeats, comment } = req.body;
+
+      if (!name || !email || !role) {
+        return res.status(400).json({ message: "Name, email and role are required" });
+      }
+
+      if (role === "driver" && (!availableSeats || availableSeats < 1 || availableSeats > 7)) {
+        return res.status(400).json({ message: "Drivers must specify 1-7 available seats" });
+      }
+
+      // Check if already registered
+      const existingParticipants = await storage.getEventParticipants(event.id);
+      const alreadyRegistered = existingParticipants.some(p => p.email.toLowerCase() === email.toLowerCase());
+      
+      if (alreadyRegistered) {
+        return res.status(400).json({ message: "You are already registered for this event" });
+      }
+
+      // Add participant
+      await storage.addEventParticipant({
+        eventId: event.id,
+        name,
+        email: email.toLowerCase(),
+        role,
+        availableSeats: role === "driver" ? availableSeats : null,
+        comment,
+      });
+
+      res.json({ message: "Successfully registered for the event!" });
+    } catch (error) {
+      console.error("Join event error:", error);
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to join event" });
     }
   });
 
