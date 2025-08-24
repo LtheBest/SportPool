@@ -86,6 +86,20 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Participant change requests table
+export const participantChangeRequests = pgTable("participant_change_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  participantId: varchar("participant_id").notNull().references(() => eventParticipants.id, { onDelete: "cascade" }),
+  eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  requestType: varchar("request_type", { enum: ["role_change", "seat_change", "withdrawal"] }).notNull(),
+  currentValue: text("current_value"),
+  requestedValue: text("requested_value"),
+  reason: text("reason"),
+  status: varchar("status", { enum: ["pending", "approved", "rejected"] }).default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  processedAt: timestamp("processed_at"),
+});
+
 // Relations
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   events: many(events),
@@ -118,6 +132,17 @@ export const eventInvitationsRelations = relations(eventInvitations, ({ one }) =
 export const messagesRelations = relations(messages, ({ one }) => ({
   event: one(events, {
     fields: [messages.eventId],
+    references: [events.id],
+  }),
+}));
+
+export const participantChangeRequestsRelations = relations(participantChangeRequests, ({ one }) => ({
+  participant: one(eventParticipants, {
+    fields: [participantChangeRequests.participantId],
+    references: [eventParticipants.id],
+  }),
+  event: one(events, {
+    fields: [participantChangeRequests.eventId],
     references: [events.id],
   }),
 }));
@@ -158,6 +183,12 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
   createdAt: true,
 });
 
+export const insertParticipantChangeRequestSchema = createInsertSchema(participantChangeRequests).omit({
+  id: true,
+  createdAt: true,
+  processedAt: true,
+});
+
 // Types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -171,3 +202,5 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type ParticipantChangeRequest = typeof participantChangeRequests.$inferSelect;
+export type InsertParticipantChangeRequest = z.infer<typeof insertParticipantChangeRequestSchema>;

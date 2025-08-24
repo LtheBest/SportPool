@@ -367,7 +367,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             event.name,
             organization.name,
             event.date,
-            eventLink
+            eventLink,
+            event.meetingPoint,
+            event.destination,
+            event.sport,
+            event.duration,
+            `${organization.contactFirstName} ${organization.contactLastName}`,
+            organization.email
           );
           
           console.log(`Event invitations sent: ${results.success} successful, ${results.failed.length} failed`);
@@ -503,6 +509,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Remove participant error:", error);
       res.status(500).json({ message: "Failed to remove participant" });
+    }
+  });
+
+  // Update participant by organizer
+  app.put("/api/participants/:id", requireAuth, async (req, res) => {
+    try {
+      const { role, availableSeats, status } = req.body;
+      
+      // Get the participant to verify event ownership
+      const participant = await storage.getEventParticipant(req.params.id);
+      if (!participant) {
+        return res.status(404).json({ message: "Participant not found" });
+      }
+
+      const event = await storage.getEvent(participant.eventId);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found or access denied" });
+      }
+
+      // Validation
+      if (role && !["passenger", "driver"].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      if (role === "driver" && (!availableSeats || availableSeats < 1 || availableSeats > 7)) {
+        return res.status(400).json({ message: "Drivers must specify 1-7 available seats" });
+      }
+
+      if (status && !["pending", "confirmed", "declined"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      // Update participant
+      const updatedData: any = {};
+      if (role !== undefined) {
+        updatedData.role = role;
+        updatedData.availableSeats = role === "driver" ? availableSeats : null;
+      }
+      if (availableSeats !== undefined && participant.role === "driver") {
+        updatedData.availableSeats = availableSeats;
+      }
+      if (status !== undefined) {
+        updatedData.status = status;
+      }
+
+      const updatedParticipant = await storage.updateEventParticipant(req.params.id, updatedData);
+      res.json(updatedParticipant);
+    } catch (error) {
+      console.error("Update participant error:", error);
+      res.status(500).json({ message: "Failed to update participant" });
     }
   });
 
@@ -643,6 +699,245 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Redirect invitation tokens to public event page
+  app.get("/invitation/:token", async (req, res) => {
+    try {
+      const invitation = await storage.getEventInvitation(req.params.token);
+      if (!invitation) {
+        return res.status(404).send(`
+          <html><body>
+            <h1>Invitation non trouvée</h1>
+            <p>Cette invitation n'existe pas ou a expiré.</p>
+          </body></html>
+        `);
+      }
+
+      // Redirect to public event page
+      res.redirect(`/events/${invitation.eventId}`);
+    } catch (error) {
+      console.error("Invitation redirect error:", error);
+      res.status(500).send(`
+        <html><body>
+          <h1>Erreur</h1>
+          <p>Une erreur est survenue lors du traitement de votre invitation.</p>
+        </body></html>
+      `);
+    }
+  });
+
+  // Send individual invitation email
+  app.post("/api/events/:id/invite", requireAuth, async (req, res) => {
+    try {
+      const { email, customMessage } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const event = await storage.getEvent(req.params.id);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const organization = await storage.getOrganization(event.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Generate event link (public link to view event details)
+      const eventLink = `${process.env.APP_URL || 'http://localhost:3000'}/events/${event.id}`;
+
+      // Send invitation email
+      const sent = await emailService.sendEventInvitationWithLink(
+        email,
+        event.name,
+        organization.name,
+        event.date,
+        eventLink,
+        event.meetingPoint,
+        event.destination,
+        event.sport,
+        event.duration,
+        `${organization.contactFirstName} ${organization.contactLastName}`,
+        organization.email
+      );
+
+      if (sent) {
+        // Create invitation record for tracking
+        try {
+          const token = randomUUID();
+          await storage.createEventInvitation({
+            eventId: event.id,
+            email: email.trim(),
+            token,
+          });
+        } catch (error) {
+          console.error(`Failed to create invitation record for ${email}:`, error);
+          // Don't fail the request if invitation record fails
+        }
+        
+        res.json({ message: "Invitation sent successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to send invitation email" });
+      }
+    } catch (error) {
+      console.error("Send invitation error:", error);
+      res.status(500).json({ message: "Failed to send invitation" });
+    }
+  });
+
+  // Participant change requests routes
+  app.get("/api/events/:id/change-requests", requireAuth, async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const requests = await storage.getParticipantChangeRequestsByEvent(req.params.id);
+      res.json(requests);
+    } catch (error) {
+      console.error("Get change requests error:", error);
+      res.status(500).json({ message: "Failed to get change requests" });
+    }
+  });
+
+  app.post("/api/participants/:id/change-request", async (req, res) => {
+    try {
+      const { requestType, requestedValue, reason } = req.body;
+      
+      if (!requestType || !reason) {
+        return res.status(400).json({ message: "Request type and reason are required" });
+      }
+
+      // Get the participant
+      const participant = await storage.getEventParticipant(req.params.id);
+      if (!participant) {
+        return res.status(404).json({ message: "Participant not found" });
+      }
+
+      // Create the change request
+      const request = await storage.createParticipantChangeRequest({
+        participantId: req.params.id,
+        eventId: participant.eventId,
+        requestType,
+        currentValue: requestType === "role_change" ? participant.role : 
+                     requestType === "seat_change" ? participant.availableSeats?.toString() : "active",
+        requestedValue,
+        reason,
+        status: "pending",
+      });
+
+      // Notify the organizer
+      const event = await storage.getEvent(participant.eventId);
+      if (event) {
+        const organization = await storage.getOrganization(event.organizationId);
+        if (organization) {
+          // Send notification email to organizer
+          try {
+            const requestTypeText = requestType === "role_change" ? "changement de rôle" :
+                                   requestType === "seat_change" ? "changement de places disponibles" : "retrait de l'événement";
+            
+            await emailService.sendMessageNotificationEmail(
+              organization.email,
+              `${organization.contactFirstName} ${organization.contactLastName}`,
+              event.name,
+              organization.name,
+              participant.name,
+              `Demande de ${requestTypeText}: ${reason}`,
+              event.id,
+              request.id // Use request ID as message ID for tracking
+            );
+          } catch (error) {
+            console.error("Failed to send change request notification:", error);
+          }
+        }
+      }
+
+      res.json(request);
+    } catch (error) {
+      console.error("Create change request error:", error);
+      res.status(500).json({ message: "Failed to create change request" });
+    }
+  });
+
+  app.put("/api/change-requests/:id", requireAuth, async (req, res) => {
+    try {
+      const { status, organizerComment } = req.body;
+      
+      if (!status || !["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Valid status (approved/rejected) is required" });
+      }
+
+      const request = await storage.getParticipantChangeRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ message: "Change request not found" });
+      }
+
+      // Verify organizer has access to this event
+      const event = await storage.getEvent(request.eventId);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found or access denied" });
+      }
+
+      // Update the request
+      const updatedRequest = await storage.updateParticipantChangeRequest(req.params.id, {
+        status,
+        processedAt: new Date(),
+      });
+
+      // If approved, apply the changes
+      if (status === "approved") {
+        try {
+          if (request.requestType === "role_change") {
+            await storage.updateEventParticipant(request.participantId, {
+              role: request.requestedValue as "passenger" | "driver",
+              availableSeats: request.requestedValue === "driver" ? 1 : null // Default to 1 seat for new drivers
+            });
+          } else if (request.requestType === "seat_change") {
+            await storage.updateEventParticipant(request.participantId, {
+              availableSeats: parseInt(request.requestedValue || "0")
+            });
+          } else if (request.requestType === "withdrawal") {
+            await storage.removeEventParticipant(request.participantId);
+          }
+        } catch (error) {
+          console.error("Failed to apply approved changes:", error);
+          return res.status(500).json({ message: "Failed to apply changes" });
+        }
+      }
+
+      // Notify the participant of the decision
+      try {
+        const participant = await storage.getEventParticipant(request.participantId);
+        if (participant) {
+          const organization = await storage.getOrganization(event.organizationId);
+          if (organization) {
+            const statusText = status === "approved" ? "approuvée" : "rejetée";
+            const message = `Votre demande a été ${statusText}. ${organizerComment || ""}`;
+            
+            await emailService.sendMessageNotificationEmail(
+              participant.email,
+              participant.name,
+              event.name,
+              organization.name,
+              organization.name,
+              message,
+              event.id,
+              updatedRequest.id
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Failed to send decision notification:", error);
+      }
+
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error("Process change request error:", error);
+      res.status(500).json({ message: "Failed to process change request" });
+    }
+  });
 
   // Messages routes
   app.get("/api/events/:id/messages", requireAuth, async (req, res) => {
@@ -1079,6 +1374,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get realtime dashboard stats error:", error);
       res.status(500).json({ message: "Failed to get dashboard stats" });
+    }
+  });
+
+  // Download event calendar file (.ics)
+  app.get("/api/events/:id/calendar", async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const organization = await storage.getOrganization(event.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const icalContent = emailService.generateICalendar(
+        event.name,
+        event.date,
+        event.duration || "2h",
+        event.meetingPoint,
+        event.destination,
+        event.description || "",
+        organization.name
+      );
+
+      res.setHeader('Content-Type', 'text/calendar');
+      res.setHeader('Content-Disposition', `attachment; filename="${event.name.replace(/[^a-z0-9]/gi, '_')}.ics"`);
+      res.send(icalContent);
+    } catch (error) {
+      console.error("Generate calendar error:", error);
+      res.status(500).json({ message: "Failed to generate calendar file" });
+    }
+  });
+
+  // Send reminder emails for upcoming events
+  app.post("/api/events/:id/send-reminders", requireAuth, async (req, res) => {
+    try {
+      const { hoursBeforeEvent = 24 } = req.body;
+
+      const event = await storage.getEvent(req.params.id);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const organization = await storage.getOrganization(event.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const participants = await storage.getEventParticipants(event.id);
+      const eventLink = `${process.env.APP_URL || 'http://localhost:3000'}/events/${event.id}`;
+
+      const results = {
+        success: 0,
+        failed: [] as string[]
+      };
+
+      for (const participant of participants) {
+        try {
+          const sent = await emailService.sendEventReminderEmail(
+            participant.email,
+            participant.name,
+            event.name,
+            organization.name,
+            event.date,
+            event.meetingPoint,
+            event.destination,
+            eventLink,
+            hoursBeforeEvent
+          );
+
+          if (sent) {
+            results.success++;
+          } else {
+            results.failed.push(participant.email);
+          }
+        } catch (error) {
+          console.error(`Failed to send reminder to ${participant.email}:`, error);
+          results.failed.push(participant.email);
+        }
+      }
+
+      res.json({
+        message: `Rappels envoyés : ${results.success} réussis, ${results.failed.length} échecs`,
+        results
+      });
+    } catch (error) {
+      console.error("Send reminders error:", error);
+      res.status(500).json({ message: "Failed to send reminders" });
     }
   });
 

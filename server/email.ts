@@ -110,14 +110,20 @@ class EmailService {
     eventName: string, 
     organizationName: string, 
     eventDate: Date, 
-    invitationToken: string
+    invitationToken: string,
+    meetingPoint?: string,
+    destination?: string,
+    sport?: string,
+    duration?: string
   ): Promise<boolean> {
     const invitationUrl = `${this.appUrl}/invitation/${invitationToken}`;
     const formattedDate = eventDate.toLocaleDateString('fr-FR', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric',
+      day: 'numeric'
+    });
+    const formattedTime = eventDate.toLocaleTimeString('fr-FR', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -130,18 +136,35 @@ class EmailService {
           </h1>
           <div style="background-color: white; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
             <h2 style="color: #007bff; margin-bottom: 15px;">${eventName}</h2>
-            <p style="color: #666; font-size: 16px; margin-bottom: 10px;">
-              <strong>Organisé par :</strong> ${organizationName}
-            </p>
-            <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
-              <strong>Date :</strong> ${formattedDate}
-            </p>
+            <div style="margin-bottom: 20px;">
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Organisé par :</strong> ${organizationName}
+              </p>
+              ${sport ? `<p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Sport :</strong> ${sport}
+              </p>` : ''}
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Date :</strong> ${formattedDate}
+              </p>
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Heure :</strong> ${formattedTime}
+              </p>
+              ${duration ? `<p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Durée :</strong> ${duration}
+              </p>` : ''}
+              ${meetingPoint ? `<p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>RDV :</strong> ${meetingPoint}
+              </p>` : ''}
+              ${destination ? `<p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Destination :</strong> ${destination}
+              </p>` : ''}
+            </div>
             <p style="color: #666; font-size: 16px; margin-bottom: 30px;">
-              Vous êtes invité(e) à participer à cet événement. Cliquez sur le bouton ci-dessous pour répondre à l'invitation.
+              Vous êtes invité(e) à participer à cet événement. Cliquez sur le bouton ci-dessous pour voir tous les détails et confirmer votre participation.
             </p>
             <div style="text-align: center;">
               <a href="${invitationUrl}" style="display: inline-block; background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                Répondre à l'invitation
+                Voir l'événement et participer
               </a>
             </div>
           </div>
@@ -158,10 +181,15 @@ class EmailService {
       
       Événement : ${eventName}
       Organisé par : ${organizationName}
+      ${sport ? `Sport : ${sport}` : ''}
       Date : ${formattedDate}
+      Heure : ${formattedTime}
+      ${duration ? `Durée : ${duration}` : ''}
+      ${meetingPoint ? `RDV : ${meetingPoint}` : ''}
+      ${destination ? `Destination : ${destination}` : ''}
       
       Vous êtes invité(e) à participer à cet événement.
-      Cliquez sur ce lien pour répondre à l'invitation :
+      Cliquez sur ce lien pour voir tous les détails et confirmer votre participation :
       
       ${invitationUrl}
     `;
@@ -254,16 +282,28 @@ class EmailService {
     eventName: string,
     organizationName: string,
     eventDate: Date,
-    eventLink: string
+    eventLink: string,
+    meetingPoint?: string,
+    destination?: string,
+    sport?: string,
+    duration?: string,
+    organizerContactName?: string,
+    organizerEmail?: string
   ): Promise<boolean> {
     const formattedDate = eventDate.toLocaleDateString('fr-FR', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric',
+      day: 'numeric'
+    });
+    const formattedTime = eventDate.toLocaleTimeString('fr-FR', {
       hour: '2-digit',
       minute: '2-digit'
     });
+
+    const contactOrganizerUrl = organizerEmail 
+      ? `mailto:${organizerEmail}?subject=Question%20à%20propos%20de%20l'événement%20"${encodeURIComponent(eventName)}"` 
+      : null;
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -273,21 +313,48 @@ class EmailService {
           </h1>
           <div style="background-color: white; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
             <h2 style="color: #007bff; margin-bottom: 15px;">${eventName}</h2>
-            <p style="color: #666; font-size: 16px; margin-bottom: 10px;">
-              <strong>Organisé par :</strong> ${organizationName}
-            </p>
-            <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
-              <strong>Date :</strong> ${formattedDate}
-            </p>
+            <div style="margin-bottom: 20px;">
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Organisé par :</strong> ${organizationName}
+              </p>
+              ${sport ? `<p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Sport :</strong> ${sport}
+              </p>` : ''}
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Date :</strong> ${formattedDate}
+              </p>
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Heure :</strong> ${formattedTime}
+              </p>
+              ${duration ? `<p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Durée :</strong> ${duration}
+              </p>` : ''}
+              ${meetingPoint ? `<p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>RDV :</strong> ${meetingPoint}
+              </p>` : ''}
+              ${destination ? `<p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Destination :</strong> ${destination}
+              </p>` : ''}
+            </div>
             <p style="color: #666; font-size: 16px; margin-bottom: 30px;">
               Un nouvel événement vient d'être créé et vous êtes automatiquement invité ! 
               Cliquez sur le lien ci-dessous pour voir tous les détails et confirmer votre participation.
             </p>
-            <div style="text-align: center;">
-              <a href="${eventLink}" style="display: inline-block; background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <a href="${eventLink}" style="display: inline-block; background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-bottom: 10px;">
                 Voir l'événement et participer
               </a>
             </div>
+            ${contactOrganizerUrl ? `
+              <div style="text-align: center; border-top: 1px solid #eee; padding-top: 15px;">
+                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
+                  Une question ? Contactez l'organisateur
+                </p>
+                <a href="${contactOrganizerUrl}" style="display: inline-block; background-color: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-size: 14px;">
+                  ✉️ Contacter ${organizerContactName || organizationName}
+                </a>
+              </div>
+            ` : ''}
           </div>
           <p style="color: #666; font-size: 12px; text-align: center;">
             Si le bouton ne fonctionne pas, copiez ce lien :<br>
@@ -302,12 +369,19 @@ class EmailService {
       
       Événement : ${eventName}
       Organisé par : ${organizationName}
+      ${sport ? `Sport : ${sport}` : ''}
       Date : ${formattedDate}
+      Heure : ${formattedTime}
+      ${duration ? `Durée : ${duration}` : ''}
+      ${meetingPoint ? `RDV : ${meetingPoint}` : ''}
+      ${destination ? `Destination : ${destination}` : ''}
       
       Un nouvel événement vient d'être créé et vous êtes automatiquement invité !
       Cliquez sur ce lien pour voir tous les détails et confirmer votre participation :
       
       ${eventLink}
+      
+      ${organizerEmail ? `Pour toute question, contactez l'organisateur : ${organizerEmail}` : ''}
     `;
 
     return await this.sendEmail({
@@ -324,7 +398,13 @@ class EmailService {
     eventName: string,
     organizationName: string,
     eventDate: Date,
-    eventLink: string
+    eventLink: string,
+    meetingPoint?: string,
+    destination?: string,
+    sport?: string,
+    duration?: string,
+    organizerContactName?: string,
+    organizerEmail?: string
   ): Promise<{ success: number; failed: string[] }> {
     const results = {
       success: 0,
@@ -338,7 +418,13 @@ class EmailService {
           eventName,
           organizationName,
           eventDate,
-          eventLink
+          eventLink,
+          meetingPoint,
+          destination,
+          sport,
+          duration,
+          organizerContactName,
+          organizerEmail
         );
         
         if (sent) {
@@ -353,6 +439,138 @@ class EmailService {
     }
 
     return results;
+  }
+
+  // Envoi de rappel avant événement
+  async sendEventReminderEmail(
+    participantEmail: string,
+    participantName: string,
+    eventName: string,
+    organizationName: string,
+    eventDate: Date,
+    meetingPoint: string,
+    destination: string,
+    eventLink: string,
+    hoursBeforeEvent: number = 24
+  ): Promise<boolean> {
+    const formattedDate = eventDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const formattedTime = eventDate.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #f8f9fa; padding: 30px; border-radius: 8px;">
+          <h1 style="color: #333; margin-bottom: 20px; text-align: center;">
+            ⏰ Rappel - Événement dans ${hoursBeforeEvent}h !
+          </h1>
+          <div style="background-color: white; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
+            <h2 style="color: #007bff; margin-bottom: 15px;">${eventName}</h2>
+            <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+              <p style="color: #856404; margin: 0; font-weight: bold;">
+                📅 C'est demain ! N'oubliez pas votre participation à cet événement.
+              </p>
+            </div>
+            <div style="margin-bottom: 20px;">
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Organisé par :</strong> ${organizationName}
+              </p>
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Date :</strong> ${formattedDate}
+              </p>
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Heure :</strong> ${formattedTime}
+              </p>
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>RDV :</strong> ${meetingPoint}
+              </p>
+              <p style="color: #666; font-size: 16px; margin-bottom: 8px;">
+                <strong>Destination :</strong> ${destination}
+              </p>
+            </div>
+            <div style="text-align: center; margin-bottom: 20px;">
+              <a href="${eventLink}" style="display: inline-block; background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Voir les détails de l'événement
+              </a>
+            </div>
+            <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 5px;">
+              <p style="color: #0c5460; margin: 0; font-size: 14px;">
+                💡 <strong>Rappel :</strong> Pensez à vérifier les dernières informations sur la page de l'événement, 
+                notamment les éventuels changements de dernière minute concernant le covoiturage.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const text = `
+      Rappel - Événement dans ${hoursBeforeEvent}h !
+      
+      Événement : ${eventName}
+      Organisé par : ${organizationName}
+      Date : ${formattedDate}
+      Heure : ${formattedTime}
+      RDV : ${meetingPoint}
+      Destination : ${destination}
+      
+      C'est demain ! N'oubliez pas votre participation à cet événement.
+      
+      Voir les détails : ${eventLink}
+      
+      Pensez à vérifier les dernières informations sur la page de l'événement.
+    `;
+
+    return await this.sendEmail({
+      to: participantEmail,
+      toName: participantName,
+      subject: `🔔 Rappel: ${eventName} - Demain !`,
+      html,
+      text
+    });
+  }
+
+  // Génération d'un fichier iCalendar pour l'événement
+  generateICalendar(
+    eventName: string,
+    eventDate: Date,
+    duration: string,
+    meetingPoint: string,
+    destination: string,
+    description: string,
+    organizationName: string
+  ): string {
+    const formatDate = (date: Date): string => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    const startDate = formatDate(eventDate);
+    // Estimate end date (default 2 hours if no duration specified)
+    const durationHours = duration?.includes('h') ? parseInt(duration) || 2 : 2;
+    const endDate = formatDate(new Date(eventDate.getTime() + durationHours * 60 * 60 * 1000));
+    
+    return `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//CovoitSport//FR
+BEGIN:VEVENT
+UID:${Date.now()}@covoitsport.fr
+DTSTAMP:${formatDate(new Date())}
+DTSTART:${startDate}
+DTEND:${endDate}
+SUMMARY:${eventName}
+DESCRIPTION:Événement organisé par ${organizationName}\\n\\nRDV: ${meetingPoint}\\nDestination: ${destination}\\n\\n${description}
+LOCATION:${meetingPoint}
+ORGANIZER:CN=${organizationName}
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR`;
   }
 }
 

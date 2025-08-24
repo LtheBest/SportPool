@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import EventModal from "@/components/modals/EventModal";
 import InviteModal from "@/components/modals/InviteModal";
+import ParticipantManagementModal from "@/components/modals/ParticipantManagementModal";
 import type { Event, EventParticipant } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +20,7 @@ export default function Events() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showParticipantManagement, setShowParticipantManagement] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -58,6 +60,10 @@ export default function Events() {
     }
   };
 
+  const handleParticipantManagement = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setShowParticipantManagement(true);
+  };
 
   const handleGenerateLink = async (eventId: string) => {
     try {
@@ -65,7 +71,7 @@ export default function Events() {
       // si apiRequest renvoie directement Response, lire json :
       const data = await res.json();
       const { token } = data;
-      const link = `${window.location.origin}/invitation/${token}`;
+      const link = `${window.location.origin}/events/${eventId}`;
       await navigator.clipboard.writeText(link);
       toast({
         title: "Lien copié",
@@ -216,6 +222,7 @@ export default function Events() {
               onDelete={() => handleDelete(event.id)}
               onGenerateLink={() => handleGenerateLink(event.id)}
               onDetails={() => handleDetails(event)}
+              onManageParticipants={() => handleParticipantManagement(event.id)}
             />
           ))}
         </div>
@@ -239,6 +246,12 @@ export default function Events() {
         event={selectedEvent || undefined}
       />
 
+      <ParticipantManagementModal
+        isOpen={showParticipantManagement}
+        onClose={() => setShowParticipantManagement(false)}
+        eventId={selectedEventId}
+      />
+
       {/* Vous pouvez afficher un modal détails si nécessaire en utilisant selectedEvent et showDetailsModal */}
     </div>
   );
@@ -252,6 +265,7 @@ function EventCard({
   onDelete,
   onGenerateLink,
   onDetails,
+  onManageParticipants,
 }: {
   event: Event;
   onInvite: () => void;
@@ -259,6 +273,7 @@ function EventCard({
   onDelete: () => void;
   onGenerateLink: () => void;
   onDetails: () => void;
+  onManageParticipants: () => void;
 }) {
   const { data: participants = [] } = useQuery<EventParticipant[]>({
     queryKey: [`/api/events/${event.id}/participants`],
@@ -355,6 +370,16 @@ function EventCard({
               >
                 <i className="fas fa-eye mr-1"></i>
                 Détails
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onManageParticipants}
+                className="bg-blue-50 hover:bg-blue-100"
+              >
+                <i className="fas fa-users-cog mr-1"></i>
+                Gérer
               </Button>
             </div>
           </div>

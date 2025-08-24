@@ -5,6 +5,7 @@ import {
   eventInvitations,
   messages,
   passwordResetTokens,
+  participantChangeRequests,
   type Organization,
   type InsertOrganization,
   type Event,
@@ -17,6 +18,8 @@ import {
   type InsertMessage,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  type ParticipantChangeRequest,
+  type InsertParticipantChangeRequest,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, isNull } from "drizzle-orm";
@@ -37,6 +40,7 @@ export interface IStorage {
   deleteEvent(id: string): Promise<void>;
 
   // Event Participants
+  getEventParticipant(id: string): Promise<EventParticipant | undefined>;
   getEventParticipants(eventId: string): Promise<EventParticipant[]>;
   addEventParticipant(participant: InsertEventParticipant): Promise<EventParticipant>;
   removeEventParticipant(id: string): Promise<void>;
@@ -57,6 +61,12 @@ export interface IStorage {
   getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
   markPasswordResetTokenAsUsed(id: string): Promise<void>;
   cleanupExpiredTokens(): Promise<void>;
+
+  // Participant Change Requests
+  createParticipantChangeRequest(request: InsertParticipantChangeRequest): Promise<ParticipantChangeRequest>;
+  getParticipantChangeRequestsByEvent(eventId: string): Promise<ParticipantChangeRequest[]>;
+  getParticipantChangeRequest(id: string): Promise<ParticipantChangeRequest | undefined>;
+  updateParticipantChangeRequest(id: string, data: Partial<InsertParticipantChangeRequest>): Promise<ParticipantChangeRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -122,6 +132,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Event Participants
+  async getEventParticipant(id: string): Promise<EventParticipant | undefined> {
+    const [participant] = await db
+      .select()
+      .from(eventParticipants)
+      .where(eq(eventParticipants.id, id));
+    return participant;
+  }
+
   async getEventParticipants(eventId: string): Promise<EventParticipant[]> {
     return await db
       .select()
@@ -233,6 +251,40 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(passwordResetTokens)
       .where(sql`expires_at < NOW()`);
+  }
+
+  // Participant Change Requests
+  async createParticipantChangeRequest(request: InsertParticipantChangeRequest): Promise<ParticipantChangeRequest> {
+    const [newRequest] = await db
+      .insert(participantChangeRequests)
+      .values(request)
+      .returning();
+    return newRequest;
+  }
+
+  async getParticipantChangeRequestsByEvent(eventId: string): Promise<ParticipantChangeRequest[]> {
+    return await db
+      .select()
+      .from(participantChangeRequests)
+      .where(eq(participantChangeRequests.eventId, eventId))
+      .orderBy(desc(participantChangeRequests.createdAt));
+  }
+
+  async getParticipantChangeRequest(id: string): Promise<ParticipantChangeRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(participantChangeRequests)
+      .where(eq(participantChangeRequests.id, id));
+    return request;
+  }
+
+  async updateParticipantChangeRequest(id: string, data: Partial<InsertParticipantChangeRequest>): Promise<ParticipantChangeRequest> {
+    const [updatedRequest] = await db
+      .update(participantChangeRequests)
+      .set(data)
+      .where(eq(participantChangeRequests.id, id))
+      .returning();
+    return updatedRequest;
   }
 }
 
