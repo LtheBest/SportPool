@@ -400,6 +400,64 @@ export default function EventPublicView({ eventId }: EventPublicViewProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Request Status Change Section for Existing Participants */}
+        <Card className="mt-6">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Déjà inscrit(e) ?</h3>
+            <p className="text-gray-600 mb-4">
+              Si vous êtes déjà inscrit(e) à cet événement et souhaitez modifier votre participation 
+              (changer de rôle, modifier vos places disponibles, ou vous désinscrire), 
+              vous pouvez envoyer une demande à l'organisateur.
+            </p>
+            <div className="text-center">
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  const organizerEmail = event.organization?.contactFirstName && event.organization?.contactLastName 
+                    ? `${event.organization.contactFirstName}.${event.organization.contactLastName}@${event.organization.name.toLowerCase().replace(/\s+/g, '')}.com`
+                    : 'organisateur@example.com';
+                  const subject = `Demande de modification - ${event.name}`;
+                  const body = `Bonjour,\n\nJe souhaite modifier ma participation à l'événement "${event.name}" prévu le ${new Date(event.date).toLocaleDateString('fr-FR')}.\n\nType de modification souhaitée :\n☐ Changer de rôle (conducteur ↔ passager)\n☐ Modifier le nombre de places disponibles\n☐ Me désinscrire de l'événement\n\nRaison :\n[Veuillez expliquer la raison de votre demande]\n\nMerci de votre compréhension.\n\nCordialement,\n[Votre nom]`;
+                  window.location.href = `mailto:${organizerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                }}
+              >
+                <i className="fas fa-envelope mr-2"></i>
+                Contacter l'organisateur pour une modification
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Additional Features */}
+        <div className="mt-6 flex justify-center space-x-4">
+          <Button 
+            variant="outline"
+            onClick={() => window.open(`/api/events/${eventId}/calendar`, '_blank')}
+          >
+            <i className="fas fa-calendar-plus mr-2"></i>
+            Ajouter au calendrier
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: event.name,
+                  text: `Rejoignez-moi pour l'événement ${event.name} organisé par ${event.organization?.name}`,
+                  url: window.location.href
+                });
+              } else {
+                navigator.clipboard.writeText(window.location.href);
+                // You might want to add a toast notification here
+                alert('Lien copié dans le presse-papier !');
+              }
+            }}
+          >
+            <i className="fas fa-share-alt mr-2"></i>
+            Partager l'événement
+          </Button>
+        </div>
       </div>
     </div>
   );
