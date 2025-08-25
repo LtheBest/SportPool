@@ -279,9 +279,11 @@ function EventCard({
     queryKey: [`/api/events/${event.id}/participants`],
   });
 
-  const drivers = participants.filter((p) => p.role === "driver");
-  const passengers = participants.filter((p) => p.role === "passenger");
-  const availableSeats = drivers.reduce((sum, d) => sum + (d.availableSeats || 0), 0);
+  const participantsArray = Array.isArray(participants) ? participants : [];
+  const drivers = participantsArray.filter(p => p.role === "driver");
+  const passengers = participantsArray.filter(p => p.role === "passenger");
+  const totalSeats = drivers.reduce((sum, d) => sum + (d.availableSeats || 0), 0);
+  const availableSeats = totalSeats - passengers.length;
 
   return (
     <Card className="overflow-hidden">

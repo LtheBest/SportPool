@@ -17,10 +17,10 @@ interface ParticipantManagementModalProps {
   eventId: string | null;
 }
 
-export default function ParticipantManagementModal({ 
-  isOpen, 
-  onClose, 
-  eventId 
+export default function ParticipantManagementModal({
+  isOpen,
+  onClose,
+  eventId
 }: ParticipantManagementModalProps) {
   const [selectedParticipant, setSelectedParticipant] = useState<EventParticipant | null>(null);
   const [newRole, setNewRole] = useState<string>("");
@@ -28,7 +28,7 @@ export default function ParticipantManagementModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: participants = [], isLoading } = useQuery<EventParticipant[]>({
+  const { data: participantsData, isLoading } = useQuery<EventParticipant[]>({
     queryKey: [`/api/events/${eventId}/participants`],
     queryFn: () => apiRequest("GET", `/api/events/${eventId}/participants`),
     enabled: !!eventId,
@@ -41,11 +41,11 @@ export default function ParticipantManagementModal({
   });
 
   const updateParticipantMutation = useMutation({
-    mutationFn: async (data: { 
-      participantId: string; 
-      role?: string; 
-      availableSeats?: number; 
-      status?: string 
+    mutationFn: async (data: {
+      participantId: string;
+      role?: string;
+      availableSeats?: number;
+      status?: string
     }) => {
       return apiRequest("PUT", `/api/participants/${data.participantId}`, data);
     },
@@ -132,7 +132,7 @@ export default function ParticipantManagementModal({
     if (!selectedParticipant) return;
 
     const updateData: any = {};
-    
+
     if (newRole && newRole !== selectedParticipant.role) {
       updateData.role = newRole;
       if (newRole === "driver" && newSeats) {
@@ -150,6 +150,10 @@ export default function ParticipantManagementModal({
     }
   };
 
+  const participants = Array.isArray(participantsData) ? participantsData : [];
+  if (!Array.isArray(participantsData)) {
+    console.error("participants N'EST PAS un tableau !", participantsData);
+  }
   const drivers = participants.filter(p => p.role === "driver");
   const passengers = participants.filter(p => p.role === "passenger");
   const totalSeats = drivers.reduce((sum, d) => sum + (d.availableSeats || 0), 0);
@@ -196,7 +200,7 @@ export default function ParticipantManagementModal({
 
           {/* Actions */}
           <div className="flex space-x-2">
-            <Button 
+            <Button
               onClick={() => sendRemindersMutation.mutate(24)}
               disabled={sendRemindersMutation.isPending}
               variant="outline"
@@ -204,7 +208,7 @@ export default function ParticipantManagementModal({
               <i className="fas fa-bell mr-2"></i>
               Envoyer des rappels
             </Button>
-            <Button 
+            <Button
               onClick={() => window.open(`/api/events/${eventId}/calendar`, '_blank')}
               variant="outline"
             >
@@ -232,7 +236,7 @@ export default function ParticipantManagementModal({
                             <div className="font-medium">{participant?.name}</div>
                             <div className="text-sm text-gray-600">
                               {request.requestType === 'role_change' ? 'Changement de rôle' :
-                               request.requestType === 'seat_change' ? 'Changement de places' : 'Retrait'}
+                                request.requestType === 'seat_change' ? 'Changement de places' : 'Retrait'}
                             </div>
                             <div className="text-sm">{request.reason}</div>
                             {request.requestedValue && (
