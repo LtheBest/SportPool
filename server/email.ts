@@ -213,7 +213,7 @@ class EmailService {
     eventId: string,
     messageId: string
   ): Promise<boolean> {
-    const replyUrl = `${this.appUrl}/events/${eventId}/reply?messageId=${messageId}&email=${encodeURIComponent(participantEmail)}`;
+    const replyUrl = `${this.appUrl}/reply/${eventId}/${messageId}`;
     const eventUrl = `${this.appUrl}/events/${eventId}`;
 
     // Truncate message if too long
