@@ -1,0 +1,17 @@
+node_modules
+dist
+build
+coverage
+*.min.js
+*.min.css
+package-lock.json
+.git
+.next
+.nuxt
+.vscode
+.DS_Store
+*.log
+.env
+.env.local
+.env.production.local
+.env.test.local

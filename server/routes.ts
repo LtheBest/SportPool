@@ -1489,6 +1489,335 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Health check endpoint for Docker and monitoring
+  app.get("/api/health", async (req, res) => {
+    try {
+      // Test database connection
+      const organizations = await storage.getOrganizations();
+      res.json({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        database: "connected",
+        services: {
+          storage: "operational",
+          email: process.env.SENDGRID_API_KEY ? "configured" : "not configured"
+        }
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Email reply page for participants
+  app.get("/reply/:eventId/:messageId", async (req, res) => {
+    try {
+      const { eventId, messageId } = req.params;
+      
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).send(`
+          <!DOCTYPE html>
+          <html lang="fr">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Événement non trouvé - SportPool</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+              .error { background-color: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px; color: #c33; }
+            </style>
+          </head>
+          <body>
+            <div class="error">
+              <h2>Événement non trouvé</h2>
+              <p>L'événement que vous recherchez n'existe pas ou n'est plus disponible.</p>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+
+      const message = await storage.getMessage(messageId);
+      if (!message || message.eventId !== eventId) {
+        return res.status(404).send(`
+          <!DOCTYPE html>
+          <html lang="fr">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Message non trouvé - SportPool</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+              .error { background-color: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px; color: #c33; }
+            </style>
+          </head>
+          <body>
+            <div class="error">
+              <h2>Message non trouvé</h2>
+              <p>Le message que vous recherchez n'existe pas ou n'est plus disponible.</p>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+
+      const organization = await storage.getOrganization(event.organizationId);
+      
+      res.send(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Répondre au message - ${event.name}</title>
+          <style>
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+              max-width: 700px; 
+              margin: 0 auto; 
+              padding: 20px; 
+              background-color: #f8fafc;
+              color: #334155;
+            }
+            .container { 
+              background: white; 
+              border-radius: 12px; 
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+              overflow: hidden;
+            }
+            .header { 
+              background: linear-gradient(135deg, #3b82f6, #1d4ed8); 
+              color: white; 
+              padding: 30px; 
+              text-align: center; 
+            }
+            .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+            .header p { margin: 10px 0 0; opacity: 0.9; }
+            .content { padding: 30px; }
+            .message-info { 
+              background: #f1f5f9; 
+              border-left: 4px solid #3b82f6; 
+              padding: 20px; 
+              margin-bottom: 30px; 
+              border-radius: 0 8px 8px 0; 
+            }
+            .form-group { margin-bottom: 20px; }
+            label { 
+              display: block; 
+              margin-bottom: 8px; 
+              font-weight: 600; 
+              color: #374151; 
+            }
+            input, textarea { 
+              width: 100%; 
+              padding: 12px; 
+              border: 2px solid #e5e7eb; 
+              border-radius: 8px; 
+              font-size: 16px; 
+              transition: border-color 0.2s;
+            }
+            input:focus, textarea:focus { 
+              outline: none; 
+              border-color: #3b82f6; 
+              box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+            textarea { resize: vertical; min-height: 120px; }
+            .btn { 
+              background: linear-gradient(135deg, #3b82f6, #1d4ed8); 
+              color: white; 
+              padding: 12px 24px; 
+              border: none; 
+              border-radius: 8px; 
+              font-size: 16px; 
+              font-weight: 600; 
+              cursor: pointer; 
+              transition: all 0.2s;
+            }
+            .btn:hover { 
+              transform: translateY(-1px); 
+              box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); 
+            }
+            .btn:disabled { 
+              opacity: 0.6; 
+              cursor: not-allowed; 
+              transform: none; 
+            }
+            .success { 
+              background: #ecfdf5; 
+              border: 1px solid #a7f3d0; 
+              color: #065f46; 
+              padding: 16px; 
+              border-radius: 8px; 
+              margin-bottom: 20px; 
+              display: none; 
+            }
+            .error { 
+              background: #fef2f2; 
+              border: 1px solid #fca5a5; 
+              color: #991b1b; 
+              padding: 16px; 
+              border-radius: 8px; 
+              margin-bottom: 20px; 
+              display: none; 
+            }
+            .loading { display: none; align-items: center; margin-top: 10px; }
+            .spinner { 
+              width: 20px; 
+              height: 20px; 
+              border: 2px solid #e5e7eb; 
+              border-top: 2px solid #3b82f6; 
+              border-radius: 50%; 
+              animation: spin 1s linear infinite; 
+              margin-right: 10px; 
+            }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>💬 Répondre au message</h1>
+              <p>Événement : ${event.name}</p>
+            </div>
+            <div class="content">
+              <div class="message-info">
+                <h3>Message original</h3>
+                <p><strong>De :</strong> ${message.senderName}</p>
+                <p><strong>Date :</strong> ${new Date(message.createdAt).toLocaleDateString('fr-FR', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}</p>
+                <p><strong>Message :</strong></p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-top: 10px;">
+                  ${message.content.replace(/\n/g, '<br>')}
+                </div>
+              </div>
+
+              <div class="success" id="success-message">
+                ✅ Votre réponse a été envoyée avec succès !
+              </div>
+              
+              <div class="error" id="error-message">
+                ❌ Une erreur s'est produite. Veuillez réessayer.
+              </div>
+
+              <form id="reply-form">
+                <div class="form-group">
+                  <label for="senderName">Votre nom *</label>
+                  <input type="text" id="senderName" name="senderName" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="senderEmail">Votre email *</label>
+                  <input type="email" id="senderEmail" name="senderEmail" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="content">Votre réponse *</label>
+                  <textarea id="content" name="content" placeholder="Écrivez votre réponse ici..." required></textarea>
+                </div>
+                
+                <button type="submit" class="btn" id="submit-btn">
+                  Envoyer la réponse
+                </button>
+                
+                <div class="loading" id="loading">
+                  <div class="spinner"></div>
+                  <span>Envoi en cours...</span>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <script>
+            document.getElementById('reply-form').addEventListener('submit', async (e) => {
+              e.preventDefault();
+              
+              const submitBtn = document.getElementById('submit-btn');
+              const loading = document.getElementById('loading');
+              const successMessage = document.getElementById('success-message');
+              const errorMessage = document.getElementById('error-message');
+              
+              // Reset messages
+              successMessage.style.display = 'none';
+              errorMessage.style.display = 'none';
+              
+              // Show loading
+              submitBtn.disabled = true;
+              loading.style.display = 'flex';
+              
+              const formData = new FormData(e.target);
+              const data = {
+                senderName: formData.get('senderName'),
+                senderEmail: formData.get('senderEmail'),
+                content: formData.get('content'),
+                replyToMessageId: '${messageId}'
+              };
+              
+              try {
+                const response = await fetch('/api/events/${eventId}/messages/participant', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                  successMessage.style.display = 'block';
+                  e.target.reset();
+                } else {
+                  const errorData = await response.json();
+                  errorMessage.textContent = '❌ ' + (errorData.message || 'Une erreur s\\'est produite');
+                  errorMessage.style.display = 'block';
+                }
+              } catch (error) {
+                errorMessage.textContent = '❌ Erreur de connexion. Veuillez réessayer.';
+                errorMessage.style.display = 'block';
+              }
+              
+              // Hide loading
+              submitBtn.disabled = false;
+              loading.style.display = 'none';
+            });
+          </script>
+        </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error("Email reply page error:", error);
+      res.status(500).send(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Erreur - SportPool</title>
+          <style>
+            body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+            .error { background-color: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px; color: #c33; }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h2>Erreur</h2>
+            <p>Une erreur inattendue s'est produite. Veuillez réessayer plus tard.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

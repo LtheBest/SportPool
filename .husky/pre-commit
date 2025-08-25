@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+echo "🔍 Pre-commit checks (temporary bypass for initial commit)..."
+echo "⚠️  Note: ESLint will be properly configured in the next commit"
+echo "✅ Pre-commit checks bypassed for setup commit"
