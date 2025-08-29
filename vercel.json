@@ -2,69 +2,22 @@
   "version": 2,
   "name": "sportpool",
   "builds": [
-    {
-      "src": "dist/public/**/*",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "api/server.ts",
-      "use": "@vercel/node"
-    }
+    { "src": "dist/public/**/*", "use": "@vercel/static" },
+    { "src": "api/server.ts",   "use": "@vercel/node"  }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/server.ts"
-    },
-    {
-      "src": "/uploads/(.*)",
-      "dest": "/uploads/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/dist/public/$1"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/dist/public/index.html"
-    }
+    { "src": "/api/(.*)",    "dest": "/api/server.ts"  },
+    { "src": "/uploads/(.*)","dest": "/uploads/$1"    },
+    { "src": "/(.*)",        "dest": "/dist/public/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)",        "dest": "/dist/public/index.html" }
   ],
   "headers": [
     {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-        }
-      ]
-    },
-    {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
+        { "key": "X-Frame-Options",   "value": "DENY" },
+        { "key": "X-XSS-Protection",  "value": "1; mode=block" }
       ]
     }
   ],
