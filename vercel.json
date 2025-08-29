@@ -32,12 +32,6 @@
       "dest": "/dist/public/index.html"
     }
   ],
-  "functions": {
-    "api/server.ts": {
-      "maxDuration": 30,
-      "includeFiles": ["server/**", "shared/**"]
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
