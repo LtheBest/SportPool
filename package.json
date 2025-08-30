@@ -24,7 +24,7 @@
     "test:vercel": "node test-vercel.js",
     "test:vercel:old": "node test-vercel-local.js",
     "playwright:install": "playwright install",
-    "prepare": "husky"
+    "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') { require('child_process').execSync('husky install', { stdio: 'inherit' }) }\""
   },
   "dependencies": {
     "@cucumber/cucumber": "^12.1.0",
