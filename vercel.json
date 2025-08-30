@@ -3,6 +3,13 @@
   "name": "sportpool",
   "buildCommand": "npm run build",
   "outputDirectory": "public",
+  "framework": null,
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs22.x",
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     { "source": "/api/health", "destination": "/api/health" },
     { "source": "/api/(.*)", "destination": "/api/index" },
