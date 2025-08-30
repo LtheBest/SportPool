@@ -3,18 +3,18 @@
   "name": "sportpool",
   "buildCommand": "npm run build",
   "outputDirectory": "public",
-  "framework": null,
   "functions": {
     "api/**/*.ts": {
-      "runtime": "nodejs22.x",
+      "runtime": "nodejs18.x",
       "maxDuration": 30
     }
   },
-  "rewrites": [
-    { "source": "/api/health", "destination": "/api/health" },
-    { "source": "/api/(.*)", "destination": "/api/index" },
-    { "source": "/uploads/(.*)", "destination": "/api/uploads" },
-    { "source": "/(.*)", "destination": "/public/index.html" }
+  "routes": [
+    { "src": "/api/health", "dest": "/api/health" },
+    { "src": "/api/(.*)", "dest": "/api/index" },
+    { "src": "/uploads/(.*)", "dest": "/api/uploads" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/public/index.html" }
   ],
   "headers": [
     {
