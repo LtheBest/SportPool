@@ -9,12 +9,11 @@
       "maxDuration": 30
     }
   },
-  "routes": [
-    { "src": "/api/health", "dest": "/api/health" },
-    { "src": "/api/(.*)", "dest": "/api/index" },
-    { "src": "/uploads/(.*)", "dest": "/api/uploads" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/public/index.html" }
+  "rewrites": [
+    { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/uploads/(.*)", "destination": "/api/uploads" },
+    { "source": "/(.*)", "destination": "/public/index.html" }
   ],
   "headers": [
     {
