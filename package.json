@@ -25,7 +25,7 @@
     "test:all": "npm run test && npm run test:e2e",
     "test:render": "node server-render-dev.js",
     "playwright:install": "playwright install",
-    "prepare": "husky install"
+    "prepare": "if [ \"$NODE_ENV\" != \"production\" ]; then husky install; fi"
   },
   "dependencies": {
     "@cucumber/cucumber": "^12.1.0",

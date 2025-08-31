@@ -227,7 +227,6 @@ export default function EventModal({ isOpen, onClose, event }: EventModalProps) 
     { value: "crossfit", label: "CrossFit" },
     { value: "handball", label: "HandBall" },
     { value: "other", label: "Autre" },
-    { value: "other", label: "Autre" },
   ];
 
   const isSubmitting = createEventMutation.isPending || updateEventMutation.isPending;
