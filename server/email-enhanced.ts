@@ -12,7 +12,7 @@ class EmailServiceEnhanced {
     this.apiKey = process.env.SENDGRID_API_KEY || '';
     this.fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@covoitsports.com';
     this.fromName = process.env.SENDGRID_FROM_NAME || 'CovoitSports';
-    this.appUrl = process.env.APP_URL || 'https://sportpool.onrender.com/';
+    this.appUrl = process.env.APP_URL || 'https://sportpool.onrender.com';
     
     this.initializeService();
   }

@@ -4,7 +4,7 @@ export const config = {
   apiBaseUrl: (() => {
     // En développement local
     if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-      return 'https://sportpool.onrender.com/';
+      return 'https://sportpool.onrender.com';
     }
     
     // En production ou preview, utiliser l'URL courante
@@ -23,7 +23,7 @@ export const config = {
   // URLs spécifiques par environnement
   environments: {
     development: {
-      apiUrl: 'https://sportpool.onrender.com/',
+      apiUrl: 'https://sportpool.onrender.com',
       wsUrl: 'ws://sportpool.onrender.com/'
     },
     production: {

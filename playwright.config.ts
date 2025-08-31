@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'https://sportpool.onrender.com/',
+    baseURL: 'https://sportpool.onrender.com',
     trace: 'on-first-retry',
   },
 
@@ -31,7 +31,7 @@ export default defineConfig({
 
   webServer: {
     command: 'npm run dev',
-    url: 'https://sportpool.onrender.com/',
+    url: 'https://sportpool.onrender.com',
     reuseExistingServer: !process.env.CI,
   },
 });

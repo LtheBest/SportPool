@@ -56,7 +56,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('https://sportpool.onrender.com/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+    CMD node -e "require('http').get('https://sportpool.onrender.comapi/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application with PM2
 CMD ["pm2-runtime", "start", "ecosystem.config.cjs"]
