@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
+import TermsModal from "@/components/modals/TermsModal";
 
 const registrationSchema = z.object({
   name: z.string().min(1, "Le nom de l'organisation est requis"),
@@ -48,6 +49,8 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsModalType, setTermsModalType] = useState<'terms' | 'privacy'>('terms');
 
   const form = useForm({
     resolver: zodResolver(registrationSchema),
@@ -65,6 +68,17 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
       acceptTerms: false,
     },
   });
+
+  // Watch the selected organization type to keep it highlighted
+  const selectedType = useWatch({
+    control: form.control,
+    name: "type"
+  });
+
+  const handleTermsClick = (type: 'terms' | 'privacy') => {
+    setTermsModalType(type);
+    setShowTermsModal(true);
+  };
 
   const registrationMutation = useMutation({
     mutationFn: (data: any) => {
@@ -151,7 +165,11 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                             </FormControl>
                             <Label
                               htmlFor={type.value}
-                              className="relative cursor-pointer flex flex-col items-center p-4 border-2 border-gray-200 rounded-lg hover:border-primary peer-checked:border-primary peer-checked:bg-primary/5 transition-colors"
+                              className={`relative cursor-pointer flex flex-col items-center p-4 border-2 rounded-lg transition-all duration-200 ${
+                                selectedType === type.value
+                                  ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
+                                  : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                              }`}
                             >
                               <i className={`${type.icon} text-2xl ${type.color} mb-2`}></i>
                               <div className="font-semibold text-gray-900">{type.title}</div>
@@ -275,8 +293,16 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                 <FormItem>
                   <FormLabel>Adresse (optionnel)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} rows={2} placeholder="123 Rue du Sport, 75001 Paris" />
+                    <AddressAutocomplete
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      placeholder="Commencez à taper votre adresse..."
+                      className="w-full"
+                    />
                   </FormControl>
+                  <div className="text-xs text-gray-500 mt-1">
+                    💡 Tapez au moins 3 caractères pour voir les suggestions d'adresses françaises
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -321,19 +347,33 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
+                      className="mt-1"
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
-                    <FormLabel className="text-sm text-gray-600">
+                    <FormLabel className="text-sm text-gray-600 cursor-pointer">
                       J'accepte les{" "}
-                      <Button variant="link" className="p-0 h-auto text-primary hover:text-blue-700">
+                      <Button 
+                        type="button"
+                        variant="link" 
+                        className="p-0 h-auto text-primary hover:text-blue-700 underline"
+                        onClick={() => handleTermsClick('terms')}
+                      >
                         conditions d'utilisation
                       </Button>{" "}
                       et la{" "}
-                      <Button variant="link" className="p-0 h-auto text-primary hover:text-blue-700">
+                      <Button 
+                        type="button"
+                        variant="link" 
+                        className="p-0 h-auto text-primary hover:text-blue-700 underline"
+                        onClick={() => handleTermsClick('privacy')}
+                      >
                         politique de confidentialité
                       </Button>
                     </FormLabel>
+                    <p className="text-xs text-gray-500">
+                      * Requis pour créer un compte
+                    </p>
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -366,6 +406,13 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
           </p>
         </div>
       </DialogContent>
+
+      {/* Terms and Privacy Modal */}
+      <TermsModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        type={termsModalType}
+      />
     </Dialog>
   );
 }

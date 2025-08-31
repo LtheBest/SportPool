@@ -6,7 +6,7 @@ import bcrypt from "bcrypt";
 import session from "express-session";
 import { randomUUID } from "crypto";
 import { insertOrganizationSchema, insertEventSchema, insertEventParticipantSchema, insertMessageSchema } from "@shared/schema";
-import { emailService } from "./email";
+import { emailServiceEnhanced as emailService } from "./email-enhanced";
 import { chatbotService } from "./openai";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
@@ -49,6 +49,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
+
+  // Email service diagnostic route
+  app.get("/api/email/diagnostic", requireAuth, async (req, res) => {
+    try {
+      const report = await emailService.diagnoseService();
+      const config = await emailService.testConfiguration();
+      
+      res.json({
+        report: report,
+        config: config,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Email diagnostic error:", error);
+      res.status(500).json({ message: "Failed to run email diagnostic" });
+    }
+  });
 
   // Auth routes
   app.post("/api/register", async (req, res) => {
