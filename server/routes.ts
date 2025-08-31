@@ -43,7 +43,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       cookie: {
         sameSite: "none",
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       },
     })
