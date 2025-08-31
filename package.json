@@ -8,7 +8,6 @@
     "build": "node build.js",
     "build:client": "vite build",
     "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "build:vercel": "node build-vercel.js",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0",
@@ -21,10 +20,8 @@
     "test:e2e": "playwright test",
     "test:cucumber": "cucumber-js tests/features --require-module ts-node/register --require tests/step-definitions/**/*.ts",
     "test:all": "npm run test && npm run test:e2e",
-    "test:vercel": "node test-vercel.js",
-    "test:vercel:old": "node test-vercel-local.js",
     "playwright:install": "playwright install",
-    "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') { require('child_process').execSync('husky install', { stdio: 'inherit' }) }\""
+    "prepare": "husky"
   },
   "dependencies": {
     "@cucumber/cucumber": "^12.1.0",
@@ -134,7 +131,6 @@
     "@types/ws": "^8.5.13",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@typescript-eslint/parser": "^8.40.0",
-    "@vercel/node": "^5.3.15",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.30.4",
