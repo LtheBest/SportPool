@@ -28,7 +28,7 @@ services:
       - key: SESSION_SECRET
         generateValue: true # Render génère automatiquement une valeur sécurisée
       - key: APP_URL
-        value: https://sportpool-app.onrender.com
+        value: https://sportpool.onrender.com
     buildFilter:
       paths:
         - server/**
