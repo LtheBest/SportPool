@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
+import BackendTestPanel from "@/components/debug/BackendTestPanel";
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
@@ -515,6 +516,11 @@ export default function Profile() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Panel de test backend - Uniquement en développement */}
+      {(process.env.NODE_ENV === 'development' || window.location.hostname.includes('localhost')) && (
+        <BackendTestPanel />
+      )}
     </div>
   );
 }

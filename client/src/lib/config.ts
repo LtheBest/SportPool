@@ -2,18 +2,20 @@
 export const config = {
   // API Base URL - s'adapte automatiquement à l'environnement
   apiBaseUrl: (() => {
-    // En développement local
+    // En développement local, utiliser le serveur local si disponible, sinon Render
     if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-      return 'https://sportpool.onrender.com';
+      // Check if we want to use local backend (useful for development)
+      const useLocalBackend = localStorage.getItem('useLocalBackend') === 'true';
+      return useLocalBackend ? 'http://localhost:8080' : 'https://sportpool.onrender.com';
     }
     
-    // En production ou preview, utiliser l'URL courante
+    // En production ou preview, utiliser l'URL courante (même domaine)
     if (typeof window !== 'undefined') {
       return window.location.origin;
     }
     
     // Fallback pour SSR ou environnements sans window
-    return '';
+    return 'https://sportpool.onrender.com';
   })(),
 
   // Configuration pour différents environnements
@@ -23,8 +25,9 @@ export const config = {
   // URLs spécifiques par environnement
   environments: {
     development: {
-      apiUrl: 'https://sportpool.onrender.com',
-      wsUrl: 'ws://sportpool.onrender.com/'
+      apiUrl: 'http://localhost:8080',
+      renderApiUrl: 'https://sportpool.onrender.com',
+      wsUrl: 'ws://localhost:8080'
     },
     production: {
       apiUrl: '', // Sera l'origine courante

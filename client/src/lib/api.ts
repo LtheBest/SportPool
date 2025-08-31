@@ -4,6 +4,7 @@ import { buildApiUrl, defaultHeaders, requestTimeout, config } from "./config";
 export interface LoginData {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface RegisterData {
@@ -104,4 +105,6 @@ export const api = {
   // Diagnostic endpoints
   health: () => makeApiRequest("GET", "/api/health"),
   emailDiagnostic: () => makeApiRequest("GET", "/api/email/diagnostic"),
+  test: () => makeApiRequest("GET", "/api/test"),
+  debugUsers: () => makeApiRequest("GET", "/api/debug/users"),
 };
