@@ -13,6 +13,7 @@ import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import cors from "cors";
 
 // Session interface
 declare module "express-session" {
@@ -22,6 +23,10 @@ declare module "express-session" {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.use(cors({
+    origin: 'https://sportpool-client.onrender.com', // ou "*" pour test
+    credentials: true,
+  }));
   // ---------- uploads dir & static ----------
   const uploadsDir = path.join(process.cwd(), "uploads");
   if (!fs.existsSync(uploadsDir)) {
@@ -36,6 +41,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       resave: false,
       saveUninitialized: false,
       cookie: {
+        sameSite: "none",
+        httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       },
@@ -55,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const report = await emailService.diagnoseService();
       const config = await emailService.testConfiguration();
-      
+
       res.json({
         report: report,
         config: config,
@@ -352,31 +359,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const organization = await storage.getOrganization(req.session.organizationId!);
       if (organization) {
         let emailsToInvite: string[] = [];
-        
+
         // Add emails from existing participants in other events
         const existingEvents = await storage.getEventsByOrganization(req.session.organizationId!);
         const existingEmails = new Set<string>();
-        
+
         for (const existingEvent of existingEvents) {
           const participants = await storage.getEventParticipants(existingEvent.id);
           participants.forEach(p => existingEmails.add(p.email));
         }
-        
+
         // Add existing participants emails
         emailsToInvite.push(...Array.from(existingEmails));
-        
+
         // Add new emails from the request if provided
         if (req.body.inviteEmails && Array.isArray(req.body.inviteEmails)) {
           const newEmails = req.body.inviteEmails.map((email: string) => email.trim()).filter(Boolean);
           emailsToInvite.push(...newEmails);
         }
-        
+
         // Remove duplicates
         emailsToInvite = Array.from(new Set(emailsToInvite));
-        
+
         // Generate event link (public link to view event details)
         const eventLink = `${process.env.APP_URL || 'https://sportpool.onrender.com'}/events/${event.id}`;
-        
+
         // Send invitations using bulk email function
         if (emailsToInvite.length > 0) {
           const results = await emailService.sendBulkEventInvitations(
@@ -392,12 +399,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `${organization.contactFirstName} ${organization.contactLastName}`,
             organization.email
           );
-          
+
           console.log(`Event invitations sent: ${results.success} successful, ${results.failed.length} failed`);
           if (results.failed.length > 0) {
             console.error('Failed to send invitations to:', results.failed);
           }
-          
+
           // Create invitation records for tracking
           for (const email of emailsToInvite) {
             try {
@@ -441,16 +448,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!event) {
         return res.status(404).json({ message: "Event not found" });
       }
-      
+
       // Get organization info
       const organization = await storage.getOrganization(event.organizationId);
       if (!organization) {
         return res.status(404).json({ message: "Organization not found" });
       }
-      
+
       // Get participants count
       const participants = await storage.getEventParticipants(event.id);
-      
+
       res.json({
         ...event,
         organization: {
@@ -533,7 +540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/participants/:id", requireAuth, async (req, res) => {
     try {
       const { role, availableSeats, status } = req.body;
-      
+
       // Get the participant to verify event ownership
       const participant = await storage.getEventParticipant(req.params.id);
       if (!participant) {
@@ -672,7 +679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if already registered
       const existingParticipants = await storage.getEventParticipants(event.id);
       const alreadyRegistered = existingParticipants.some(p => p.email.toLowerCase() === email.toLowerCase());
-      
+
       if (alreadyRegistered) {
         return res.status(400).json({ message: "You are already registered for this event" });
       }
@@ -746,7 +753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/events/:id/invite", requireAuth, async (req, res) => {
     try {
       const { email, customMessage } = req.body;
-      
+
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
       }
@@ -792,7 +799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`Failed to create invitation record for ${email}:`, error);
           // Don't fail the request if invitation record fails
         }
-        
+
         res.json({ message: "Invitation sent successfully" });
       } else {
         res.status(500).json({ message: "Failed to send invitation email" });
@@ -822,7 +829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/participants/:id/change-request", async (req, res) => {
     try {
       const { requestType, requestedValue, reason } = req.body;
-      
+
       if (!requestType || !reason) {
         return res.status(400).json({ message: "Request type and reason are required" });
       }
@@ -838,8 +845,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         participantId: req.params.id,
         eventId: participant.eventId,
         requestType,
-        currentValue: requestType === "role_change" ? participant.role : 
-                     requestType === "seat_change" ? participant.availableSeats?.toString() : "active",
+        currentValue: requestType === "role_change" ? participant.role :
+          requestType === "seat_change" ? participant.availableSeats?.toString() : "active",
         requestedValue,
         reason,
         status: "pending",
@@ -853,8 +860,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Send notification email to organizer
           try {
             const requestTypeText = requestType === "role_change" ? "changement de rôle" :
-                                   requestType === "seat_change" ? "changement de places disponibles" : "retrait de l'événement";
-            
+              requestType === "seat_change" ? "changement de places disponibles" : "retrait de l'événement";
+
             await emailService.sendMessageNotificationEmail(
               organization.email,
               `${organization.contactFirstName} ${organization.contactLastName}`,
@@ -881,7 +888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/change-requests/:id", requireAuth, async (req, res) => {
     try {
       const { status, organizerComment } = req.body;
-      
+
       if (!status || !["approved", "rejected"].includes(status)) {
         return res.status(400).json({ message: "Valid status (approved/rejected) is required" });
       }
@@ -932,7 +939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (organization) {
             const statusText = status === "approved" ? "approuvée" : "rejetée";
             const message = `Votre demande a été ${statusText}. ${organizerComment || ""}`;
-            
+
             await emailService.sendMessageNotificationEmail(
               participant.email,
               participant.name,
@@ -997,7 +1004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send email notifications to all event participants
       try {
         const participants = await storage.getEventParticipants(event.id);
-        
+
         for (const participant of participants) {
           const emailSent = await emailService.sendMessageNotificationEmail(
             participant.email,
@@ -1009,7 +1016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             event.id,
             message.id
           );
-          
+
           if (emailSent) {
             console.log(`Message notification sent to ${participant.email}`);
           } else {
@@ -1066,7 +1073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify that the sender is a participant of this event
       const participants = await storage.getEventParticipants(event.id);
       const isParticipant = participants.some(p => p.email === senderEmail);
-      
+
       if (!isParticipant) {
         return res.status(403).json({ message: "Only event participants can send messages" });
       }
@@ -1095,7 +1102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             event.id,
             message.id
           );
-          
+
           if (emailSent) {
             console.log(`Participant message notification sent to organizer ${organization.email}`);
           } else {
@@ -1133,7 +1140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify participant
       const participants = await storage.getEventParticipants(eventId);
       const participant = participants.find(p => p.email === email);
-      
+
       if (!participant) {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -1290,9 +1297,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(response);
     } catch (error) {
       console.error("Chatbot error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Je rencontre un problème technique. Veuillez réessayer.",
-        success: false 
+        success: false
       });
     }
   });
@@ -1309,9 +1316,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(response);
     } catch (error) {
       console.error("Event suggestions error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Je ne peux pas générer de suggestions pour le moment.",
-        success: false 
+        success: false
       });
     }
   });
@@ -1334,9 +1341,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(response);
     } catch (error) {
       console.error("Organization help error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Je ne peux pas vous aider pour le moment.",
-        success: false 
+        success: false
       });
     }
   });
@@ -1534,7 +1541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/reply/:eventId/:messageId", async (req, res) => {
     try {
       const { eventId, messageId } = req.params;
-      
+
       const event = await storage.getEvent(eventId);
       if (!event) {
         return res.status(404).send(`
@@ -1584,7 +1591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const organization = await storage.getOrganization(event.organizationId);
-      
+
       res.send(`
         <!DOCTYPE html>
         <html lang="fr">
@@ -1705,14 +1712,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               <div class="message-info">
                 <h3>Message original</h3>
                 <p><strong>De :</strong> ${message.senderName}</p>
-                <p><strong>Date :</strong> ${new Date(message.createdAt).toLocaleDateString('fr-FR', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}</p>
+                <p><strong>Date :</strong> ${new Date(message.createdAt).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}</p>
                 <p><strong>Message :</strong></p>
                 <div style="background: white; padding: 15px; border-radius: 6px; margin-top: 10px;">
                   ${message.content.replace(/\n/g, '<br>')}
