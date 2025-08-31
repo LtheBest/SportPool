@@ -8,6 +8,9 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build:render": "node build-render.js",
+    "build:render:minimal": "node build-render-minimal.js",
+    "build:render:esbuild": "node build-render-esbuild.js",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0",
@@ -20,8 +23,9 @@
     "test:e2e": "playwright test",
     "test:cucumber": "cucumber-js tests/features --require-module ts-node/register --require tests/step-definitions/**/*.ts",
     "test:all": "npm run test && npm run test:e2e",
+    "test:render": "node server-render-dev.js",
     "playwright:install": "playwright install",
-    "prepare": "if [ \"$NODE_ENV\" != \"production\" ]; then husky install; fi"
+    "prepare": "husky install"
   },
   "dependencies": {
     "@cucumber/cucumber": "^12.1.0",
@@ -140,6 +144,7 @@
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "http-proxy-middleware": "^3.0.5",
     "husky": "^9.1.7",
     "postcss": "^8.4.47",
     "prettier": "^3.6.2",
