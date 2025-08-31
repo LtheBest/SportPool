@@ -375,7 +375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         emailsToInvite = Array.from(new Set(emailsToInvite));
         
         // Generate event link (public link to view event details)
-        const eventLink = `${process.env.APP_URL || 'http://localhost:3000'}/events/${event.id}`;
+        const eventLink = `${process.env.APP_URL || 'https://sportpool.onrender.com'}/events/${event.id}`;
         
         // Send invitations using bulk email function
         if (emailsToInvite.length > 0) {
@@ -762,7 +762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate event link (public link to view event details)
-      const eventLink = `${process.env.APP_URL || 'http://localhost:3000'}/events/${event.id}`;
+      const eventLink = `${process.env.APP_URL || 'https://sportpool.onrender.com'}/events/${event.id}`;
 
       // Send invitation email
       const sent = await emailService.sendEventInvitationWithLink(
@@ -1442,7 +1442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const participants = await storage.getEventParticipants(event.id);
-      const eventLink = `${process.env.APP_URL || 'http://localhost:3000'}/events/${event.id}`;
+      const eventLink = `${process.env.APP_URL || 'https://sportpool.onrender.com'}/events/${event.id}`;
 
       const results = {
         success: 0,

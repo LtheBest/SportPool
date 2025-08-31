@@ -73,7 +73,7 @@ npm run db:push
 npm run dev
 ```
 
-L'application sera accessible sur http://localhost:3000
+L'application sera accessible sur https://sportpool.onrender.com
 
 ### Avec Docker
 
