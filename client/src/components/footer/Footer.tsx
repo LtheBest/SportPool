@@ -16,7 +16,7 @@ export default function Footer() {
     <footer className="bg-gray-50 border-t mt-8">
       <div className="max-w-7xl mx-auto py-8 px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
-          <h4 className="font-semibold">Covoit'Sport</h4>
+          <h4 className="font-semibold">Covoit'Sports</h4>
           <p className="text-sm text-gray-600">Plateforme de pronostics et suivi des matchs.</p>
         </div>
         <div>
@@ -55,7 +55,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="bg-gray-100 py-3 text-center text-xs text-gray-600">
-        © {new Date().getFullYear()} Covoit'Sport — Tous droits réservés
+        © {new Date().getFullYear()} Covoit'Sports — Tous droits réservés
       </div>
     </footer>
   );

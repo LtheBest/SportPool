@@ -45,12 +45,12 @@ export default function Navbar({
                 <a href="#how-it-works" className="text-gray-600 hover:text-primary transition-colors font-medium">
                   Comment ça marche
                 </a>
-                <a href="#pricing" className="text-gray-600 hover:text-primary transition-colors font-medium">
+                {/* <a href="#pricing" className="text-gray-600 hover:text-primary transition-colors font-medium">
                   Tarifs
                 </a>
                 <a href="#contact" className="text-gray-600 hover:text-primary transition-colors font-medium">
                   Contact
-                </a>
+                </a> */}
               </div>
             )}
           </div>
@@ -202,7 +202,7 @@ export default function Navbar({
                           <i className="fas fa-question-circle text-primary w-5"></i>
                           <span className="font-medium">Comment ça marche</span>
                         </a>
-                        <a 
+                        {/* <a 
                           href="#pricing" 
                           className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
                           onClick={closeMobileMenu}
@@ -217,7 +217,7 @@ export default function Navbar({
                         >
                           <i className="fas fa-envelope text-primary w-5"></i>
                           <span className="font-medium">Contact</span>
-                        </a>
+                        </a> */}
                       </div>
                       
                       {/* Auth Buttons */}
