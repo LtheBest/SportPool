@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 
 const eventSchema = z.object({
   name: z.string().min(1, "Le nom de l'événement est requis"),
@@ -334,12 +335,22 @@ export default function EventModal({ isOpen, onClose, event }: EventModalProps) 
               )} />
             </div>
 
-            {/* Locations */}
+            {/* Locations with address autocomplete */}
             <div className="space-y-4">
               <FormField control={form.control} name="meetingPoint" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Lieu de rendez-vous</FormLabel>
-                  <FormControl><Input {...field} placeholder="Parking Camp Nou, Barcelona" /></FormControl>
+                  <FormControl>
+                    <AddressAutocomplete
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      placeholder="Lieu de rendez-vous (ex: Place de la République, Paris)"
+                      className="w-full"
+                    />
+                  </FormControl>
+                  <div className="text-xs text-gray-500">
+                    📍 Tapez une adresse française pour voir les suggestions
+                  </div>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -347,7 +358,17 @@ export default function EventModal({ isOpen, onClose, event }: EventModalProps) 
               <FormField control={form.control} name="destination" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Destination</FormLabel>
-                  <FormControl><Input {...field} placeholder="Stade Santiago Bernabéu, Madrid" /></FormControl>
+                  <FormControl>
+                    <AddressAutocomplete
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      placeholder="Destination de l'événement (ex: Stade de France, Paris)"
+                      className="w-full"
+                    />
+                  </FormControl>
+                  <div className="text-xs text-gray-500">
+                    🎯 Lieu où se déroule l'événement sportif
+                  </div>
                   <FormMessage />
                 </FormItem>
               )} />

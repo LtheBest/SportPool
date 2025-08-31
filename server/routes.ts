@@ -23,9 +23,30 @@ declare module "express-session" {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configuration CORS dynamique
   app.use(cors({
-    origin: 'https://sportpool-client.onrender.com', // ou "*" pour test
+    origin: function (origin, callback) {
+      // Allowed origins
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'https://sportpool.onrender.com',
+        process.env.APP_URL,
+      ].filter(Boolean);
+      
+      // Allow requests with no origin (mobile apps, etc.)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   }));
   // ---------- uploads dir & static ----------
   const uploadsDir = path.join(process.cwd(), "uploads");
@@ -35,16 +56,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve static files from the uploads directory
   app.use("/uploads", express.static(uploadsDir));
   // Session middleware
+  // Session configuration dynamique selon l'environnement
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isRenderDeploy = process.env.RENDER === 'true' || process.env.APP_URL?.includes('onrender.com');
+  
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || "dev-secret-key",
+      secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
       resave: false,
       saveUninitialized: false,
       cookie: {
-        sameSite: "none",
+        sameSite: isProduction ? "none" : "lax",
         httpOnly: true,
-        secure: true,
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        secure: isProduction,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for remember me functionality
       },
     })
   );
@@ -109,7 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/login", async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const { email, password, rememberMe } = req.body;
 
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });
@@ -127,12 +152,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // Set session
+      // Set session with appropriate expiry based on rememberMe
       req.session.organizationId = organization.id;
+      
+      // Configure cookie expiry based on remember me option
+      if (rememberMe) {
+        // Remember me: 30 days
+        req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+      } else {
+        // Regular session: 24 hours 
+        req.session.cookie.maxAge = 24 * 60 * 60 * 1000;
+      }
 
       res.json({
         organization: { ...organization, password: undefined },
-        message: "Login successful"
+        message: "Login successful",
+        rememberMe: !!rememberMe
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -1523,15 +1558,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         database: "connected",
+        organizationsCount: organizations.length,
         services: {
           storage: "operational",
           email: process.env.SENDGRID_API_KEY ? "configured" : "not configured"
+        },
+        environment: {
+          nodeEnv: process.env.NODE_ENV,
+          isRender: process.env.RENDER === 'true',
+          appUrl: process.env.APP_URL,
+          port: process.env.PORT || 8080
         }
       });
     } catch (error) {
       res.status(503).json({
         status: "unhealthy",
         timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Test route pour vérifier la communication backend
+  app.get("/api/test", async (req, res) => {
+    try {
+      const organizations = await storage.getOrganizations();
+      const events = await storage.getEvents();
+      
+      res.json({
+        message: "✅ Backend communication successful!",
+        timestamp: new Date().toISOString(),
+        data: {
+          organizationsCount: organizations.length,
+          eventsCount: events.length,
+          lastOrganization: organizations.length > 0 ? {
+            name: organizations[organizations.length - 1].name,
+            email: organizations[organizations.length - 1].email,
+            createdAt: organizations[organizations.length - 1].createdAt
+          } : null
+        },
+        server: {
+          uptime: Math.floor(process.uptime()),
+          memory: process.memoryUsage(),
+          version: process.version
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: "❌ Backend communication failed",
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Route pour lister les utilisateurs (pour debug/test)
+  app.get("/api/debug/users", async (req, res) => {
+    try {
+      const organizations = await storage.getOrganizations();
+      
+      res.json({
+        message: "Liste des utilisateurs/organisations",
+        count: organizations.length,
+        users: organizations.map(org => ({
+          id: org.id,
+          name: org.name,
+          email: org.email,
+          type: org.type,
+          contactName: `${org.contactFirstName} ${org.contactLastName}`,
+          createdAt: org.createdAt,
+          // Ne pas exposer le mot de passe
+        }))
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: "Erreur lors de la récupération des utilisateurs",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }

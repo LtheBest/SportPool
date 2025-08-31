@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,15 +25,35 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
+  // Load remembered email on component mount
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem('userEmail');
+    const wasRemembered = localStorage.getItem('rememberMe') === 'true';
+    
+    if (rememberedEmail && wasRemembered) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
   const loginMutation = useMutation({
-    mutationFn: (data: { email: string; password: string }) => api.auth.login(data),
-    onSuccess: () => {
+    mutationFn: (data: { email: string; password: string; rememberMe?: boolean }) => api.auth.login(data),
+    onSuccess: (data) => {
+      // Store remember me preference in localStorage
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('userEmail', email);
+      } else {
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('userEmail');
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/me"] });
       setLocation("/dashboard");
       onClose();
       toast({
         title: "Connexion réussie",
-        description: "Vous êtes maintenant connecté.",
+        description: rememberMe ? "Vous resterez connecté pendant 30 jours." : "Vous êtes maintenant connecté.",
       });
     },
     onError: (error: Error) => {
@@ -57,7 +77,7 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
       return;
     }
 
-    loginMutation.mutate({ email, password });
+    loginMutation.mutate({ email, password, rememberMe });
   };
 
   return (
