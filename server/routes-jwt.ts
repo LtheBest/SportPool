@@ -2,16 +2,16 @@ import type { Express } from "express";
 import * as express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { 
-  generateTokenPair, 
-  requireAuth, 
-  AuthenticatedRequest, 
-  hashPassword, 
+import {
+  generateTokenPair,
+  requireAuth,
+  AuthenticatedRequest,
+  hashPassword,
   verifyPassword,
   verifyRefreshToken,
   generateAccessToken,
   validatePasswordStrength,
-  extractTokenFromHeader 
+  extractTokenFromHeader
 } from "./auth";
 import { randomUUID } from "crypto";
 import { insertOrganizationSchema, insertEventSchema, insertEventParticipantSchema, insertMessageSchema } from "../shared/schema";
@@ -47,15 +47,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Vercel fallback si nécessaire
         // 'https://sportpool.vercel.app',
       ].filter(Boolean);
-      
+
       console.log(`🌐 CORS check: origin=${origin}, allowed=${allowedOrigins.join(', ')}`);
-      
+
       // Allow requests with no origin (mobile apps, Postman, etc.)
       if (!origin) {
         console.log('✅ CORS: No origin provided, allowing request');
         return callback(null, true);
       }
-      
+
       // Check if origin is in allowed list
       if (allowedOrigins.includes(origin)) {
         console.log('✅ CORS: Origin allowed');
@@ -74,9 +74,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'],
     allowedHeaders: [
-      'Content-Type', 
-      'Authorization', 
-      'Cookie', 
+      'Content-Type',
+      'Authorization',
+      'Cookie',
       'Set-Cookie',
       'X-Requested-With',
       'Accept',
@@ -147,7 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate password strength
       const passwordValidation = validatePasswordStrength(data.password);
       if (!passwordValidation.isValid) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Password does not meet security requirements",
           errors: passwordValidation.errors
         });
@@ -345,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate password strength
       const passwordValidation = validatePasswordStrength(newPassword);
       if (!passwordValidation.isValid) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Password does not meet security requirements",
           errors: passwordValidation.errors
         });
@@ -401,7 +401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/profile/logo", requireAuth, upload.single("logo"), async (req, res) => {
     try {
       const authReq = req as AuthenticatedRequest;
-      
+
       if (!req.file) {
         return res.status(400).json({ message: "No logo file uploaded" });
       }
@@ -444,9 +444,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/events", requireAuth, async (req, res) => {
     try {
       const authReq = req as AuthenticatedRequest;
-      const data = insertEventSchema.parse({
+
+      // Transformation de la date string en Date
+      const inputData = {
         ...req.body,
         organizationId: authReq.user.organizationId,
+        // Supposons que la date dans req.body est dans req.body.date
+        date: req.body.date ? new Date(req.body.date) : undefined,
+      };
+
+      const data = insertEventSchema.parse({
+        ...inputData,
       });
 
       const organization = await storage.getOrganization(authReq.user.organizationId);
@@ -458,8 +466,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (organization.planType === 'basic') {
         const existingEvents = await storage.getEventsByOrganization(authReq.user.organizationId);
         if (existingEvents.length >= 5) {
-          return res.status(403).json({ 
-            message: "Event limit reached for basic plan. Upgrade to create more events." 
+          return res.status(403).json({
+            message: "Event limit reached for basic plan. Upgrade to create more events."
           });
         }
       }
@@ -476,7 +484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authReq = req as AuthenticatedRequest;
       const event = await storage.getEvent(req.params.id);
-      
+
       if (!event || event.organizationId !== authReq.user.organizationId) {
         return res.status(404).json({ message: "Event not found" });
       }
@@ -492,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authReq = req as AuthenticatedRequest;
       const event = await storage.getEvent(req.params.id);
-      
+
       if (!event || event.organizationId !== authReq.user.organizationId) {
         return res.status(404).json({ message: "Event not found" });
       }
@@ -510,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authReq = req as AuthenticatedRequest;
       const event = await storage.getEvent(req.params.id);
-      
+
       if (!event || event.organizationId !== authReq.user.organizationId) {
         return res.status(404).json({ message: "Event not found" });
       }
@@ -528,7 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authReq = req as AuthenticatedRequest;
       const event = await storage.getEvent(req.params.id);
-      
+
       if (!event || event.organizationId !== authReq.user.organizationId) {
         return res.status(404).json({ message: "Event not found" });
       }
@@ -596,9 +604,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const participants = await storage.getEventParticipants(event.id);
 
       res.json({
-        event: { 
-          ...event, 
-          organization: organization ? { name: organization.name, logoUrl: organization.logoUrl } : null 
+        event: {
+          ...event,
+          organization: organization ? { name: organization.name, logoUrl: organization.logoUrl } : null
         },
         participants
       });
@@ -624,7 +632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if already registered
       const existingParticipants = await storage.getEventParticipants(event.id);
       const existingParticipant = existingParticipants.find(p => p.email === data.email);
-      
+
       if (existingParticipant) {
         return res.status(400).json({ message: "You are already registered for this event" });
       }
@@ -645,7 +653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!event || event.organizationId !== authReq.user.organizationId) {
         return res.status(404).json({ message: "Event not found" });
       }
-      
+
       const token = randomUUID();
       const invitation = await storage.createEventInvitation({
         eventId: event.id,
@@ -653,7 +661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         token,
         status: "pending",
       });
-      
+
       res.json({ token: invitation.token });
     } catch (error) {
       console.error(error);
@@ -1050,7 +1058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chatbot/organization-help", requireAuth, async (req, res) => {
     try {
       const { message } = req.body;
-      
+
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
       }
@@ -1074,7 +1082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authReq = req as AuthenticatedRequest;
       const events = await storage.getEventsByOrganization(authReq.user.organizationId);
-      
+
       const totalEvents = events.length;
       const activeEvents = events.filter(e => new Date(e.eventDate) >= new Date()).length;
       const totalParticipants = events.reduce((sum, event) => {
@@ -1097,10 +1105,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authReq = req as AuthenticatedRequest;
       const events = await storage.getEventsByOrganization(authReq.user.organizationId);
-      
+
       const totalEvents = events.length;
       const activeEvents = events.filter(e => new Date(e.eventDate) >= new Date()).length;
-      
+
       res.json({
         totalEvents,
         activeEvents,
@@ -1145,8 +1153,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ 
-        message: `Reminders sent to ${successCount} out of ${participants.length} participants` 
+      res.json({
+        message: `Reminders sent to ${successCount} out of ${participants.length} participants`
       });
     } catch (error) {
       console.error("Send reminders error:", error);
@@ -1169,7 +1177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const sent = await emailService.sendCustomEmail(to, subject, content, organization);
-      
+
       if (sent.success) {
         res.json({ message: "Email sent successfully" });
       } else {
@@ -1193,8 +1201,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Health check endpoint (non protégé)
   app.get("/api/health", (req, res) => {
-    res.json({ 
-      status: "ok", 
+    res.json({
+      status: "ok",
       timestamp: new Date().toISOString(),
       auth: "jwt"
     });
