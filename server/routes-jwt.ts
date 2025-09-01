@@ -45,7 +45,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         process.env.APP_URL,
         process.env.RENDER_EXTERNAL_URL,
         // Vercel fallback si nécessaire
-        'https://sportpool.vercel.app',
+        // 'https://sportpool.vercel.app',
       ].filter(Boolean);
       
       console.log(`🌐 CORS check: origin=${origin}, allowed=${allowedOrigins.join(', ')}`);
