@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes-jwt"; // Switch to JWT routes
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
@@ -66,6 +66,8 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`🚀 SportPool server with JWT Auth running on port ${port}`);
+    log(`🔐 Authentication: JWT with ${process.env.JWT_ACCESS_EXPIRES_IN || '15m'} access tokens`);
+    log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 })();

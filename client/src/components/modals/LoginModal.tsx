@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 
 interface LoginModalProps {
@@ -21,9 +21,11 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { login } = useAuth();
 
   // Load remembered email on component mount
   useEffect(() => {
@@ -36,36 +38,7 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
     }
   }, []);
 
-  const loginMutation = useMutation({
-    mutationFn: (data: { email: string; password: string; rememberMe?: boolean }) => api.auth.login(data),
-    onSuccess: (data) => {
-      // Store remember me preference in localStorage
-      if (rememberMe) {
-        localStorage.setItem('rememberMe', 'true');
-        localStorage.setItem('userEmail', email);
-      } else {
-        localStorage.removeItem('rememberMe');
-        localStorage.removeItem('userEmail');
-      }
-      
-      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
-      setLocation("/dashboard");
-      onClose();
-      toast({
-        title: "Connexion réussie",
-        description: rememberMe ? "Vous resterez connecté pendant 30 jours." : "Vous êtes maintenant connecté.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erreur de connexion",
-        description: error.message || "Email ou mot de passe incorrect.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email || !password) {
@@ -77,7 +50,51 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
       return;
     }
 
-    loginMutation.mutate({ email, password, rememberMe });
+    setIsLoading(true);
+
+    try {
+      const result = await login(email, password, rememberMe);
+      
+      if (result.success) {
+        // Store remember me preference in localStorage
+        if (rememberMe) {
+          localStorage.setItem('rememberMe', 'true');
+          localStorage.setItem('userEmail', email);
+        } else {
+          localStorage.removeItem('rememberMe');
+          localStorage.removeItem('userEmail');
+        }
+        
+        // Invalidate queries to refresh user data
+        queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+        
+        // Navigate to dashboard
+        setLocation("/dashboard");
+        onClose();
+        
+        toast({
+          title: "Connexion réussie",
+          description: rememberMe ? 
+            "Vous resterez connecté pendant 7 jours." : 
+            "Vous êtes maintenant connecté.",
+        });
+      } else {
+        toast({
+          title: "Erreur de connexion",
+          description: result.error || "Email ou mot de passe incorrect.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast({
+        title: "Erreur de connexion",
+        description: error.message || "Une erreur inattendue s'est produite.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -97,6 +114,7 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
               onChange={(e) => setEmail(e.target.value)}
               placeholder="votre@email.com"
               required
+              disabled={isLoading}
             />
           </div>
           
@@ -109,6 +127,7 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              disabled={isLoading}
             />
           </div>
           
@@ -118,6 +137,7 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
                 id="remember"
                 checked={rememberMe}
                 onCheckedChange={(checked) => setRememberMe(checked === true)}
+                disabled={isLoading}
               />
               <Label htmlFor="remember" className="text-sm text-gray-600">
                 Se souvenir de moi
@@ -128,6 +148,7 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
               className="text-sm text-primary hover:text-blue-700 p-0"
               onClick={() => setShowForgotPassword(true)}
               type="button"
+              disabled={isLoading}
             >
               Mot de passe oublié ?
             </Button>
@@ -136,9 +157,9 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
           <Button 
             type="submit" 
             className="w-full bg-primary hover:bg-blue-700"
-            disabled={loginMutation.isPending}
+            disabled={isLoading}
           >
-            {loginMutation.isPending ? (
+            {isLoading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                 Connexion...
@@ -152,7 +173,12 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
         <div className="text-center">
           <p className="text-gray-600">
             Pas encore de compte ?{" "}
-            <Button variant="link" onClick={onShowRegistration} className="text-primary hover:text-blue-700 p-0">
+            <Button 
+              variant="link" 
+              onClick={onShowRegistration} 
+              className="text-primary hover:text-blue-700 p-0"
+              disabled={isLoading}
+            >
               S'inscrire
             </Button>
           </p>
