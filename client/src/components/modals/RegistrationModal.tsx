@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import TermsModal from "@/components/modals/TermsModal";
 
@@ -31,7 +31,12 @@ const registrationSchema = z.object({
     .refine((val) => !val || (val.length === 9 && /^\d{9}$/.test(val)), {
       message: "Le numéro SIREN doit contenir exactement 9 chiffres"
     }),
-  password: z.string().min(6, "Le mot de passe doit faire au moins 6 caractères"),
+  password: z.string()
+    .min(8, "Le mot de passe doit faire au moins 8 caractères")
+    .regex(/[a-z]/, "Le mot de passe doit contenir au moins une lettre minuscule")
+    .regex(/[A-Z]/, "Le mot de passe doit contenir au moins une lettre majuscule")
+    .regex(/\d/, "Le mot de passe doit contenir au moins un chiffre")
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, "Le mot de passe doit contenir au moins un caractère spécial"),
   confirmPassword: z.string().min(1, "Veuillez confirmer le mot de passe"),
   acceptTerms: z.boolean().refine((val) => val === true, "Vous devez accepter les conditions"),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -51,6 +56,8 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
   const [, setLocation] = useLocation();
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [termsModalType, setTermsModalType] = useState<'terms' | 'privacy'>('terms');
+  const [isLoading, setIsLoading] = useState(false);
+  const { register } = useAuth();
 
   const form = useForm({
     resolver: zodResolver(registrationSchema),
@@ -80,31 +87,42 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
     setShowTermsModal(true);
   };
 
-  const registrationMutation = useMutation({
-    mutationFn: (data: any) => {
+  const onSubmit = async (data: any) => {
+    setIsLoading(true);
+    
+    try {
       const { confirmPassword, acceptTerms, ...registerData } = data;
-      return api.auth.register(registerData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
-      setLocation("/dashboard");
-      onClose();
-      toast({
-        title: "Inscription réussie",
-        description: "Votre compte a été créé avec succès.",
-      });
-    },
-    onError: (error: Error) => {
+      const result = await register(registerData);
+      
+      if (result.success) {
+        // Invalidate queries to refresh user data
+        queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+        
+        // Navigate to dashboard
+        setLocation("/dashboard");
+        onClose();
+        
+        toast({
+          title: "Inscription réussie",
+          description: "Votre compte a été créé avec succès. Vous êtes maintenant connecté.",
+        });
+      } else {
+        toast({
+          title: "Erreur d'inscription",
+          description: result.error || "Une erreur est survenue lors de l'inscription.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Registration error:", error);
       toast({
         title: "Erreur d'inscription",
-        description: error.message || "Une erreur est survenue lors de l'inscription.",
+        description: error.message || "Une erreur inattendue s'est produite.",
         variant: "destructive",
       });
-    },
-  });
-
-  const onSubmit = (data: any) => {
-    registrationMutation.mutate(data);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const organizationTypes = [
@@ -383,9 +401,9 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-blue-700"
-              disabled={registrationMutation.isPending}
+              disabled={isLoading}
             >
-              {registrationMutation.isPending ? (
+              {isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Création du compte...
@@ -400,7 +418,12 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
         <div className="text-center">
           <p className="text-gray-600">
             Déjà un compte ?{" "}
-            <Button variant="link" onClick={onShowLogin} className="text-primary hover:text-blue-700 p-0">
+            <Button 
+              variant="link" 
+              onClick={onShowLogin} 
+              className="text-primary hover:text-blue-700 p-0"
+              disabled={isLoading}
+            >
               Se connecter
             </Button>
           </p>
