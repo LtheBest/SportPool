@@ -1,8 +1,10 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { buildApiUrl } from "./config";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
+    console.error(`API Error: ${res.status} ${res.statusText}`, text);
     throw new Error(`${res.status}: ${text}`);
   }
 }
@@ -12,12 +14,27 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  // Utiliser buildApiUrl pour construire l'URL complète
+  const fullUrl = url.startsWith('http') ? url : buildApiUrl(url);
+  
+  console.log(`🌐 API Request: ${method} ${fullUrl}`);
+  
+  const res = await fetch(fullUrl, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
+
+  console.log(`📡 API Response: ${res.status} ${res.statusText}`);
+  
+  // Pour les erreurs 401 (non authentifié), ajouter des informations de debug
+  if (res.status === 401) {
+    console.warn('🚫 Authentication required - session might be expired or invalid');
+  }
 
   await throwIfResNotOk(res);
   return res;

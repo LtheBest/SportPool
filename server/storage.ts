@@ -29,11 +29,13 @@ export interface IStorage {
   // Organizations
   getOrganization(id: string): Promise<Organization | undefined>;
   getOrganizationByEmail(email: string): Promise<Organization | undefined>;
+  getOrganizations(): Promise<Organization[]>;
   createOrganization(org: InsertOrganization): Promise<Organization>;
   updateOrganization(id: string, data: Partial<InsertOrganization>): Promise<Organization>;
 
   // Events
   getEvent(id: string): Promise<Event | undefined>;
+  getEvents(): Promise<Event[]>;
   getEventsByOrganization(organizationId: string): Promise<Event[]>;
   createEvent(event: InsertEvent): Promise<Event>;
   updateEvent(id: string, data: Partial<InsertEvent>): Promise<Event>;
@@ -54,7 +56,9 @@ export interface IStorage {
 
   // Messages
   getEventMessages(eventId: string): Promise<Message[]>;
+  getMessage(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
+  deleteMessage(id: string): Promise<void>;
 
   // Password Reset Tokens
   createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
@@ -86,6 +90,10 @@ export class DatabaseStorage implements IStorage {
     return newOrg;
   }
 
+  async getOrganizations(): Promise<Organization[]> {
+    return await db.select().from(organizations).orderBy(desc(organizations.createdAt));
+  }
+
   async updateOrganization(id: string, data: Partial<InsertOrganization>): Promise<Organization> {
     const updateData = {
       ...data,
@@ -103,6 +111,10 @@ export class DatabaseStorage implements IStorage {
   async getEvent(id: string): Promise<Event | undefined> {
     const [event] = await db.select().from(events).where(eq(events.id, id));
     return event;
+  }
+
+  async getEvents(): Promise<Event[]> {
+    return await db.select().from(events).orderBy(desc(events.date));
   }
 
   async getEventsByOrganization(organizationId: string): Promise<Event[]> {
@@ -218,9 +230,18 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(messages.createdAt));
   }
 
+  async getMessage(id: string): Promise<Message | undefined> {
+    const [message] = await db.select().from(messages).where(eq(messages.id, id));
+    return message;
+  }
+
   async createMessage(message: InsertMessage): Promise<Message> {
     const [newMessage] = await db.insert(messages).values(message).returning();
     return newMessage;
+  }
+
+  async deleteMessage(id: string): Promise<void> {
+    await db.delete(messages).where(eq(messages.id, id));
   }
 
   // Password Reset Tokens

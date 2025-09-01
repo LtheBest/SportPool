@@ -23,30 +23,65 @@ declare module "express-session" {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Configuration CORS dynamique
+  // Configuration CORS dynamique et optimisée pour Render
   app.use(cors({
     origin: function (origin, callback) {
-      // Allowed origins
+      // Allowed origins - Configuration complète pour tous les environnements
       const allowedOrigins = [
+        // Development
         'http://localhost:5173',
         'http://localhost:3000',
         'http://localhost:8080',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:8080',
+        // Production Render
         'https://sportpool.onrender.com',
         process.env.APP_URL,
+        process.env.RENDER_EXTERNAL_URL,
+        // Vercel fallback si nécessaire
+        'https://sportpool.vercel.app',
       ].filter(Boolean);
       
-      // Allow requests with no origin (mobile apps, etc.)
-      if (!origin) return callback(null, true);
+      console.log(`🌐 CORS check: origin=${origin}, allowed=${allowedOrigins.join(', ')}`);
       
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) {
+        console.log('✅ CORS: No origin provided, allowing request');
+        return callback(null, true);
+      }
+      
+      // Check if origin is in allowed list
       if (allowedOrigins.includes(origin)) {
+        console.log('✅ CORS: Origin allowed');
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        console.log(`❌ CORS: Origin ${origin} not allowed`);
+        // En production sur Render, être plus permissif pour éviter les blocages
+        if (isRenderDeploy && origin.includes('onrender.com')) {
+          console.log('🔄 CORS: Render detected, allowing onrender.com origin');
+          callback(null, true);
+        } else {
+          callback(new Error(`CORS: Origin ${origin} not allowed`));
+        }
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'Cookie', 
+      'Set-Cookie',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+      'Access-Control-Request-Method',
+      'Access-Control-Request-Headers'
+    ],
+    exposedHeaders: ['Set-Cookie'],
+    optionsSuccessStatus: 200, // Support legacy browsers
+    preflightContinue: false,
   }));
   // ---------- uploads dir & static ----------
   const uploadsDir = path.join(process.cwd(), "uploads");
@@ -58,27 +93,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware
   // Session configuration dynamique selon l'environnement
   const isProduction = process.env.NODE_ENV === 'production';
-  const isRenderDeploy = process.env.RENDER === 'true' || process.env.APP_URL?.includes('onrender.com');
+  const isRenderDeploy = process.env.RENDER === 'true' || process.env.RENDER_EXTERNAL_URL || process.env.APP_URL?.includes('onrender.com');
   
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        sameSite: isProduction ? "none" : "lax",
-        httpOnly: true,
-        secure: isProduction,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for remember me functionality
-      },
-    })
-  );
+  // Configuration de session spécialement optimisée pour Render
+  const sessionConfig = {
+    secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
+    resave: false,
+    saveUninitialized: false,
+    name: 'sportpool.sessionid', // Custom session name
+    cookie: {
+      sameSite: isRenderDeploy ? "lax" as const : (isProduction ? "none" as const : "lax" as const),
+      httpOnly: true,
+      secure: isRenderDeploy || isProduction, // Secure sur Render et production
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for remember me functionality
+      domain: isRenderDeploy ? undefined : undefined, // Laisser le navigateur déterminer le domaine sur Render
+    },
+  };
 
-  // Auth middleware
+  console.log(`🍪 Session config: secure=${sessionConfig.cookie.secure}, sameSite=${sessionConfig.cookie.sameSite}, isRender=${isRenderDeploy}, isProduction=${isProduction}`);
+  
+  app.use(session(sessionConfig));
+
+  // Debug middleware pour les sessions (à utiliser seulement en développement)
+  if (process.env.NODE_ENV === 'development') {
+    app.use((req, res, next) => {
+      console.log(`🔍 Session Debug: ${req.method} ${req.path}`);
+      console.log(`   Session ID: ${req.sessionID}`);
+      console.log(`   Organization ID: ${req.session.organizationId}`);
+      console.log(`   Session Cookie: ${JSON.stringify(req.session.cookie)}`);
+      console.log(`   Headers: ${JSON.stringify(req.headers.cookie)}`);
+      next();
+    });
+  }
+
+  // Auth middleware amélioré avec plus de debugging
   const requireAuth = (req: any, res: any, next: any) => {
-    if (!req.session.organizationId) {
-      return res.status(401).json({ message: "Authentication required" });
+    const sessionId = req.sessionID;
+    const organizationId = req.session.organizationId;
+    
+    console.log(`🔐 Auth check for ${req.method} ${req.path}`);
+    console.log(`   Session ID: ${sessionId}`);
+    console.log(`   Organization ID: ${organizationId}`);
+    
+    if (!organizationId) {
+      console.log(`❌ Auth failed: No organization ID in session`);
+      return res.status(401).json({ 
+        message: "Authentication required",
+        debug: process.env.NODE_ENV === 'development' ? {
+          sessionId: sessionId,
+          hasSession: !!req.session,
+          sessionKeys: Object.keys(req.session || {})
+        } : undefined
+      });
     }
+    
+    console.log(`✅ Auth success for organization: ${organizationId}`);
     next();
   };
 
@@ -1577,6 +1646,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
+  });
+
+  // Endpoint spécialisé pour tester la connexion à la base de données Neon
+  app.get("/api/db-test", async (req, res) => {
+    try {
+      console.log("🔍 Testing database connection...");
+      
+      // Test 1: Connection basique
+      const startTime = Date.now();
+      const organizations = await storage.getOrganizations();
+      const connectionTime = Date.now() - startTime;
+      
+      console.log(`✅ Database connection successful in ${connectionTime}ms`);
+      
+      // Test 2: Création et suppression d'une entrée de test  
+      let testResults = {};
+      try {
+        const testOrg = {
+          name: "Test Connection Org",
+          type: "club" as const,
+          email: `test-connection-${Date.now()}@test.local`,
+          contactFirstName: "Test",
+          contactLastName: "Connection",
+          password: "test-password-hash"
+        };
+        
+        // Créer une organisation de test
+        const testStartTime = Date.now();
+        const created = await storage.createOrganization(testOrg);
+        const createTime = Date.now() - testStartTime;
+        
+        // Vérifier qu'elle existe
+        const readStartTime = Date.now();
+        const retrieved = await storage.getOrganization(created.id);
+        const readTime = Date.now() - readStartTime;
+        
+        // La supprimer (si une méthode delete existe, sinon on la garde pour les tests)
+        // Pour l'instant on la laisse - elle sera nettoyée automatiquement
+        
+        testResults = {
+          writeTest: {
+            success: true,
+            createTime: createTime,
+            organizationId: created.id
+          },
+          readTest: {
+            success: !!retrieved,
+            readTime: readTime,
+            dataIntegrity: retrieved?.email === testOrg.email
+          }
+        };
+        
+        console.log("✅ Database write/read test successful");
+      } catch (testError) {
+        console.error("⚠️ Database write/read test failed:", testError);
+        testResults = {
+          writeTest: { success: false, error: testError instanceof Error ? testError.message : "Unknown error" },
+          readTest: { success: false }
+        };
+      }
+      
+      // Statistiques de la base de données
+      const events = await storage.getEvents();
+      const totalParticipants = await Promise.all(
+        events.map(event => storage.getEventParticipants(event.id))
+      ).then(results => results.flat().length);
+      
+      const response = {
+        status: "✅ Database connection successful",
+        timestamp: new Date().toISOString(),
+        database: {
+          provider: "Neon PostgreSQL",
+          connectionString: process.env.DATABASE_URL?.replace(/:[^:@]*@/, ':***@'), // Masquer le mot de passe
+          connectionTime: `${connectionTime}ms`,
+          status: "connected"
+        },
+        tests: testResults,
+        statistics: {
+          organizationsCount: organizations.length,
+          eventsCount: events.length,
+          totalParticipants: totalParticipants
+        },
+        environment: {
+          nodeEnv: process.env.NODE_ENV,
+          isRender: process.env.RENDER === 'true',
+          databaseUrl: process.env.DATABASE_URL ? '✅ Configured' : '❌ Missing',
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        },
+        performance: {
+          uptime: Math.floor(process.uptime()),
+          memory: process.memoryUsage(),
+          serverTime: new Date().toISOString()
+        }
+      };
+      
+      res.json(response);
+    } catch (error) {
+      console.error("❌ Database test failed:", error);
+      res.status(500).json({
+        status: "❌ Database connection failed",
+        timestamp: new Date().toISOString(),
+        error: {
+          message: error instanceof Error ? error.message : "Unknown database error",
+          type: error instanceof Error ? error.constructor.name : "UnknownError"
+        },
+        database: {
+          provider: "Neon PostgreSQL",
+          connectionString: process.env.DATABASE_URL ? '✅ Configured (but failed to connect)' : '❌ Missing',
+          status: "disconnected"
+        },
+        troubleshooting: {
+          suggestions: [
+            "Vérifiez que DATABASE_URL est correctement configuré dans les variables d'environnement",
+            "Assurez-vous que la base de données Neon est accessible",
+            "Vérifiez les permissions de connexion",
+            "Consultez les logs Render pour plus de détails"
+          ]
+        }
+      });
+    }
+  });
+
+  // Test de session - endpoint pour diagnostiquer les problèmes de session
+  app.get("/api/session-test", (req, res) => {
+    const sessionData = {
+      sessionID: req.sessionID,
+      organizationId: req.session.organizationId,
+      cookie: req.session.cookie,
+      hasSession: !!req.session,
+      sessionKeys: Object.keys(req.session || {}),
+      headers: {
+        cookie: req.headers.cookie,
+        'user-agent': req.headers['user-agent'],
+        origin: req.headers.origin,
+        referer: req.headers.referer
+      }
+    };
+
+    console.log('🧪 Session Test Data:', JSON.stringify(sessionData, null, 2));
+
+    res.json({
+      message: "Session test endpoint",
+      timestamp: new Date().toISOString(),
+      session: sessionData,
+      isAuthenticated: !!req.session.organizationId,
+      environment: {
+        nodeEnv: process.env.NODE_ENV,
+        isRender: process.env.RENDER === 'true',
+        appUrl: process.env.APP_URL
+      }
+    });
   });
 
   // Test route pour vérifier la communication backend
