@@ -1,5 +1,5 @@
-# Render Blueprint pour SportPool
-# Configuration pour déploiement sur Render.com
+# Render Blueprint pour SportPool - Configuration Optimisée
+# Configuration pour déploiement sur Render.com avec corrections pour les sessions
 services:
   # Service Web principal (Backend Express + Frontend servi)
   - type: web
@@ -7,12 +7,20 @@ services:
     plan: starter # gratuit, peut être upgrade vers paid plans
     env: node
     region: frankfurt # ou oregon selon vos préférences
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci && npm run build:render
     startCommand: npm start
     healthCheckPath: /api/health
+    # Configuration réseau optimisée pour les sessions
+    headers:
+      - key: Access-Control-Allow-Credentials
+        value: true
+      - key: Access-Control-Allow-Origin
+        value: https://sportpool.onrender.com
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 8080
       - key: DATABASE_URL
         fromDatabase:
           name: sportpool-db
@@ -29,6 +37,10 @@ services:
         generateValue: true # Render génère automatiquement une valeur sécurisée
       - key: APP_URL
         value: https://sportpool.onrender.com
+      - key: RENDER
+        value: true
+      - key: VERBOSE_LOGS
+        value: false
     buildFilter:
       paths:
         - server/**
@@ -38,6 +50,7 @@ services:
         - package-lock.json
         - vite.config.ts
         - tailwind.config.ts
+        - build-render*.js
     
 # Base de données PostgreSQL
 databases:

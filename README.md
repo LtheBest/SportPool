@@ -1,10 +1,15 @@
 # 🏆 SportPool - Plateforme de Covoiturage Sportif
 
+[![Render Deployment](https://img.shields.io/badge/Render-Deployed-brightgreen)](https://sportpool.onrender.com)
 [![CI/CD Pipeline](https://github.com/LtheBest/SportPool/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/LtheBest/SportPool/actions/workflows/ci-cd.yml)
 [![Docker Hub](https://img.shields.io/docker/pulls/lthebest/sportpool)](https://hub.docker.com/r/lthebest/sportpool)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-blue.svg)](https://neon.tech)
 
 Une application web moderne pour organiser et gérer le covoiturage pour les événements sportifs. Permettez à votre organisation sportive de créer facilement des événements et de faciliter le covoiturage entre les participants.
+
+🌐 **[Application en Ligne](https://sportpool.onrender.com)** | 📖 **[Guide de Déploiement Render](RENDER_DEPLOYMENT_GUIDE_V2.md)** | 🧪 **[Tests de Santé](https://sportpool.onrender.com/api/health)**
 
 ## ✨ Fonctionnalités
 
@@ -129,6 +134,41 @@ SportPool/
 - **Playwright** pour les tests E2E
 - **Docker** pour la containerisation
 - **GitHub Actions** pour CI/CD
+- **Render.com** pour le déploiement en production
+
+## 🧪 Tests et Diagnostic
+
+### Tests Automatisés de Déploiement
+```bash
+# Tester votre déploiement Render
+node test-render-deployment.js https://sportpool.onrender.com
+
+# Tests locaux
+npm run test:all            # Tous les tests (unitaires + E2E)
+```
+
+### Endpoints de Diagnostic
+```bash
+# Santé générale de l'application
+curl https://sportpool.onrender.com/api/health
+
+# Test de connexion base de données
+curl https://sportpool.onrender.com/api/db-test
+
+# Test des sessions (authentification)
+curl https://sportpool.onrender.com/api/session-test
+
+# Communication backend
+curl https://sportpool.onrender.com/api/test
+
+# Debug utilisateurs (dev seulement)
+curl https://sportpool.onrender.com/api/debug/users
+```
+
+### Monitoring en Temps Réel
+- 🟢 **Status**: [https://sportpool.onrender.com/api/health](https://sportpool.onrender.com/api/health)
+- 💾 **Database**: [https://sportpool.onrender.com/api/db-test](https://sportpool.onrender.com/api/db-test)
+- 📊 **Performance**: Consultez les logs Render Dashboard
 
 ## 📊 Scripts disponibles
 
