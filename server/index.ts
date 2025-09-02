@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes-jwt"; // Switch to JWT routes
+import { registerRoutes } from "./routes"; // Switch to JWT routes
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
