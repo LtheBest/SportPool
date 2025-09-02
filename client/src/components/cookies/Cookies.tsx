@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 interface ConsentPreferences {
   analytics: boolean;
   functional: boolean;
+  marketing: boolean;
+  personalization: boolean;
 }
 
 interface ConsentPayload {
@@ -18,6 +20,8 @@ export default function Cookies(): JSX.Element | null {
   const [showPrefs, setShowPrefs] = useState(false);
   const [analytics, setAnalytics] = useState(true);
   const [functional, setFunctional] = useState(true);
+  const [marketing, setMarketing] = useState(false);
+  const [personalization, setPersonalization] = useState(true);
 
   useEffect(() => {
     try {
@@ -47,7 +51,7 @@ export default function Cookies(): JSX.Element | null {
       aria-live="polite"
       aria-label="Bannière de cookies"
     >
-      <div className="relative md:max-w-xl w-full bg-gradient-to-br from-white/95 to-sky-50 shadow-xl border border-sky-100 rounded-2xl p-6 flex flex-col md:flex-row gap-5 items-center">
+      <div className="relative max-w-lg md:max-w-xl w-full bg-gradient-to-br from-white/95 to-sky-50 shadow-xl border border-sky-100 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row gap-3 md:gap-5 items-center">
         {/* Icône cookie */}
         <div
           className="flex items-center justify-center w-14 h-14 rounded-full bg-sky-100 shadow-inner shrink-0 animate-pulse"
@@ -74,14 +78,14 @@ export default function Cookies(): JSX.Element | null {
         {/* Actions */}
         <div className="flex flex-col gap-2 md:ml-4 md:gap-0">
           <button
-            onClick={() => saveConsent({ analytics: false, functional: true })}
+            onClick={() => saveConsent({ analytics: false, functional: true, marketing: false, personalization: false })}
             className="px-4 py-2 rounded-lg border border-sky-200 bg-white text-sky-900 font-medium shadow hover:bg-sky-50 focus:outline focus:ring-2 focus:ring-blue-300 transition"
             aria-label="Refuser les cookies analytiques"
           >
             Refuser
           </button>
           <button
-            onClick={() => saveConsent({ analytics: true, functional: true })}
+            onClick={() => saveConsent({ analytics: true, functional: true, marketing: true, personalization: true })}
             className="px-4 py-2 rounded-lg bg-gradient-to-tr from-sky-500 to-cyan-400 text-white font-semibold shadow hover:from-cyan-600 transition"
             autoFocus
             aria-label="Accepter tous les cookies"
@@ -109,7 +113,10 @@ export default function Cookies(): JSX.Element | null {
             <form className="flex flex-col gap-4 max-w-xs w-full">
               {/* Switch Analytics */}
               <div className="flex items-center justify-between">
-                <span>Cookies analytiques</span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">Cookies analytiques</span>
+                  <span className="text-xs text-gray-500">Mesure d'audience et performance</span>
+                </div>
                 <label
                   htmlFor="analytics-toggle"
                   className="inline-flex relative items-center cursor-pointer"
@@ -129,7 +136,10 @@ export default function Cookies(): JSX.Element | null {
               </div>
               {/* Switch Functional */}
               <div className="flex items-center justify-between">
-                <span>Cookies fonctionnels</span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">Cookies fonctionnels</span>
+                  <span className="text-xs text-gray-500">Requis pour le fonctionnement</span>
+                </div>
                 <label
                   htmlFor="functional-toggle"
                   className="inline-flex relative items-center cursor-pointer"
@@ -140,6 +150,55 @@ export default function Cookies(): JSX.Element | null {
                     className="sr-only peer"
                     checked={functional}
                     onChange={() => setFunctional((f) => !f)}
+                    disabled // Ces cookies sont essentiels
+                  />
+                  <div className="w-11 h-6 bg-sky-500 rounded-full peer-focus:ring-4 peer-focus:ring-sky-300 transition opacity-50"></div>
+                  <div
+                    className="absolute right-1 top-1 bg-white w-4 h-4 rounded-full"
+                  ></div>
+                </label>
+              </div>
+              
+              {/* Switch Marketing */}
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">Cookies marketing</span>
+                  <span className="text-xs text-gray-500">Publicités personnalisées</span>
+                </div>
+                <label
+                  htmlFor="marketing-toggle"
+                  className="inline-flex relative items-center cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    id="marketing-toggle"
+                    className="sr-only peer"
+                    checked={marketing}
+                    onChange={() => setMarketing((m) => !m)}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-sky-500 peer-focus:ring-4 peer-focus:ring-sky-300 transition"></div>
+                  <div
+                    className="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5"
+                  ></div>
+                </label>
+              </div>
+              
+              {/* Switch Personalization */}
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">Cookies de personnalisation</span>
+                  <span className="text-xs text-gray-500">Contenu adapté à vos préférences</span>
+                </div>
+                <label
+                  htmlFor="personalization-toggle"
+                  className="inline-flex relative items-center cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    id="personalization-toggle"
+                    className="sr-only peer"
+                    checked={personalization}
+                    onChange={() => setPersonalization((p) => !p)}
                   />
                   <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-sky-500 peer-focus:ring-4 peer-focus:ring-sky-300 transition"></div>
                   <div
@@ -152,7 +211,7 @@ export default function Cookies(): JSX.Element | null {
                   type="submit"
                   onClick={(e) => {
                     e.preventDefault();
-                    saveConsent({ analytics, functional });
+                    saveConsent({ analytics, functional, marketing, personalization });
                   }}
                   className="flex-1 px-4 py-2 rounded-lg bg-sky-500 text-white shadow font-semibold hover:bg-sky-600 transition"
                 >

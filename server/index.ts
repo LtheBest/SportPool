@@ -66,8 +66,10 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
+    log(`🏆 Covoit Sports by LtheBest 🏆`);
     log(`🚀 SportPool server with JWT Auth running on port ${port}`);
     log(`🔐 Authentication: JWT with ${process.env.JWT_ACCESS_EXPIRES_IN || '15m'} access tokens`);
     log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    log(`💫 Powered by advanced features and enhanced user experience`);
   });
 })();

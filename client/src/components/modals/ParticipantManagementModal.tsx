@@ -109,15 +109,22 @@ export default function ParticipantManagementModal({
     },
   });
 
+  const [reminderDays, setReminderDays] = useState<number>(1);
+  const [showReminderOptions, setShowReminderOptions] = useState<boolean>(false);
+
   const sendRemindersMutation = useMutation({
-    mutationFn: async (hoursBeforeEvent: number = 24) => {
-      return apiRequest("POST", `/api/events/${eventId}/send-reminders`, { hoursBeforeEvent });
+    mutationFn: async (daysBeforeEvent: number = 1) => {
+      return apiRequest("POST", `/api/events/${eventId}/send-reminders`, { 
+        daysBeforeEvent: daysBeforeEvent,
+        hoursBeforeEvent: daysBeforeEvent * 24 // Pour compatibilité backend
+      });
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Rappels envoyés",
-        description: data?.message || "Les rappels ont été envoyés aux participants.",
+        title: "Rappels programmés",
+        description: `Les rappels seront envoyés ${reminderDays} jour${reminderDays > 1 ? 's' : ''} avant l'événement.`,
       });
+      setShowReminderOptions(false);
     },
     onError: (error: any) => {
       toast({
@@ -200,14 +207,61 @@ export default function ParticipantManagementModal({
 
           {/* Actions */}
           <div className="flex space-x-2">
-            <Button
-              onClick={() => sendRemindersMutation.mutate(24)}
-              disabled={sendRemindersMutation.isPending}
-              variant="outline"
-            >
-              <i className="fas fa-bell mr-2"></i>
-              Envoyer des rappels
-            </Button>
+            <div className="relative">
+              {!showReminderOptions ? (
+                <Button
+                  onClick={() => setShowReminderOptions(true)}
+                  disabled={sendRemindersMutation.isPending}
+                  variant="outline"
+                >
+                  <i className="fas fa-bell mr-2"></i>
+                  Programmer des rappels
+                </Button>
+              ) : (
+                <Card className="absolute top-0 left-0 z-50 w-80 p-4 border shadow-lg bg-white">
+                  <div className="space-y-4">
+                    <h4 className="font-semibold">Programmer des rappels</h4>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="reminder-days">Envoyer les rappels :</Label>
+                      <Select
+                        value={reminderDays.toString()}
+                        onValueChange={(value) => setReminderDays(parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 jour avant l'événement</SelectItem>
+                          <SelectItem value="2">2 jours avant l'événement</SelectItem>
+                          <SelectItem value="3">3 jours avant l'événement</SelectItem>
+                          <SelectItem value="4">4 jours avant l'événement</SelectItem>
+                          <SelectItem value="5">5 jours avant l'événement</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex space-x-2 justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowReminderOptions(false)}
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => sendRemindersMutation.mutate(reminderDays)}
+                        disabled={sendRemindersMutation.isPending}
+                      >
+                        <i className="fas fa-bell mr-2"></i>
+                        {sendRemindersMutation.isPending ? "Programmation..." : "Programmer"}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
             <Button
               onClick={() => window.open(`/api/events/${eventId}/calendar`, '_blank')}
               variant="outline"

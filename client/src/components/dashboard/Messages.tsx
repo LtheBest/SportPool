@@ -29,33 +29,31 @@ export default function Messages() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/events/${selectedConversation}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: messageContent }),
+      const { apiRequest } = await import("@/lib/queryClient");
+      return await apiRequest("POST", `/api/events/${selectedConversation}/messages`, { 
+        content: messageContent 
       });
-      if (!res.ok) {
-        throw new Error("Erreur lors de l'envoi du message");
-      }
-      return res.json();
     },
     onSuccess: () => {
       setMessageContent("");
-      queryClient.invalidateQueries([`/api/events/${selectedConversation}/messages`]);
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${selectedConversation}/messages`] });
     },
+    onError: (error: any) => {
+      console.error("Send message error:", error);
+    }
   });
 
   const deleteMessageMutation = useMutation({
     mutationFn: async (messageId: string) => {
-      const res = await fetch(`/api/events/${selectedConversation}/messages/${messageId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Erreur lors de la suppression");
-      return res.json();
+      const { apiRequest } = await import("@/lib/queryClient");
+      return await apiRequest("DELETE", `/api/messages/${messageId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries([`/api/events/${selectedConversation}/messages`]);
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${selectedConversation}/messages`] });
     },
+    onError: (error: any) => {
+      console.error("Delete message error:", error);
+    }
   });
 
   const handleDeleteMessage = (id: string) => {

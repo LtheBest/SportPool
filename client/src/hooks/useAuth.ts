@@ -57,7 +57,7 @@ class TokenManager {
 
 // Service d'authentification JWT
 export class AuthService {
-  private static queryClient: ReturnType<typeof useQueryClient>;
+  private static queryClient: ReturnType<typeof useQueryClient> | null = null;
 
   static setQueryClient(client: ReturnType<typeof useQueryClient>) {
     this.queryClient = client;
@@ -156,6 +156,9 @@ export class AuthService {
   static async logout(): Promise<void> {
     const accessToken = TokenManager.getAccessToken();
     
+    // Clear tokens first to avoid authentication issues
+    TokenManager.clearTokens();
+
     // Optionally call logout endpoint (pour blacklisting si implémenté)
     if (accessToken) {
       try {
@@ -166,17 +169,14 @@ export class AuthService {
       }
     }
 
-    // Clear tokens
-    TokenManager.clearTokens();
-
     // Invalider toutes les requêtes d'auth
     if (this.queryClient) {
       this.queryClient.clear();
     }
 
-    // Redirect to home
+    // Force page reload to ensure clean state
     if (typeof window !== 'undefined') {
-      window.location.href = "/";
+      window.location.reload();
     }
   }
 
@@ -202,10 +202,8 @@ export class AuthService {
 export function useAuth() {
   const queryClient = useQueryClient();
   
-  // Set query client for AuthService
-  if (!AuthService['queryClient']) {
-    AuthService.setQueryClient(queryClient);
-  }
+  // Set query client for AuthService (ensure it's always set)
+  AuthService.setQueryClient(queryClient);
 
   const { data: organization, isLoading, error } = useQuery({
     queryKey: ["/api/me"],

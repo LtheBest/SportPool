@@ -21,12 +21,46 @@ export default function Events() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showParticipantManagement, setShowParticipantManagement] = useState(false);
+  
+  // Filter states
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sportFilter, setSportFilter] = useState<string>("all");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: events = [], isLoading } = useQuery<Event[]>({
+  const { data: allEvents = [], isLoading } = useQuery<Event[]>({
     queryKey: ["/api/events"],
+  });
+
+  // Filter events based on selected filters
+  const events = allEvents.filter((event) => {
+    // Status filter
+    if (statusFilter !== "all") {
+      const now = new Date();
+      const eventDate = new Date(event.date);
+      
+      switch (statusFilter) {
+        case "upcoming":
+          if (eventDate <= now) return false;
+          break;
+        case "past":
+          if (eventDate > now) return false;
+          break;
+        case "recurring":
+          if (!event.isRecurring) return false;
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Sport filter
+    if (sportFilter !== "all" && event.sportType !== sportFilter) {
+      return false;
+    }
+
+    return true;
   });
 
   const handleInvite = (eventId: string) => {
@@ -155,7 +189,7 @@ export default function Events() {
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-gray-700">Filtrer :</label>
-              <Select defaultValue="all">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
@@ -169,7 +203,7 @@ export default function Events() {
             </div>
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-gray-700">Sport :</label>
-              <Select defaultValue="all">
+              <Select value={sportFilter} onValueChange={setSportFilter}>
                 <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
@@ -179,8 +213,26 @@ export default function Events() {
                   <SelectItem value="basketball">Basketball</SelectItem>
                   <SelectItem value="tennis">Tennis</SelectItem>
                   <SelectItem value="running">Course à pied</SelectItem>
+                  <SelectItem value="volleyball">Volleyball</SelectItem>
+                  <SelectItem value="natation">Natation</SelectItem>
+                  <SelectItem value="cyclisme">Cyclisme</SelectItem>
+                  <SelectItem value="autre">Autre</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setStatusFilter("all");
+                  setSportFilter("all");
+                }}
+                className="text-xs"
+              >
+                <i className="fas fa-times mr-1"></i>
+                Réinitialiser
+              </Button>
             </div>
             <div className="ml-auto flex space-x-2">
               <Button variant="outline" onClick={exportCSV}>
