@@ -150,7 +150,7 @@ export default function EventPublicView({ eventId }: EventPublicViewProps) {
               </div>
             </div>
           </CardHeader>
-
+          
           <CardContent className="space-y-6">
             {/* Event Details */}
             <div className="grid md:grid-cols-2 gap-6">
@@ -162,7 +162,7 @@ export default function EventPublicView({ eventId }: EventPublicViewProps) {
                   <p className="text-sm text-gray-600 mt-1">Durée estimée : {event.duration}</p>
                 )}
               </div>
-
+              
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">📍 Lieux</h3>
                 <div className="space-y-2">
@@ -258,7 +258,7 @@ export default function EventPublicView({ eventId }: EventPublicViewProps) {
                 <p className="text-gray-600 mb-4">
                   Vous souhaitez participer à cet événement ? Cliquez sur le bouton ci-dessous pour vous inscrire.
                 </p>
-                <Button
+                <Button 
                   onClick={() => setShowJoinForm(true)}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
@@ -345,11 +345,8 @@ export default function EventPublicView({ eventId }: EventPublicViewProps) {
                               min="1"
                               max="7"
                               placeholder="4"
-                              onChange={(e) =>
-                                field.onChange(e.target.value ? parseInt(e.target.value) : undefined)
-                              }
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
                             />
-
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -409,15 +406,15 @@ export default function EventPublicView({ eventId }: EventPublicViewProps) {
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold mb-4">Déjà inscrit(e) ?</h3>
             <p className="text-gray-600 mb-4">
-              Si vous êtes déjà inscrit(e) à cet événement et souhaitez modifier votre participation
-              (changer de rôle, modifier vos places disponibles, ou vous désinscrire),
+              Si vous êtes déjà inscrit(e) à cet événement et souhaitez modifier votre participation 
+              (changer de rôle, modifier vos places disponibles, ou vous désinscrire), 
               vous pouvez envoyer une demande à l'organisateur.
             </p>
             <div className="text-center">
-              <Button
+              <Button 
                 variant="outline"
                 onClick={() => {
-                  const organizerEmail = event.organization?.contactFirstName && event.organization?.contactLastName
+                  const organizerEmail = event.organization?.contactFirstName && event.organization?.contactLastName 
                     ? `${event.organization.contactFirstName}.${event.organization.contactLastName}@${event.organization.name.toLowerCase().replace(/\s+/g, '')}.com`
                     : 'organisateur@example.com';
                   const subject = `Demande de modification - ${event.name}`;
@@ -434,14 +431,14 @@ export default function EventPublicView({ eventId }: EventPublicViewProps) {
 
         {/* Additional Features */}
         <div className="mt-6 flex justify-center space-x-4">
-          <Button
+          <Button 
             variant="outline"
             onClick={() => window.open(`/api/events/${eventId}/calendar`, '_blank')}
           >
             <i className="fas fa-calendar-plus mr-2"></i>
             Ajouter au calendrier
           </Button>
-          <Button
+          <Button 
             variant="outline"
             onClick={() => {
               if (navigator.share) {

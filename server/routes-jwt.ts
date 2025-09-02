@@ -34,12 +34,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Allowed origins - Configuration complète pour tous les environnements
       const allowedOrigins = [
         // Development
-        'http://localhost:5173',
-        'http://localhost:3000',
         'http://localhost:8080',
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:3000',
-        'http://127.0.0.1:8080',
+        
         // Production Render
         'https://sportpool.onrender.com',
         process.env.APP_URL,
@@ -619,27 +615,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Join event (public endpoint)
   app.post("/api/events/:id/join", async (req, res) => {
     try {
-      const inputData = {
+      const data = insertEventParticipantSchema.parse({
         ...req.body,
         eventId: req.params.id,
-      };
-
-      // Suppression ou conversion conditionnelle pour éviter erreurs de type
-      if (inputData.role === "passenger") {
-        delete inputData.availableSeats; // Passager ne doit pas avoir ce champ
-      } else if (inputData.availableSeats === null) {
-        // Garde null tel quel (valeur nullable autorisée)
-      } else if (inputData.availableSeats !== undefined) {
-        inputData.availableSeats = Number(inputData.availableSeats); // Conversion forcée en nombre
-      }
-
-      const data = insertEventParticipantSchema.parse(inputData);
+      });
 
       const event = await storage.getEvent(req.params.id);
       if (!event) {
         return res.status(404).json({ message: "Event not found" });
       }
 
+      // Check if already registered
       const existingParticipants = await storage.getEventParticipants(event.id);
       const existingParticipant = existingParticipants.find(p => p.email === data.email);
 
@@ -654,7 +640,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message: error instanceof Error ? error.message : "Failed to join event" });
     }
   });
-
 
   // Create shareable invitation token (auth required)
   app.post("/api/events/:id/invitations", requireAuth, async (req, res) => {
