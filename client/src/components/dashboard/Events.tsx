@@ -1,12 +1,13 @@
 // client/src/components/dashboard/Events.tsx
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import EventModal from "@/components/modals/EventModal";
 import InviteModal from "@/components/modals/InviteModal";
 import ParticipantManagementModal from "@/components/modals/ParticipantManagementModal";
+import EventFilters from "@/components/dashboard/EventFilters";
+import useEventFilters from "@/hooks/useEventFilters";
 import type { Event, EventParticipant } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +28,34 @@ export default function Events() {
 
   const { data: events = [], isLoading } = useQuery<Event[]>({
     queryKey: ["/api/events"],
+  });
+
+  // Récupérer les participants pour tous les événements
+  const participantsQueries = events.map(event => 
+    useQuery<EventParticipant[]>({
+      queryKey: [`/api/events/${event.id}/participants`],
+      enabled: !!event.id
+    })
+  );
+
+  const participantsData = useMemo(() => {
+    const data: Record<string, EventParticipant[]> = {};
+    events.forEach((event, index) => {
+      const queryResult = participantsQueries[index];
+      data[event.id] = Array.isArray(queryResult.data) ? queryResult.data : [];
+    });
+    return data;
+  }, [events, participantsQueries]);
+
+  // Utiliser le hook de filtrage
+  const {
+    filters,
+    setFilters,
+    filteredEvents,
+    stats
+  } = useEventFilters({
+    events,
+    participantsData
   });
 
   const handleInvite = (eventId: string) => {
@@ -88,14 +117,17 @@ export default function Events() {
 
   // --- EXPORT CSV ---
   const exportCSV = () => {
-    const rows = [["Nom", "Date", "Lieu", "Destination", "Participants"]];
-    events.forEach((e: any) => {
+    const rows = [["Nom", "Date", "Sport", "Lieu", "Destination", "Participants", "Statut"]];
+    filteredEvents.forEach((e: any) => {
+      const participantCount = participantsData[e.id]?.length || 0;
       rows.push([
         e.name,
         new Date(e.date).toLocaleString("fr-FR"),
+        e.sport,
         e.meetingPoint,
         e.destination,
-        e.participantsCount?.toString() || "0"
+        participantCount.toString(),
+        e.status || "confirmed"
       ]);
     });
     const csvContent = rows
@@ -108,24 +140,41 @@ export default function Events() {
   // --- EXPORT PDF ---
   const exportPDF = () => {
     const doc = new jsPDF();
-    let y = 10;
-    doc.setFontSize(14);
-    doc.text("Liste des événements", 10, y);
+    let y = 20;
+    doc.setFontSize(16);
+    doc.text("Liste des événements SportPool", 10, y);
     y += 10;
+    
+    doc.setFontSize(10);
+    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} - ${filteredEvents.length} événement(s)`, 10, y);
+    y += 15;
+    
     doc.setFontSize(11);
 
-    events.forEach((e: any, i: number) => {
-      doc.text(`${i + 1}. ${e.name} — ${new Date(e.date).toLocaleString("fr-FR")}`, 10, y);
+    filteredEvents.forEach((e: any, i: number) => {
+      const participantCount = participantsData[e.id]?.length || 0;
+      
+      doc.setFont("helvetica", "bold");
+      doc.text(`${i + 1}. ${e.name}`, 10, y);
       y += 6;
-      doc.text(`Lieu: ${e.meetingPoint} → ${e.destination}`, 10, y);
+      
+      doc.setFont("helvetica", "normal");
+      doc.text(`Date: ${new Date(e.date).toLocaleDateString("fr-FR")} à ${new Date(e.date).toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}`, 10, y);
+      y += 5;
+      doc.text(`Sport: ${e.sport}`, 10, y);
+      y += 5;
+      doc.text(`Trajet: ${e.meetingPoint} → ${e.destination}`, 10, y);
+      y += 5;
+      doc.text(`Participants: ${participantCount}`, 10, y);
       y += 10;
+      
       if (y > 270) {
         doc.addPage();
-        y = 10;
+        y = 20;
       }
     });
 
-    doc.save("events.pdf");
+    doc.save(`evenements-sportpool-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   if (isLoading) {
@@ -149,53 +198,19 @@ export default function Events() {
         </Button>
       </div>
 
-      {/* Events Filter */}
-      <Card className="mb-8">
-        <CardContent className="p-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700">Filtrer :</label>
-              <Select defaultValue="all">
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les événements</SelectItem>
-                  <SelectItem value="upcoming">À venir</SelectItem>
-                  <SelectItem value="past">Passés</SelectItem>
-                  <SelectItem value="recurring">Récurrents</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700">Sport :</label>
-              <Select defaultValue="all">
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les sports</SelectItem>
-                  <SelectItem value="football">Football</SelectItem>
-                  <SelectItem value="basketball">Basketball</SelectItem>
-                  <SelectItem value="tennis">Tennis</SelectItem>
-                  <SelectItem value="running">Course à pied</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="ml-auto flex space-x-2">
-              <Button variant="outline" onClick={exportCSV}>
-                <i className="fas fa-file-csv mr-2"></i> CSV
-              </Button>
-              <Button variant="outline" onClick={exportPDF}>
-                <i className="fas fa-file-pdf mr-2 text-red-500"></i> PDF
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Filtres d'événements */}
+      <EventFilters
+        filters={filters}
+        onFiltersChange={setFilters}
+        eventsCount={events.length}
+        filteredCount={filteredEvents.length}
+        onExportCSV={exportCSV}
+        onExportPDF={exportPDF}
+      />
 
       {/* Events List */}
-      {events.length === 0 ? (
+      {filteredEvents.length === 0 ? (
+        events.length === 0 ? (
         <Card>
           <CardContent className="p-12">
             <div className="text-center">
@@ -211,9 +226,41 @@ export default function Events() {
             </div>
           </CardContent>
         </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-12">
+              <div className="text-center">
+                <i className="fas fa-filter text-gray-400 text-6xl mb-6"></i>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun événement trouvé</h3>
+                <p className="text-gray-600 mb-6">
+                  Aucun événement ne correspond aux critères de recherche actuels. 
+                  Essayez de modifier vos filtres.
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setFilters({
+                    search: '',
+                    status: 'all',
+                    sport: 'all',
+                    dateRange: {},
+                    participantRange: {},
+                    location: '',
+                    hasDrivers: null,
+                    hasAvailableSeats: null,
+                    sortBy: 'date',
+                    sortOrder: 'desc'
+                  })}
+                >
+                  <i className="fas fa-refresh mr-2"></i>
+                  Réinitialiser les filtres
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )
       ) : (
         <div className="space-y-6">
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <EventCard
               key={event.id}
               event={event}

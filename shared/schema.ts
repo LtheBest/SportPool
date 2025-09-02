@@ -100,6 +100,24 @@ export const participantChangeRequests = pgTable("participant_change_requests", 
   processedAt: timestamp("processed_at"),
 });
 
+// Scheduled reminders table
+export const scheduledReminders = pgTable("scheduled_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  daysBeforeEvent: integer("days_before_event").notNull(),
+  scheduledDateTime: timestamp("scheduled_date_time").notNull(),
+  status: varchar("status", { enum: ["pending", "sent", "failed"] }).default("pending"),
+  customMessage: text("custom_message"),
+  includeEventDetails: boolean("include_event_details").default(true),
+  includeWeatherInfo: boolean("include_weather_info").default(false),
+  sentCount: integer("sent_count").default(0),
+  failedCount: integer("failed_count").default(0),
+  executedAt: timestamp("executed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   events: many(events),
@@ -147,6 +165,17 @@ export const participantChangeRequestsRelations = relations(participantChangeReq
   }),
 }));
 
+export const scheduledRemindersRelations = relations(scheduledReminders, ({ one }) => ({
+  event: one(events, {
+    fields: [scheduledReminders.eventId],
+    references: [events.id],
+  }),
+  organization: one(organizations, {
+    fields: [scheduledReminders.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
 // Password reset tokens have no relations needed
 
 // Insert schemas
@@ -189,6 +218,13 @@ export const insertParticipantChangeRequestSchema = createInsertSchema(participa
   processedAt: true,
 });
 
+export const insertScheduledReminderSchema = createInsertSchema(scheduledReminders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  executedAt: true,
+});
+
 // Types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -204,3 +240,5 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type ParticipantChangeRequest = typeof participantChangeRequests.$inferSelect;
 export type InsertParticipantChangeRequest = z.infer<typeof insertParticipantChangeRequestSchema>;
+export type ScheduledReminder = typeof scheduledReminders.$inferSelect;
+export type InsertScheduledReminder = z.infer<typeof insertScheduledReminderSchema>;

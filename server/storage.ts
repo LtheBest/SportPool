@@ -6,6 +6,7 @@ import {
   messages,
   passwordResetTokens,
   participantChangeRequests,
+  scheduledReminders,
   type Organization,
   type InsertOrganization,
   type Event,
@@ -20,6 +21,8 @@ import {
   type InsertPasswordResetToken,
   type ParticipantChangeRequest,
   type InsertParticipantChangeRequest,
+  type ScheduledReminder,
+  type InsertScheduledReminder,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, isNull } from "drizzle-orm";
@@ -71,6 +74,14 @@ export interface IStorage {
   getParticipantChangeRequestsByEvent(eventId: string): Promise<ParticipantChangeRequest[]>;
   getParticipantChangeRequest(id: string): Promise<ParticipantChangeRequest | undefined>;
   updateParticipantChangeRequest(id: string, data: Partial<InsertParticipantChangeRequest>): Promise<ParticipantChangeRequest>;
+
+  // Scheduled Reminders
+  createScheduledReminder(reminder: InsertScheduledReminder): Promise<ScheduledReminder>;
+  getScheduledRemindersByEvent(eventId: string): Promise<ScheduledReminder[]>;
+  getScheduledReminder(id: string): Promise<ScheduledReminder | undefined>;
+  updateScheduledReminder(id: string, data: Partial<InsertScheduledReminder>): Promise<ScheduledReminder>;
+  deleteScheduledReminder(id: string): Promise<void>;
+  getPendingReminders(): Promise<ScheduledReminder[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -218,10 +229,6 @@ export class DatabaseStorage implements IStorage {
     return message;
   }
 
-  async deleteMessage(id: string): Promise<void> {
-    await db.delete(messages).where(eq(messages.id, id));
-  }
-  
   async getEventMessages(eventId: string): Promise<Message[]> {
     return await db
       .select()
@@ -306,6 +313,55 @@ export class DatabaseStorage implements IStorage {
       .where(eq(participantChangeRequests.id, id))
       .returning();
     return updatedRequest;
+  }
+
+  // Scheduled Reminders
+  async createScheduledReminder(reminder: InsertScheduledReminder): Promise<ScheduledReminder> {
+    const [newReminder] = await db
+      .insert(scheduledReminders)
+      .values(reminder)
+      .returning();
+    return newReminder;
+  }
+
+  async getScheduledRemindersByEvent(eventId: string): Promise<ScheduledReminder[]> {
+    return await db
+      .select()
+      .from(scheduledReminders)
+      .where(eq(scheduledReminders.eventId, eventId))
+      .orderBy(desc(scheduledReminders.scheduledDateTime));
+  }
+
+  async getScheduledReminder(id: string): Promise<ScheduledReminder | undefined> {
+    const [reminder] = await db
+      .select()
+      .from(scheduledReminders)
+      .where(eq(scheduledReminders.id, id));
+    return reminder;
+  }
+
+  async updateScheduledReminder(id: string, data: Partial<InsertScheduledReminder>): Promise<ScheduledReminder> {
+    const [updatedReminder] = await db
+      .update(scheduledReminders)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(scheduledReminders.id, id))
+      .returning();
+    return updatedReminder;
+  }
+
+  async deleteScheduledReminder(id: string): Promise<void> {
+    await db.delete(scheduledReminders).where(eq(scheduledReminders.id, id));
+  }
+
+  async getPendingReminders(): Promise<ScheduledReminder[]> {
+    return await db
+      .select()
+      .from(scheduledReminders)
+      .where(and(
+        eq(scheduledReminders.status, 'pending'),
+        sql`scheduled_date_time <= NOW()`
+      ))
+      .orderBy(scheduledReminders.scheduledDateTime);
   }
 }
 

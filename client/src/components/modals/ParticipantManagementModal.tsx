@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { EventParticipant } from "@shared/schema";
+import ReminderScheduler from "@/components/reminders/ReminderScheduler";
+import type { EventParticipant, Event } from "@shared/schema";
 
 interface ParticipantManagementModalProps {
   isOpen: boolean;
@@ -37,6 +38,12 @@ export default function ParticipantManagementModal({
   const { data: changeRequests = [] } = useQuery({
     queryKey: [`/api/events/${eventId}/change-requests`],
     queryFn: () => apiRequest("GET", `/api/events/${eventId}/change-requests`),
+    enabled: !!eventId,
+  });
+
+  const { data: event } = useQuery<Event>({
+    queryKey: [`/api/events/${eventId}`],
+    queryFn: () => apiRequest("GET", `/api/events/${eventId}`),
     enabled: !!eventId,
   });
 
@@ -109,24 +116,7 @@ export default function ParticipantManagementModal({
     },
   });
 
-  const sendRemindersMutation = useMutation({
-    mutationFn: async (hoursBeforeEvent: number = 24) => {
-      return apiRequest("POST", `/api/events/${eventId}/send-reminders`, { hoursBeforeEvent });
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Rappels envoyés",
-        description: data?.message || "Les rappels ont été envoyés aux participants.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erreur",
-        description: error?.message || "Impossible d'envoyer les rappels.",
-        variant: "destructive",
-      });
-    },
-  });
+
 
   const handleUpdateParticipant = () => {
     if (!selectedParticipant) return;
@@ -200,14 +190,11 @@ export default function ParticipantManagementModal({
 
           {/* Actions */}
           <div className="flex space-x-2">
-            <Button
-              onClick={() => sendRemindersMutation.mutate(24)}
-              disabled={sendRemindersMutation.isPending}
-              variant="outline"
-            >
-              <i className="fas fa-bell mr-2"></i>
-              Envoyer des rappels
-            </Button>
+            <ReminderScheduler 
+              eventId={eventId}
+              eventDate={event?.date || new Date().toISOString()}
+              participantCount={participants.length}
+            />
             <Button
               onClick={() => window.open(`/api/events/${eventId}/calendar`, '_blank')}
               variant="outline"

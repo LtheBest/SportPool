@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes"; // Switch to JWT routes
 import { setupVite, serveStatic, log } from "./vite";
+import { displayCLISignature, displayStartupInfo, displayShutdownMessage } from "./cli-signature";
+import { reminderScheduler } from "./reminder-scheduler";
 
 const app = express();
 app.use(express.json());
@@ -37,6 +39,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Afficher la signature CLI au démarrage
+  displayCLISignature();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -66,8 +71,22 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`🚀 SportPool server with JWT Auth running on port ${port}`);
-    log(`🔐 Authentication: JWT with ${process.env.JWT_ACCESS_EXPIRES_IN || '15m'} access tokens`);
-    log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    // Afficher les informations de démarrage détaillées
+    displayStartupInfo(port);
+  });
+
+  // Gestion propre de l'arrêt du serveur
+  process.on('SIGINT', () => {
+    console.log('\n🛑 Arrêt du serveur demandé...');
+    reminderScheduler.stop();
+    displayShutdownMessage();
+    setTimeout(() => process.exit(0), 1000);
+  });
+  
+  process.on('SIGTERM', () => {
+    console.log('\n🛑 Signal de terminaison reçu...');
+    reminderScheduler.stop();
+    displayShutdownMessage();
+    setTimeout(() => process.exit(0), 1000);
   });
 })();

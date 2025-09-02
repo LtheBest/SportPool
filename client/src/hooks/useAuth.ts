@@ -106,8 +106,12 @@ export class AuthService {
       });
 
       // Invalider les requêtes d'auth pour forcer un rechargement
-      if (this.queryClient) {
-        this.queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      try {
+        if (this.queryClient) {
+          this.queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+        }
+      } catch (error) {
+        console.error("QueryClient invalidation error:", error);
       }
 
       return {
@@ -136,8 +140,12 @@ export class AuthService {
       });
 
       // Invalider les requêtes d'auth pour forcer un rechargement
-      if (this.queryClient) {
-        this.queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      try {
+        if (this.queryClient) {
+          this.queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+        }
+      } catch (error) {
+        console.error("QueryClient invalidation error:", error);
       }
 
       return {
@@ -156,27 +164,36 @@ export class AuthService {
   static async logout(): Promise<void> {
     const accessToken = TokenManager.getAccessToken();
     
-    // Optionally call logout endpoint (pour blacklisting si implémenté)
-    if (accessToken) {
-      try {
-        await apiRequest("POST", "/api/logout");
-      } catch (error) {
-        console.error("Logout endpoint error:", error);
-        // Continue with client-side logout even if server fails
-      }
-    }
-
-    // Clear tokens
+    // Clear tokens immediately for instant logout
     TokenManager.clearTokens();
 
-    // Invalider toutes les requêtes d'auth
-    if (this.queryClient) {
-      this.queryClient.clear();
+    // Invalider toutes les requêtes d'auth et vider le cache
+    try {
+      if (this.queryClient) {
+        this.queryClient.clear();
+        this.queryClient.invalidateQueries();
+      }
+    } catch (error) {
+      console.error("QueryClient clear error:", error);
     }
 
-    // Redirect to home
+    // Call logout endpoint in background (non-blocking)
+    if (accessToken) {
+      // Don't await this - let it run in background
+      apiRequest("POST", "/api/logout").catch(error => {
+        console.error("Logout endpoint error:", error);
+        // Ignore errors - tokens already cleared
+      });
+    }
+
+    // Force page refresh to ensure complete logout
     if (typeof window !== 'undefined') {
-      window.location.href = "/";
+      // Clear any remaining storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Force hard reload to home page
+      window.location.replace("/");
     }
   }
 
@@ -202,9 +219,13 @@ export class AuthService {
 export function useAuth() {
   const queryClient = useQueryClient();
   
-  // Set query client for AuthService
-  if (!AuthService['queryClient']) {
-    AuthService.setQueryClient(queryClient);
+  // Set query client for AuthService with error handling
+  try {
+    if (queryClient && !AuthService['queryClient']) {
+      AuthService.setQueryClient(queryClient);
+    }
+  } catch (error) {
+    console.error("QueryClient setup error:", error);
   }
 
   const { data: organization, isLoading, error } = useQuery({
@@ -218,13 +239,27 @@ export function useAuth() {
 
   const isAuthenticated = !!organization && !error && AuthService.isAuthenticated();
 
+  // Enhanced logout function with error handling
+  const handleLogout = async () => {
+    try {
+      await AuthService.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Force logout even if there's an error
+      TokenManager.clearTokens();
+      if (typeof window !== 'undefined') {
+        window.location.replace("/");
+      }
+    }
+  };
+
   return {
     organization,
     isLoading: isLoading && !!TokenManager.getAccessToken(), // Only show loading if we have a token
     isAuthenticated,
     login: AuthService.login,
     register: AuthService.register,
-    logout: AuthService.logout,
+    logout: handleLogout,
     refreshToken: AuthService.refreshAccessToken,
   };
 }

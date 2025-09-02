@@ -633,7 +633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "You are already registered for this event" });
       }
 
-      const participant = await storage.createEventParticipant(data);
+      const participant = await storage.addEventParticipant(data);
       res.json({ message: "Successfully registered for the event!" });
     } catch (error) {
       console.error("Join event error:", error);
@@ -1120,6 +1120,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/events/:id/send-reminders", requireAuth, async (req, res) => {
     try {
       const authReq = req as AuthenticatedRequest;
+      const { immediate, customMessage, includeEventDetails, includeWeatherInfo } = req.body;
+      
       const event = await storage.getEvent(req.params.id);
       if (!event || event.organizationId !== authReq.user.organizationId) {
         return res.status(404).json({ message: "Event not found" });
@@ -1141,7 +1143,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             event.name,
             organization.name,
             event.date,
-            event.meetingPoint
+            event.meetingPoint,
+            customMessage,
+            includeEventDetails
           );
           if (sent) successCount++;
         } catch (error) {
@@ -1155,6 +1159,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Send reminders error:", error);
       res.status(500).json({ message: "Failed to send reminders" });
+    }
+  });
+
+  // Scheduled reminders routes
+  app.post("/api/events/:id/schedule-reminder", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const { daysBeforeEvent, customMessage, includeEventDetails, includeWeatherInfo } = req.body;
+      
+      const event = await storage.getEvent(req.params.id);
+      if (!event || event.organizationId !== authReq.user.organizationId) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Calculate scheduled date time
+      const eventDate = new Date(event.date);
+      const scheduledDateTime = new Date(eventDate.getTime() - (daysBeforeEvent * 24 * 60 * 60 * 1000));
+
+      // Check if scheduled time is in the future
+      if (scheduledDateTime <= new Date()) {
+        return res.status(400).json({ message: "Scheduled time must be in the future" });
+      }
+
+      const reminder = await storage.createScheduledReminder({
+        eventId: event.id,
+        organizationId: event.organizationId,
+        daysBeforeEvent,
+        scheduledDateTime,
+        customMessage,
+        includeEventDetails: includeEventDetails !== false,
+        includeWeatherInfo: includeWeatherInfo === true
+      });
+
+      res.json(reminder);
+    } catch (error) {
+      console.error("Schedule reminder error:", error);
+      res.status(500).json({ message: "Failed to schedule reminder" });
+    }
+  });
+
+  app.get("/api/events/:id/scheduled-reminders", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const event = await storage.getEvent(req.params.id);
+      if (!event || event.organizationId !== authReq.user.organizationId) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const reminders = await storage.getScheduledRemindersByEvent(req.params.id);
+      res.json(reminders);
+    } catch (error) {
+      console.error("Get scheduled reminders error:", error);
+      res.status(500).json({ message: "Failed to get scheduled reminders" });
+    }
+  });
+
+  app.delete("/api/scheduled-reminders/:id", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const reminder = await storage.getScheduledReminder(req.params.id);
+      
+      if (!reminder) {
+        return res.status(404).json({ message: "Scheduled reminder not found" });
+      }
+
+      const event = await storage.getEvent(reminder.eventId);
+      if (!event || event.organizationId !== authReq.user.organizationId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (reminder.status !== 'pending') {
+        return res.status(400).json({ message: "Cannot cancel a reminder that has already been sent" });
+      }
+
+      await storage.deleteScheduledReminder(req.params.id);
+      res.json({ message: "Scheduled reminder cancelled successfully" });
+    } catch (error) {
+      console.error("Cancel scheduled reminder error:", error);
+      res.status(500).json({ message: "Failed to cancel scheduled reminder" });
     }
   });
 
