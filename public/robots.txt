@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Allow: /events/*
+
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /invitation/*
+Disallow: /reset-password
+Disallow: /uploads/
+
+# Sitemap
+Sitemap: https://sportpool.onrender.com/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1

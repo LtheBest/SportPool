@@ -1204,6 +1204,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // SEO Endpoints - Sitemap
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const events = await storage.getEvents();
+      const baseUrl = process.env.APP_URL || "https://sportpool.onrender.com";
+      
+      let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>`;
+
+      // Add public event pages
+      for (const event of events) {
+        if (event.date && event.date > new Date()) { // Only future events
+          sitemap += `
+  <url>
+    <loc>${baseUrl}/events/${event.id}</loc>
+    <lastmod>${event.updatedAt?.toISOString().split('T')[0] || event.createdAt.toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+        }
+      }
+
+      sitemap += `
+</urlset>`;
+
+      res.set('Content-Type', 'application/xml');
+      res.send(sitemap);
+    } catch (error) {
+      console.error("Sitemap generation error:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // URL sanitization middleware for security
+  app.use((req, res, next) => {
+    // Prevent path traversal attacks
+    if (req.path.includes('..') || req.path.includes('%2e%2e')) {
+      return res.status(400).json({ error: "Invalid path" });
+    }
+    
+    // Prevent null bytes
+    if (req.path.includes('\0')) {
+      return res.status(400).json({ error: "Invalid characters in path" });
+    }
+    
+    next();
+  });
+
   const server = createServer(app);
   return server;
 }

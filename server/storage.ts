@@ -45,6 +45,7 @@ export interface IStorage {
   getEventParticipant(id: string): Promise<EventParticipant | undefined>;
   getEventParticipants(eventId: string): Promise<EventParticipant[]>;
   addEventParticipant(participant: InsertEventParticipant): Promise<EventParticipant>;
+  createEventParticipant(participant: InsertEventParticipant): Promise<EventParticipant>;
   removeEventParticipant(id: string): Promise<void>;
   updateEventParticipant(id: string, data: Partial<InsertEventParticipant>): Promise<EventParticipant>;
 
@@ -165,6 +166,11 @@ export class DatabaseStorage implements IStorage {
     return newParticipant;
   }
 
+  // Alias for backwards compatibility
+  async createEventParticipant(participant: InsertEventParticipant): Promise<EventParticipant> {
+    return this.addEventParticipant(participant);
+  }
+
   async removeEventParticipant(id: string): Promise<void> {
     await db.delete(eventParticipants).where(eq(eventParticipants.id, id));
   }
@@ -218,21 +224,12 @@ export class DatabaseStorage implements IStorage {
     return message;
   }
 
-  async deleteMessage(id: string): Promise<void> {
-    await db.delete(messages).where(eq(messages.id, id));
-  }
-  
   async getEventMessages(eventId: string): Promise<Message[]> {
     return await db
       .select()
       .from(messages)
       .where(eq(messages.eventId, eventId))
       .orderBy(desc(messages.createdAt));
-  }
-
-  async getMessage(id: string): Promise<Message | undefined> {
-    const [message] = await db.select().from(messages).where(eq(messages.id, id));
-    return message;
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
