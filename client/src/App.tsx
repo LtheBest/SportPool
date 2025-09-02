@@ -13,6 +13,7 @@ import NotFound from "@/pages/not-found";
 import Cookies from "@/components/cookies/Cookies";
 import Chatbot from "./components/chatbot/Chatbot";
 import Footer from "./components/footer/Footer";
+import SEOHead from "./components/seo/SEOHead";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -41,6 +42,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <SEOHead />
         <Toaster />
         <Router />
         <Chatbot />

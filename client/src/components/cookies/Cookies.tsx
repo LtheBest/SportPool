@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 interface ConsentPreferences {
   analytics: boolean;
   functional: boolean;
+  marketing: boolean;
+  performance: boolean;
 }
 
 interface ConsentPayload {
@@ -18,6 +20,8 @@ export default function Cookies(): JSX.Element | null {
   const [showPrefs, setShowPrefs] = useState(false);
   const [analytics, setAnalytics] = useState(true);
   const [functional, setFunctional] = useState(true);
+  const [marketing, setMarketing] = useState(false);
+  const [performance, setPerformance] = useState(true);
 
   useEffect(() => {
     try {
@@ -34,8 +38,45 @@ export default function Cookies(): JSX.Element | null {
       preferences: prefs,
     };
     localStorage.setItem(CONSENT_KEY, JSON.stringify(payload));
+    
+    // Apply cookie preferences
+    applyCookiePreferences(prefs);
+    
     setConsent(payload);
     setShowPrefs(false);
+  }
+
+  function applyCookiePreferences(prefs: ConsentPreferences) {
+    // Analytics cookies (Google Analytics, etc.)
+    if (prefs.analytics) {
+      // Enable Google Analytics or other analytics tools
+      console.log('🔍 Analytics cookies enabled');
+      // Here you would initialize Google Analytics or other tracking
+    } else {
+      console.log('🚫 Analytics cookies disabled');
+      // Disable analytics tracking
+    }
+
+    // Functional cookies (always enabled for basic functionality)
+    if (prefs.functional) {
+      console.log('⚙️ Functional cookies enabled');
+    }
+
+    // Marketing cookies
+    if (prefs.marketing) {
+      console.log('📢 Marketing cookies enabled');
+      // Enable marketing/advertising cookies
+    } else {
+      console.log('🚫 Marketing cookies disabled');
+    }
+
+    // Performance cookies
+    if (prefs.performance) {
+      console.log('🚀 Performance cookies enabled');
+      // Enable performance monitoring
+    } else {
+      console.log('🚫 Performance cookies disabled');
+    }
   }
 
   if (consent) return null;
@@ -74,14 +115,14 @@ export default function Cookies(): JSX.Element | null {
         {/* Actions */}
         <div className="flex flex-col gap-2 md:ml-4 md:gap-0">
           <button
-            onClick={() => saveConsent({ analytics: false, functional: true })}
+            onClick={() => saveConsent({ analytics: false, functional: true, marketing: false, performance: false })}
             className="px-4 py-2 rounded-lg border border-sky-200 bg-white text-sky-900 font-medium shadow hover:bg-sky-50 focus:outline focus:ring-2 focus:ring-blue-300 transition"
             aria-label="Refuser les cookies analytiques"
           >
             Refuser
           </button>
           <button
-            onClick={() => saveConsent({ analytics: true, functional: true })}
+            onClick={() => saveConsent({ analytics: true, functional: true, marketing: true, performance: true })}
             className="px-4 py-2 rounded-lg bg-gradient-to-tr from-sky-500 to-cyan-400 text-white font-semibold shadow hover:from-cyan-600 transition"
             autoFocus
             aria-label="Accepter tous les cookies"
@@ -129,17 +170,59 @@ export default function Cookies(): JSX.Element | null {
               </div>
               {/* Switch Functional */}
               <div className="flex items-center justify-between">
-                <span>Cookies fonctionnels</span>
+                <span>Cookies fonctionnels (requis)</span>
                 <label
                   htmlFor="functional-toggle"
-                  className="inline-flex relative items-center cursor-pointer"
+                  className="inline-flex relative items-center cursor-not-allowed opacity-75"
                 >
                   <input
                     type="checkbox"
                     id="functional-toggle"
                     className="sr-only peer"
-                    checked={functional}
-                    onChange={() => setFunctional((f) => !f)}
+                    checked={true}
+                    disabled
+                  />
+                  <div className="w-11 h-6 bg-sky-500 rounded-full peer peer-focus:ring-4 peer-focus:ring-sky-300 transition"></div>
+                  <div
+                    className="absolute left-1 top-1 bg-white w-4 h-4 rounded-full translate-x-5 transition-transform"
+                  ></div>
+                </label>
+              </div>
+
+              {/* Switch Marketing */}
+              <div className="flex items-center justify-between">
+                <span>Cookies marketing</span>
+                <label
+                  htmlFor="marketing-toggle"
+                  className="inline-flex relative items-center cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    id="marketing-toggle"
+                    className="sr-only peer"
+                    checked={marketing}
+                    onChange={() => setMarketing((m) => !m)}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-sky-500 peer-focus:ring-4 peer-focus:ring-sky-300 transition"></div>
+                  <div
+                    className="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5"
+                  ></div>
+                </label>
+              </div>
+
+              {/* Switch Performance */}
+              <div className="flex items-center justify-between">
+                <span>Cookies performance</span>
+                <label
+                  htmlFor="performance-toggle"
+                  className="inline-flex relative items-center cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    id="performance-toggle"
+                    className="sr-only peer"
+                    checked={performance}
+                    onChange={() => setPerformance((p) => !p)}
                   />
                   <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-sky-500 peer-focus:ring-4 peer-focus:ring-sky-300 transition"></div>
                   <div
@@ -152,7 +235,7 @@ export default function Cookies(): JSX.Element | null {
                   type="submit"
                   onClick={(e) => {
                     e.preventDefault();
-                    saveConsent({ analytics, functional });
+                    saveConsent({ analytics, functional: true, marketing, performance });
                   }}
                   className="flex-1 px-4 py-2 rounded-lg bg-sky-500 text-white shadow font-semibold hover:bg-sky-600 transition"
                 >

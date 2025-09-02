@@ -25,6 +25,8 @@ export default function ParticipantManagementModal({
   const [selectedParticipant, setSelectedParticipant] = useState<EventParticipant | null>(null);
   const [newRole, setNewRole] = useState<string>("");
   const [newSeats, setNewSeats] = useState<string>("");
+  const [showReminderOptions, setShowReminderOptions] = useState(false);
+  const [reminderDays, setReminderDays] = useState(1);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -110,19 +112,23 @@ export default function ParticipantManagementModal({
   });
 
   const sendRemindersMutation = useMutation({
-    mutationFn: async (hoursBeforeEvent: number = 24) => {
-      return apiRequest("POST", `/api/events/${eventId}/send-reminders`, { hoursBeforeEvent });
+    mutationFn: async (daysBeforeEvent: number) => {
+      return apiRequest("POST", `/api/events/${eventId}/send-reminders`, { 
+        daysBeforeEvent,
+        hoursBeforeEvent: daysBeforeEvent * 24 
+      });
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Rappels envoyés",
-        description: data?.message || "Les rappels ont été envoyés aux participants.",
+        title: "Rappels programmés",
+        description: `Les rappels seront envoyés ${reminderDays} jour${reminderDays > 1 ? 's' : ''} avant l'événement.`,
       });
+      setShowReminderOptions(false);
     },
     onError: (error: any) => {
       toast({
         title: "Erreur",
-        description: error?.message || "Impossible d'envoyer les rappels.",
+        description: error?.message || "Impossible de programmer les rappels.",
         variant: "destructive",
       });
     },
@@ -200,14 +206,90 @@ export default function ParticipantManagementModal({
 
           {/* Actions */}
           <div className="flex space-x-2">
-            <Button
-              onClick={() => sendRemindersMutation.mutate(24)}
-              disabled={sendRemindersMutation.isPending}
-              variant="outline"
-            >
-              <i className="fas fa-bell mr-2"></i>
-              Envoyer des rappels
-            </Button>
+            <div className="relative">
+              <Button
+                onClick={() => setShowReminderOptions(!showReminderOptions)}
+                disabled={sendRemindersMutation.isPending}
+                variant="outline"
+              >
+                <i className="fas fa-bell mr-2"></i>
+                Programmer des rappels
+                <i className={`fas fa-chevron-${showReminderOptions ? 'up' : 'down'} ml-2`}></i>
+              </Button>
+
+              {/* Menu déroulant pour les options de rappel */}
+              {showReminderOptions && (
+                <div className="absolute top-full mt-2 left-0 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-10 min-w-64">
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-gray-900">Programmer un rappel</h4>
+                    <p className="text-sm text-gray-600">
+                      Sélectionnez quand envoyer les rappels aux participants :
+                    </p>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="reminder-days">Nombre de jours avant l'événement :</Label>
+                      <Select 
+                        value={reminderDays.toString()} 
+                        onValueChange={(value) => setReminderDays(parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 jour avant</SelectItem>
+                          <SelectItem value="2">2 jours avant</SelectItem>
+                          <SelectItem value="3">3 jours avant</SelectItem>
+                          <SelectItem value="5">5 jours avant</SelectItem>
+                          <SelectItem value="7">1 semaine avant</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex space-x-2">
+                      <Button
+                        onClick={() => sendRemindersMutation.mutate(reminderDays)}
+                        disabled={sendRemindersMutation.isPending}
+                        size="sm"
+                        className="flex-1"
+                      >
+                        {sendRemindersMutation.isPending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Programmation...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-clock mr-2"></i>
+                            Programmer
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={() => setShowReminderOptions(false)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-100">
+                      <Button
+                        onClick={() => sendRemindersMutation.mutate(0)}
+                        disabled={sendRemindersMutation.isPending}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-orange-600 hover:text-orange-700"
+                      >
+                        <i className="fas fa-paper-plane mr-2"></i>
+                        Envoyer maintenant
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <Button
               onClick={() => window.open(`/api/events/${eventId}/calendar`, '_blank')}
               variant="outline"

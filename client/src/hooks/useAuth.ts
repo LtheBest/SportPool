@@ -156,27 +156,48 @@ export class AuthService {
   static async logout(): Promise<void> {
     const accessToken = TokenManager.getAccessToken();
     
-    // Optionally call logout endpoint (pour blacklisting si implémenté)
-    if (accessToken) {
-      try {
-        await apiRequest("POST", "/api/logout");
-      } catch (error) {
-        console.error("Logout endpoint error:", error);
-        // Continue with client-side logout even if server fails
+    try {
+      // Clear tokens immédiatement pour déconnexion instantanée
+      TokenManager.clearTokens();
+
+      // Invalider toutes les requêtes d'auth
+      if (this.queryClient) {
+        this.queryClient.clear();
       }
-    }
 
-    // Clear tokens
-    TokenManager.clearTokens();
+      // Optionally call logout endpoint (pour blacklisting si implémenté)
+      if (accessToken) {
+        try {
+          await apiRequest("POST", "/api/logout");
+        } catch (error) {
+          console.error("Logout endpoint error:", error);
+          // Continue with client-side logout even if server fails
+        }
+      }
 
-    // Invalider toutes les requêtes d'auth
-    if (this.queryClient) {
-      this.queryClient.clear();
-    }
-
-    // Redirect to home
-    if (typeof window !== 'undefined') {
-      window.location.href = "/";
+      // Clear all localStorage data related to user
+      if (typeof window !== 'undefined') {
+        // Clear remember me data
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('userEmail');
+        
+        // Clear any other app-specific data
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.startsWith('sportpool_') || key.includes('user') || key.includes('auth')) {
+            localStorage.removeItem(key);
+          }
+        });
+        
+        // Force page reload to ensure clean state
+        window.location.replace("/");
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Even if there's an error, redirect to home
+      if (typeof window !== 'undefined') {
+        window.location.replace("/");
+      }
     }
   }
 
@@ -202,8 +223,8 @@ export class AuthService {
 export function useAuth() {
   const queryClient = useQueryClient();
   
-  // Set query client for AuthService
-  if (!AuthService['queryClient']) {
+  // Set query client for AuthService - Garde contre undefined
+  if (queryClient && !AuthService['queryClient']) {
     AuthService.setQueryClient(queryClient);
   }
 

@@ -45,6 +45,7 @@ export interface IStorage {
   getEventParticipant(id: string): Promise<EventParticipant | undefined>;
   getEventParticipants(eventId: string): Promise<EventParticipant[]>;
   addEventParticipant(participant: InsertEventParticipant): Promise<EventParticipant>;
+  createEventParticipant(participant: InsertEventParticipant): Promise<EventParticipant>;
   removeEventParticipant(id: string): Promise<void>;
   updateEventParticipant(id: string, data: Partial<InsertEventParticipant>): Promise<EventParticipant>;
 
@@ -161,6 +162,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addEventParticipant(participant: InsertEventParticipant): Promise<EventParticipant> {
+    const [newParticipant] = await db.insert(eventParticipants).values(participant).returning();
+    return newParticipant;
+  }
+
+  async createEventParticipant(participant: InsertEventParticipant): Promise<EventParticipant> {
     const [newParticipant] = await db.insert(eventParticipants).values(participant).returning();
     return newParticipant;
   }

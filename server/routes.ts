@@ -1067,98 +1067,203 @@
 //     }
 //   });
 
-//   // Messages routes
-//   app.get("/api/events/:id/messages", requireAuth, async (req, res) => {
-//     try {
-//       const event = await storage.getEvent(req.params.id);
-//       if (!event || event.organizationId !== req.session.organizationId!) {
-//         return res.status(404).json({ message: "Event not found" });
-//       }
+  // Messages routes
+  app.get("/api/events/:id/messages", requireAuth, async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found" });
+      }
 
-//       const messages = await storage.getEventMessages(req.params.id);
-//       res.json(messages);
-//     } catch (error) {
-//       console.error("Get messages error:", error);
-//       res.status(500).json({ message: "Failed to get messages" });
-//     }
-//   });
+      const messages = await storage.getEventMessages(req.params.id);
+      res.json(messages);
+    } catch (error) {
+      console.error("Get messages error:", error);
+      res.status(500).json({ message: "Failed to get messages" });
+    }
+  });
 
-//   app.post("/api/events/:id/messages", requireAuth, async (req, res) => {
-//     try {
-//       const event = await storage.getEvent(req.params.id);
-//       if (!event || event.organizationId !== req.session.organizationId!) {
-//         return res.status(404).json({ message: "Event not found" });
-//       }
+  app.post("/api/events/:id/messages", requireAuth, async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found" });
+      }
 
-//       const organization = await storage.getOrganization(req.session.organizationId!);
-//       if (!organization) {
-//         return res.status(404).json({ message: "Organization not found" });
-//       }
+      const organization = await storage.getOrganization(req.session.organizationId!);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
 
-//       const data = insertMessageSchema.parse({
-//         eventId: req.params.id,
-//         senderName: organization.name,
-//         senderEmail: organization.email,
-//         content: req.body.content,
-//         isFromOrganizer: true,
-//       });
+      const data = insertMessageSchema.parse({
+        eventId: req.params.id,
+        senderName: organization.name,
+        senderEmail: organization.email,
+        content: req.body.content,
+        isFromOrganizer: true,
+      });
 
-//       const message = await storage.createMessage(data);
+      const message = await storage.createMessage(data);
 
-//       // Send email notifications to all event participants
-//       try {
-//         const participants = await storage.getEventParticipants(event.id);
+      // Send email notifications to all event participants
+      try {
+        const participants = await storage.getEventParticipants(event.id);
 
-//         for (const participant of participants) {
-//           const emailSent = await emailService.sendMessageNotificationEmail(
-//             participant.email,
-//             participant.name,
-//             event.name,
-//             organization.name,
-//             organization.name,
-//             data.content,
-//             event.id,
-//             message.id
-//           );
+        for (const participant of participants) {
+          const emailSent = await emailService.sendMessageNotificationEmail(
+            participant.email,
+            participant.name,
+            event.name,
+            organization.name,
+            organization.name,
+            data.content,
+            event.id,
+            message.id
+          );
 
-//           if (emailSent) {
-//             console.log(`Message notification sent to ${participant.email}`);
-//           } else {
-//             console.error(`Failed to send message notification to ${participant.email}`);
-//           }
-//         }
-//       } catch (error) {
-//         console.error("Failed to send message notifications:", error);
-//         // Don't fail the request if notification emails fail
-//       }
+          if (emailSent) {
+            console.log(`Message notification sent to ${participant.email}`);
+          } else {
+            console.error(`Failed to send message notification to ${participant.email}`);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to send message notifications:", error);
+        // Don't fail the request if notification emails fail
+      }
 
-//       res.json(message);
-//     } catch (error) {
-//       console.error("Create message error:", error);
-//       res.status(400).json({ message: error instanceof Error ? error.message : "Failed to send message" });
-//     }
-//   });
+      res.json(message);
+    } catch (error) {
+      console.error("Create message error:", error);
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to send message" });
+    }
+  });
 
-//   // DELETE message
-//   app.delete("/api/events/:eventId/messages/:messageId", requireAuth, async (req, res) => {
-//     try {
-//       const event = await storage.getEvent(req.params.eventId);
-//       if (!event || event.organizationId !== req.session.organizationId!) {
-//         return res.status(404).json({ message: "Event not found" });
-//       }
+  // DELETE message
+  app.delete("/api/events/:eventId/messages/:messageId", requireAuth, async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.eventId);
+      if (!event || event.organizationId !== req.session.organizationId!) {
+        return res.status(404).json({ message: "Event not found" });
+      }
 
-//       const message = await storage.getMessage(req.params.messageId);
-//       if (!message || message.eventId !== event.id) {
-//         return res.status(404).json({ message: "Message not found" });
-//       }
+      const message = await storage.getMessage(req.params.messageId);
+      if (!message || message.eventId !== event.id) {
+        return res.status(404).json({ message: "Message not found" });
+      }
 
-//       await storage.deleteMessage(req.params.messageId);
-//       res.json({ message: "Message deleted successfully" });
-//     } catch (error) {
-//       console.error("Delete message error:", error);
-//       res.status(500).json({ message: "Failed to delete message" });
-//     }
-//   });
+      await storage.deleteMessage(req.params.messageId);
+      res.json({ message: "Message deleted successfully" });
+    } catch (error) {
+      console.error("Delete message error:", error);
+      res.status(500).json({ message: "Failed to delete message" });
+    }
+  });
+
+  // ========== ROUTES SEO ==========
+
+  // Sitemap XML
+  app.get("/sitemap.xml", async (req, res) => {
+    try {
+      const baseUrl = process.env.APP_URL || "https://sportpool.onrender.com";
+      const events = await storage.getEvents();
+      
+      let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/dashboard</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+
+      // Ajouter les événements publics
+      events.forEach(event => {
+        sitemap += `
+  <url>
+    <loc>${baseUrl}/events/${event.id}</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <lastmod>${new Date(event.updatedAt || event.createdAt).toISOString()}</lastmod>
+  </url>`;
+      });
+
+      sitemap += `
+</urlset>`;
+
+      res.set("Content-Type", "application/xml");
+      res.send(sitemap);
+    } catch (error) {
+      console.error("Sitemap generation error:", error);
+      res.status(500).send("Error generating sitemap");
+    }
+  });
+
+  // Robots.txt
+  app.get("/robots.txt", (req, res) => {
+    const baseUrl = process.env.APP_URL || "https://sportpool.onrender.com";
+    const robots = `User-agent: *
+Allow: /
+Allow: /events/*
+
+Disallow: /dashboard*
+Disallow: /api/*
+Disallow: /uploads/*
+
+Sitemap: ${baseUrl}/sitemap.xml`;
+
+    res.set("Content-Type", "text/plain");
+    res.send(robots);
+  });
+
+  // Manifest.json pour PWA
+  app.get("/site.webmanifest", (req, res) => {
+    const manifest = {
+      "name": "Covoit Sports by LtheBest",
+      "short_name": "CovoitSports",
+      "description": "Plateforme de covoiturage pour les événements sportifs",
+      "start_url": "/",
+      "display": "standalone",
+      "background_color": "#ffffff",
+      "theme_color": "#408CFF",
+      "icons": [
+        {
+          "src": "/favicon-16x16.png",
+          "sizes": "16x16",
+          "type": "image/png"
+        },
+        {
+          "src": "/favicon-32x32.png",
+          "sizes": "32x32",
+          "type": "image/png"
+        },
+        {
+          "src": "/apple-touch-icon.png",
+          "sizes": "180x180",
+          "type": "image/png"
+        },
+        {
+          "src": "/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        },
+        {
+          "src": "/android-chrome-512x512.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ],
+      "categories": ["business", "productivity", "sports"],
+      "lang": "fr",
+      "dir": "ltr"
+    };
+
+    res.json(manifest);
+  });
 
 //   // Public message endpoint for participants
 //   app.post("/api/events/:id/messages/participant", async (req, res) => {

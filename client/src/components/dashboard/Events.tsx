@@ -22,12 +22,46 @@ export default function Events() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showParticipantManagement, setShowParticipantManagement] = useState(false);
 
+  // États pour les filtres
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sportFilter, setSportFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: events = [], isLoading } = useQuery<Event[]>({
+  const { data: allEvents = [], isLoading } = useQuery<Event[]>({
     queryKey: ["/api/events"],
   });
+
+  // Fonction de filtrage des événements
+  const filteredEvents = allEvents.filter((event) => {
+    // Filtrage par statut
+    const now = new Date();
+    const eventDate = new Date(event.date);
+    let statusMatch = true;
+
+    if (statusFilter === "upcoming") {
+      statusMatch = eventDate > now;
+    } else if (statusFilter === "past") {
+      statusMatch = eventDate < now;
+    } else if (statusFilter === "recurring") {
+      statusMatch = event.recurring || false;
+    }
+
+    // Filtrage par sport
+    const sportMatch = sportFilter === "all" || event.sport === sportFilter;
+
+    // Filtrage par terme de recherche
+    const searchMatch = searchTerm === "" || 
+      event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.meetingPoint.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.destination.toLowerCase().includes(searchTerm.toLowerCase());
+
+    return statusMatch && sportMatch && searchMatch;
+  });
+
+  const events = filteredEvents;
 
   const handleInvite = (eventId: string) => {
     setSelectedEventId(eventId);
@@ -152,11 +186,27 @@ export default function Events() {
       {/* Events Filter */}
       <Card className="mb-8">
         <CardContent className="p-6">
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Barre de recherche */}
             <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700">Filtrer :</label>
-              <Select defaultValue="all">
-                <SelectTrigger className="w-48">
+              <label className="text-sm font-medium text-gray-700">Recherche :</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Nom, lieu..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <i className="fas fa-search absolute left-2 top-2.5 text-gray-400"></i>
+              </div>
+            </div>
+
+            {/* Filtrer par statut */}
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">Statut :</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -167,10 +217,12 @@ export default function Events() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Filtrer par sport */}
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-gray-700">Sport :</label>
-              <Select defaultValue="all">
-                <SelectTrigger className="w-48">
+              <Select value={sportFilter} onValueChange={setSportFilter}>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -179,16 +231,44 @@ export default function Events() {
                   <SelectItem value="basketball">Basketball</SelectItem>
                   <SelectItem value="tennis">Tennis</SelectItem>
                   <SelectItem value="running">Course à pied</SelectItem>
+                  <SelectItem value="volleyball">Volleyball</SelectItem>
+                  <SelectItem value="cycling">Cyclisme</SelectItem>
+                  <SelectItem value="swimming">Natation</SelectItem>
+                  <SelectItem value="other">Autre</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="ml-auto flex space-x-2">
-              <Button variant="outline" onClick={exportCSV}>
+
+            {/* Actions d'export */}
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={exportCSV} size="sm">
                 <i className="fas fa-file-csv mr-2"></i> CSV
               </Button>
-              <Button variant="outline" onClick={exportPDF}>
+              <Button variant="outline" onClick={exportPDF} size="sm">
                 <i className="fas fa-file-pdf mr-2 text-red-500"></i> PDF
               </Button>
+            </div>
+          </div>
+          
+          {/* Statistiques des résultats filtrés */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>
+                {events.length} événement{events.length !== 1 ? 's' : ''} trouvé{events.length !== 1 ? 's' : ''}
+                {allEvents.length !== events.length && ` sur ${allEvents.length} au total`}
+              </span>
+              {(statusFilter !== "all" || sportFilter !== "all" || searchTerm !== "") && (
+                <button
+                  onClick={() => {
+                    setStatusFilter("all");
+                    setSportFilter("all");
+                    setSearchTerm("");
+                  }}
+                  className="text-primary hover:text-blue-700 underline"
+                >
+                  Réinitialiser les filtres
+                </button>
+              )}
             </div>
           </div>
         </CardContent>

@@ -31,17 +31,21 @@ export default function Messages() {
     mutationFn: async () => {
       const res = await fetch(`/api/events/${selectedConversation}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('sportpool_access_token')}`
+        },
         body: JSON.stringify({ content: messageContent }),
       });
       if (!res.ok) {
-        throw new Error("Erreur lors de l'envoi du message");
+        const errorData = await res.text();
+        throw new Error(`${res.status}: ${errorData}`);
       }
       return res.json();
     },
     onSuccess: () => {
       setMessageContent("");
-      queryClient.invalidateQueries([`/api/events/${selectedConversation}/messages`]);
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${selectedConversation}/messages`] });
     },
   });
 
@@ -49,12 +53,18 @@ export default function Messages() {
     mutationFn: async (messageId: string) => {
       const res = await fetch(`/api/events/${selectedConversation}/messages/${messageId}`, {
         method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem('sportpool_access_token')}`
+        }
       });
-      if (!res.ok) throw new Error("Erreur lors de la suppression");
+      if (!res.ok) {
+        const errorData = await res.text();
+        throw new Error(`${res.status}: ${errorData}`);
+      }
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries([`/api/events/${selectedConversation}/messages`]);
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${selectedConversation}/messages`] });
     },
   });
 
