@@ -63,6 +63,10 @@ export class AuthService {
     this.queryClient = client;
   }
 
+  static getQueryClient() {
+    return this.queryClient;
+  }
+
   static async refreshAccessToken(): Promise<string | null> {
     const refreshToken = TokenManager.getRefreshToken();
     if (!refreshToken) return null;
@@ -107,7 +111,12 @@ export class AuthService {
 
       // Invalider les requêtes d'auth pour forcer un rechargement
       if (this.queryClient) {
-        this.queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+        try {
+          await this.queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+          await this.queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+        } catch (error) {
+          console.error("Error invalidating queries:", error);
+        }
       }
 
       return {
@@ -137,7 +146,12 @@ export class AuthService {
 
       // Invalider les requêtes d'auth pour forcer un rechargement
       if (this.queryClient) {
-        this.queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+        try {
+          await this.queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+          await this.queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+        } catch (error) {
+          console.error("Error invalidating queries:", error);
+        }
       }
 
       return {
@@ -156,7 +170,16 @@ export class AuthService {
   static async logout(): Promise<void> {
     const accessToken = TokenManager.getAccessToken();
     
-    // Clear tokens first to avoid authentication issues
+    try {
+      // Invalider toutes les requêtes d'auth avant de supprimer les tokens
+      if (this.queryClient) {
+        await this.queryClient.clear();
+      }
+    } catch (error) {
+      console.error("Error clearing query cache:", error);
+    }
+    
+    // Clear tokens after clearing cache
     TokenManager.clearTokens();
 
     // Optionally call logout endpoint (pour blacklisting si implémenté)
@@ -169,14 +192,9 @@ export class AuthService {
       }
     }
 
-    // Invalider toutes les requêtes d'auth
-    if (this.queryClient) {
-      this.queryClient.clear();
-    }
-
     // Force page reload to ensure clean state
     if (typeof window !== 'undefined') {
-      window.location.reload();
+      window.location.href = "/";
     }
   }
 

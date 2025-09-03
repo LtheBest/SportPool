@@ -327,15 +327,33 @@ function EventCard({
   onDetails: () => void;
   onManageParticipants: () => void;
 }) {
-  const { data: participants = [] } = useQuery<EventParticipant[]>({
+  const { data: participants = [], error: participantsError } = useQuery<EventParticipant[]>({
     queryKey: [`/api/events/${event.id}/participants`],
+    retry: 2,
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 
-  const participantsArray = Array.isArray(participants) ? participants : [];
-  const drivers = participantsArray.filter(p => p.role === "driver");
-  const passengers = participantsArray.filter(p => p.role === "passenger");
-  const totalSeats = drivers.reduce((sum, d) => sum + (d.availableSeats || 0), 0);
-  const availableSeats = totalSeats - passengers.length;
+  // Sécurisation de l'accès aux participants avec debug
+  let participantsArray: EventParticipant[] = [];
+  
+  if (participants === null || participants === undefined) {
+    console.warn(`⚠️ Participants pour l'événement ${event.id}: données nulles/undefined`);
+    participantsArray = [];
+  } else if (Array.isArray(participants)) {
+    participantsArray = participants;
+  } else {
+    console.error(`❌ participants N'EST PAS un tableau !`, typeof participants, participants);
+    participantsArray = [];
+  }
+  
+  if (participantsError) {
+    console.error(`❌ Erreur lors du chargement des participants pour l'événement ${event.id}:`, participantsError);
+  }
+
+  const drivers = participantsArray.filter(p => p && p.role === "driver");
+  const passengers = participantsArray.filter(p => p && p.role === "passenger");
+  const totalSeats = drivers.reduce((sum, d) => sum + (d?.availableSeats || 0), 0);
+  const availableSeats = Math.max(0, totalSeats - passengers.length);
 
   return (
     <Card className="overflow-hidden">

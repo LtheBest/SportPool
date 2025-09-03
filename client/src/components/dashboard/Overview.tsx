@@ -18,25 +18,37 @@ export default function Overview() {
   const { organization } = useAuth();
   
   // Use realtime stats endpoint for auto-updates
-  const { data: stats, refetch: refetchStats } = useQuery<DashboardStats>({
-    queryKey: ["/api/dashboard/stats/realtime"],
+  const { data: stats, refetch: refetchStats, error: statsError } = useQuery<DashboardStats>({
+    queryKey: ["/api/dashboard/stats"],
     refetchInterval: 30000, // Refetch every 30 seconds
     refetchOnWindowFocus: true,
+    retry: 2,
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 
-  const { data: events = [] } = useQuery<Event[]>({
+  const { data: events = [], refetch: refetchEvents } = useQuery<Event[]>({
     queryKey: ["/api/events"],
     refetchInterval: 60000, // Refetch every minute
+    retry: 2,
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 
   // Auto-refresh stats when component mounts
   useEffect(() => {
     const interval = setInterval(() => {
       refetchStats();
+      refetchEvents();
     }, 15000); // Refetch every 15 seconds
 
     return () => clearInterval(interval);
-  }, [refetchStats]);
+  }, [refetchStats, refetchEvents]);
+  
+  // Debug des erreurs
+  useEffect(() => {
+    if (statsError) {
+      console.error('❌ Erreur lors du chargement des statistiques:', statsError);
+    }
+  }, [statsError]);
 
   const recentEvents = events.slice(0, 2);
 

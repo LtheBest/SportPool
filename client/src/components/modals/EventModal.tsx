@@ -111,19 +111,38 @@ export default function EventModal({ isOpen, onClose, event }: EventModalProps) 
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      // ⚡ Rafraîchit les statistiques du dashboard
-      await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] }); // 🔹 important
-      onClose();
-      form.reset();
-      setInviteEmails([]);
-      setCurrentEmail("");
-      toast({
-        title: "Événement créé",
-        description: inviteEmails.length > 0
-          ? `Événement créé avec succès ! Invitations envoyées à ${inviteEmails.length} adresses + tous les membres existants.`
-          : "Événement créé avec succès ! Invitations automatiquement envoyées à tous les membres existants.",
-      });
+      try {
+        // Invalidation des requêtes en parallèle
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["/api/events"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats/realtime"] }),
+        ]);
+        
+        onClose();
+        form.reset();
+        setInviteEmails([]);
+        setCurrentEmail("");
+        
+        toast({
+          title: "Événement créé",
+          description: inviteEmails.length > 0
+            ? `Événement créé avec succès ! Invitations envoyées à ${inviteEmails.length} adresses + tous les membres existants.`
+            : "Événement créé avec succès ! Invitations automatiquement envoyées à tous les membres existants.",
+        });
+      } catch (error) {
+        console.error("❌ Erreur lors de l'invalidation des requêtes:", error);
+        // Continue avec le succès même si l'invalidation échoue
+        onClose();
+        form.reset();
+        setInviteEmails([]);
+        setCurrentEmail("");
+        
+        toast({
+          title: "Événement créé",
+          description: "Création réussie ! La page se mettra à jour automatiquement.",
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -148,9 +167,18 @@ export default function EventModal({ isOpen, onClose, event }: EventModalProps) 
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      toast({ title: "Événement mis à jour" });
-      onClose();
+      try {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["/api/events"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] }),
+        ]);
+        toast({ title: "Événement mis à jour" });
+        onClose();
+      } catch (error) {
+        console.error("❌ Erreur lors de l'invalidation des requêtes:", error);
+        toast({ title: "Événement mis à jour" });
+        onClose();
+      }
     },
     onError: (err: any) => {
       toast({

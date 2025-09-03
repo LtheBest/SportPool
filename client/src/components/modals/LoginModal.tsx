@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import ForgotPasswordModal from "./ForgotPasswordModal";
+import ModernCaptcha from "@/components/captcha/ModernCaptcha";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
   const [rememberMe, setRememberMe] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
+  const [showCaptcha, setShowCaptcha] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -50,6 +53,20 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
       return;
     }
 
+    // Show captcha after first attempt or if there were previous failed attempts
+    const failedAttempts = parseInt(localStorage.getItem('loginFailedAttempts') || '0');
+    if (failedAttempts > 0 || showCaptcha) {
+      if (!isCaptchaVerified) {
+        setShowCaptcha(true);
+        toast({
+          title: "Vérification requise",
+          description: "Veuillez compléter la vérification humaine.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
@@ -68,6 +85,9 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
         // Invalidate queries to refresh user data
         queryClient.invalidateQueries({ queryKey: ["/api/me"] });
         
+        // Clear failed attempts on successful login
+        localStorage.removeItem('loginFailedAttempts');
+        
         // Navigate to dashboard
         setLocation("/dashboard");
         onClose();
@@ -79,6 +99,16 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
             "Vous êtes maintenant connecté.",
         });
       } else {
+        // Increment failed attempts
+        const currentAttempts = parseInt(localStorage.getItem('loginFailedAttempts') || '0');
+        localStorage.setItem('loginFailedAttempts', (currentAttempts + 1).toString());
+        
+        // Show captcha after 2 failed attempts
+        if (currentAttempts >= 1) {
+          setShowCaptcha(true);
+          setIsCaptchaVerified(false);
+        }
+        
         toast({
           title: "Erreur de connexion",
           description: result.error || "Email ou mot de passe incorrect.",
@@ -154,10 +184,17 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
             </Button>
           </div>
           
+          {showCaptcha && (
+            <ModernCaptcha 
+              onVerify={setIsCaptchaVerified}
+              className="my-4"
+            />
+          )}
+          
           <Button 
             type="submit" 
             className="w-full bg-primary hover:bg-blue-700"
-            disabled={isLoading}
+            disabled={isLoading || (showCaptcha && !isCaptchaVerified)}
           >
             {isLoading ? (
               <>

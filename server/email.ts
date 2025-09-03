@@ -572,6 +572,113 @@ TRANSP:OPAQUE
 END:VEVENT
 END:VCALENDAR`;
   }
+
+  // Envoyer une notification de nouveau message aux participants
+  async sendMessageNotificationEmail(
+    participantEmail: string,
+    participantName: string,
+    eventName: string,
+    organizationName: string,
+    senderName: string,
+    messageContent: string,
+    eventId: string,
+    messageId: string
+  ): Promise<boolean> {
+    try {
+      const eventLink = `${this.appUrl}/events/${eventId}`;
+      const replyLink = `${this.appUrl}/events/${eventId}/message/${messageId}/reply`;
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Nouveau message - ${eventName}</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .message-box { background: white; padding: 20px; margin: 20px 0; border-left: 4px solid #667eea; border-radius: 5px; }
+            .btn { display: inline-block; background: #667eea; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+            .btn:hover { background: #5a67d8; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+            .sport-icon { font-size: 2em; margin-bottom: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="sport-icon">📧</div>
+              <h1>Nouveau message</h1>
+              <p>Vous avez reçu un message concernant l'événement</p>
+            </div>
+            
+            <div class="content">
+              <h2>🏆 ${eventName}</h2>
+              <p><strong>Organisateur:</strong> ${organizationName}</p>
+              <p><strong>De:</strong> ${senderName}</p>
+              
+              <div class="message-box">
+                <h3>💬 Message:</h3>
+                <p>${messageContent.replace(/\n/g, '<br>')}</p>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${eventLink}" class="btn">👀 Voir l'événement</a>
+                <a href="${replyLink}" class="btn">✉️ Répondre</a>
+              </div>
+              
+              
+              <div class="footer">
+                <p>🚗 <strong>CovoitSport</strong> - Plateforme de covoiturage sportif</p>
+                <p>Pour vous désabonner de ces notifications, <a href="${eventLink}/unsubscribe?email=${encodeURIComponent(participantEmail)}">cliquez ici</a></p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const text = `
+      Nouveau message - ${eventName}
+      ========================================
+      
+      Bonjour ${participantName},
+      
+      Vous avez reçu un nouveau message concernant l'événement "${eventName}" organisé par ${organizationName}.
+      
+      De: ${senderName}
+      
+      Message:
+      ${messageContent}
+      
+      Consultez l'événement complet et répondez en ligne :
+      ${eventLink}
+      
+      ---
+      CovoitSport - Plateforme de covoiturage sportif
+      `;
+
+      const success = await this.sendEmail({
+        to: participantEmail,
+        subject: `📧 Nouveau message: ${eventName} - ${organizationName}`,
+        html,
+        text
+      });
+
+      if (success) {
+        console.log(`✅ Message notification sent to ${participantEmail}`);
+      } else {
+        console.error(`❌ Failed to send message notification to ${participantEmail}`);
+      }
+
+      return success;
+    } catch (error) {
+      console.error(`❌ Error sending message notification to ${participantEmail}:`, error);
+      return false;
+    }
+  }
 }
 
 export const emailService = new EmailService();

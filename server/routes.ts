@@ -469,6 +469,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const event = await storage.createEvent(data);
+      
+      // 📧 Envoi automatique des invitations par email
+      try {
+        const inviteEmails = req.body.inviteEmails;
+        if (inviteEmails && Array.isArray(inviteEmails) && inviteEmails.length > 0) {
+          console.log(`📧 Envoi d'invitations à ${inviteEmails.length} adresses email pour l'événement ${event.id}`);
+          
+          // Envoi des invitations en parallèle
+          const invitationPromises = inviteEmails.map(async (email: string) => {
+            try {
+              const invitationToken = randomUUID();
+              
+              // Création du lien d'invitation
+              const invitationLink = `${process.env.APP_URL || 'http://localhost:8080'}/events/${event.id}?token=${invitationToken}`;
+              
+              // Envoi de l'email d'invitation
+              await emailService.sendEventInvitation({
+                to: email,
+                eventName: event.name,
+                eventDate: new Date(event.date),
+                organizationName: organization.name,
+                invitationLink: invitationLink,
+                meetingPoint: event.meetingPoint,
+                destination: event.destination,
+                sport: event.sport || 'Sport',
+                customMessage: `Vous êtes invité(e) à participer à l'événement ${event.name} organisé par ${organization.name}.`
+              });
+              
+              console.log(`✅ Invitation envoyée avec succès à ${email}`);
+              return { email, success: true };
+            } catch (error) {
+              console.error(`❌ Erreur envoi invitation à ${email}:`, error);
+              return { email, success: false, error: error.message };
+            }
+          });
+          
+          const invitationResults = await Promise.all(invitationPromises);
+          const successCount = invitationResults.filter(r => r.success).length;
+          
+          console.log(`📊 Invitations envoyées: ${successCount}/${inviteEmails.length}`);
+        }
+        
+        // 📧 Récupération des participants des événements précédents pour invitations
+        try {
+          const organizationEvents = await storage.getEventsByOrganization(authReq.user.organizationId);
+          const allParticipantEmails = new Set<string>();
+          
+          // Récupérer tous les participants des événements précédents
+          for (const orgEvent of organizationEvents) {
+            if (orgEvent.id !== event.id) { // Éviter d'inviter pour l'événement qu'on vient de créer
+              try {
+                const eventParticipants = await storage.getEventParticipants(orgEvent.id);
+                eventParticipants.forEach(p => {
+                  if (p.email) allParticipantEmails.add(p.email);
+                });
+              } catch (err) {
+                console.error(`Erreur récupération participants événement ${orgEvent.id}:`, err);
+              }
+            }
+          }
+          
+          if (allParticipantEmails.size > 0) {
+            console.log(`📧 Envoi d'invitations à ${allParticipantEmails.size} membres précédents`);
+            
+            const existingInvitationPromises = Array.from(allParticipantEmails).map(async (email) => {
+              try {
+                const invitationLink = `${process.env.APP_URL || 'http://localhost:8080'}/events/${event.id}`;
+                
+                await emailService.sendEventInvitation({
+                  to: email,
+                  eventName: event.name,
+                  eventDate: new Date(event.date),
+                  organizationName: organization.name,
+                  invitationLink: invitationLink,
+                  meetingPoint: event.meetingPoint,
+                  destination: event.destination,
+                  sport: event.sport || 'Sport',
+                  customMessage: `Nouvel événement disponible : ${event.name}. Rejoignez-nous !`
+                });
+                
+                return { email, success: true };
+              } catch (error) {
+                console.error(`❌ Erreur envoi invitation membre ${email}:`, error);
+                return { email, success: false };
+              }
+            });
+            
+            const existingResults = await Promise.all(existingInvitationPromises);
+            const existingSuccessCount = existingResults.filter(r => r.success).length;
+            
+            console.log(`📊 Invitations membres: ${existingSuccessCount}/${allParticipantEmails.size}`);
+          }
+        } catch (membersError) {
+          console.error('❌ Erreur lors de la récupération des membres existants:', membersError);
+        }
+      } catch (emailError) {
+        console.error('❌ Erreur lors de l\'envoi des invitations:', emailError);
+        // On ne fait pas échouer la création d'événement si les emails échouent
+      }
+      
       res.json(event);
     } catch (error) {
       console.error("Create event error:", error);
@@ -1051,6 +1151,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chatbot routes
+  app.post("/api/chatbot/message", async (req, res) => {
+    try {
+      const { message, conversationHistory } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Message is required" 
+        });
+      }
+
+      console.log('📧 Chatbot request:', { message: message.substring(0, 100), historyLength: conversationHistory?.length || 0 });
+
+      const response = await chatbotService.sendMessage(message, conversationHistory || []);
+      
+      console.log('🤖 Chatbot response:', { success: response.success, messageLength: response.message.length });
+      
+      res.json({
+        success: response.success,
+        message: response.message
+      });
+    } catch (error) {
+      console.error("❌ Chatbot error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Désolé, le service est temporairement indisponible. Veuillez réessayer plus tard." 
+      });
+    }
+  });
+
   app.post("/api/chatbot/organization-help", requireAuth, async (req, res) => {
     try {
       const { message } = req.body;
