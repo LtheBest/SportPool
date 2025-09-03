@@ -46,12 +46,12 @@ export default function Cookies(): JSX.Element | null {
 
   return (
     <div
-      className="fixed inset-x-2 bottom-6 flex justify-center z-50 transition-all duration-500"
+      className="fixed inset-x-2 md:inset-x-6 bottom-6 flex justify-center z-50 transition-all duration-500"
       role="dialog"
       aria-live="polite"
       aria-label="Bannière de cookies"
     >
-      <div className="relative max-w-lg md:max-w-xl w-full bg-gradient-to-br from-white/95 to-sky-50 shadow-xl border border-sky-100 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row gap-3 md:gap-5 items-center">
+      <div className="relative max-w-lg md:max-w-4xl w-full bg-gradient-to-br from-white/95 to-sky-50 shadow-xl border border-sky-100 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row gap-3 md:gap-5 items-center">
         {/* Icône cookie */}
         <div
           className="flex items-center justify-center w-14 h-14 rounded-full bg-sky-100 shadow-inner shrink-0 animate-pulse"
@@ -76,7 +76,7 @@ export default function Cookies(): JSX.Element | null {
           </p>
         </div>
         {/* Actions */}
-        <div className="flex flex-col gap-2 md:ml-4 md:gap-0">
+        <div className="flex flex-col gap-2 md:ml-4 md:gap-2 md:flex-row md:items-center">
           <button
             onClick={() => saveConsent({ analytics: false, functional: true, marketing: false, personalization: false })}
             className="px-4 py-2 rounded-lg border border-sky-200 bg-white text-sky-900 font-medium shadow hover:bg-sky-50 focus:outline focus:ring-2 focus:ring-blue-300 transition"
@@ -94,23 +94,26 @@ export default function Cookies(): JSX.Element | null {
           </button>
           <button
             onClick={() => setShowPrefs(true)}
-            className="text-xs mt-1 underline text-gray-500 hover:text-blue-700 px-2 py-1 self-end"
+            className="text-xs md:text-sm underline text-gray-500 hover:text-blue-700 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all focus:outline-none focus:ring-2 focus:ring-blue-300"
             aria-label="Gérer les préférences des cookies"
           >
-            Préférences
+            ⚙️ Préférences cookies
           </button>
         </div>
 
-        {/* Préférences avancées */}
+        {/* Préférences avancées - Version Desktop améliorée */}
         {showPrefs && (
           <div
-            className="absolute top-0 left-0 w-full h-full bg-white/80 rounded-2xl flex flex-col justify-center items-center p-4 z-50 shadow-2xl animate-fade-in"
+            className="absolute top-0 left-0 w-full h-full bg-white/95 backdrop-blur-sm rounded-2xl flex flex-col justify-start items-center p-4 md:p-6 z-50 shadow-2xl animate-fade-in max-h-[80vh] overflow-y-auto"
             role="dialog"
             aria-modal="true"
             aria-label="Préférences cookies"
           >
-            <p className="font-semibold text-gray-800 mb-3">Préférences cookies</p>
-            <form className="flex flex-col gap-4 max-w-xs w-full">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">🍪 Préférences des Cookies</h3>
+              <p className="text-sm text-gray-600 max-w-md">Personnalisez votre expérience en choisissant les types de cookies que vous acceptez</p>
+            </div>
+            <form className="flex flex-col gap-4 max-w-md w-full">
               {/* Switch Analytics */}
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">

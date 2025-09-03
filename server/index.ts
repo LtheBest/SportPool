@@ -66,10 +66,30 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`🏆 Covoit Sports by LtheBest 🏆`);
-    log(`🚀 SportPool server with JWT Auth running on port ${port}`);
-    log(`🔐 Authentication: JWT with ${process.env.JWT_ACCESS_EXPIRES_IN || '15m'} access tokens`);
-    log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-    log(`💫 Powered by advanced features and enhanced user experience`);
+    // ASCII Art de style console de jeux vintage
+    console.log('\n');
+    console.log('╔═══════════════════════════════════════════════════════════════════════╗');
+    console.log('║  ██████╗ ██████╗ ██╗   ██╗ ██████╗ ██╗████████╗███████╗██████╗  ██████╗ ████████╗ ║');
+    console.log('║ ██╔════╝██╔═══██╗██║   ██║██╔═══██╗██║╚══██╔══╝██╔════╝██╔══██╗██╔═══██╗╚══██╔══╝ ║');
+    console.log('║ ██║     ██║   ██║██║   ██║██║   ██║██║   ██║   ███████╗██████╔╝██║   ██║   ██║    ║');
+    console.log('║ ██║     ██║   ██║╚██╗ ██╔╝██║   ██║██║   ██║   ╚════██║██╔═══╝ ██║   ██║   ██║    ║');
+    console.log('║ ╚██████╗╚██████╔╝ ╚████╔╝ ╚██████╔╝██║   ██║   ███████║██║     ╚██████╔╝   ██║    ║');
+    console.log('║  ╚═════╝ ╚═════╝   ╚═══╝   ╚═════╝ ╚═╝   ╚═╝   ╚══════╝╚═╝      ╚═════╝    ╚═╝    ║');
+    console.log('║                                                                                   ║');
+    console.log('║                           🏆 BY LTHEBEST 🏆                                       ║');
+    console.log('║                                                                                   ║');
+    console.log('║        ╔══════════════════════════════════════════════════════════════════╗      ║');
+    console.log('║        ║  🚗 Plateforme de Covoiturage Sportif de Nouvelle Génération  🚗  ║      ║');
+    console.log('║        ╚══════════════════════════════════════════════════════════════════╝      ║');
+    console.log('╚═══════════════════════════════════════════════════════════════════════╝\n');
+    
+    // Informations techniques avec style rétro
+    log(`░░░ SYSTÈME INITIALISÉ ░░░`);
+    log(`🚀 PORT: ${port}`);
+    log(`🔐 AUTH: JWT (${process.env.JWT_ACCESS_EXPIRES_IN || '15m'})`);
+    log(`🌐 ENV: ${process.env.NODE_ENV || 'development'}`);
+    log(`📡 STATUS: ONLINE`);
+    log(`░░░ PRÊT POUR L'AVENTURE! ░░░`);
+    console.log('\n');
   });
 })();

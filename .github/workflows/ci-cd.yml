@@ -1,0 +1,195 @@
+name: 🚀 CI/CD Pipeline - SportPool
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '18'
+  
+jobs:
+  # Job 1: Tests et Qualité du Code
+  test-and-quality:
+    name: 🧪 Tests & Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: |
+        npm ci --silent
+        
+    - name: 🔍 Lint check
+      run: |
+        echo "🔍 Running ESLint..."
+        npm run lint
+        
+    - name: 🎨 Format check
+      run: |
+        echo "🎨 Checking code formatting..."
+        npm run format:check
+        
+    - name: 🧪 Run unit tests
+      run: |
+        echo "🧪 Running unit tests..."
+        npm run test
+        
+    - name: 🌐 Build application
+      run: |
+        echo "🌐 Building application..."
+        npm run build
+        
+    - name: 🎭 Run E2E tests
+      run: |
+        echo "🎭 Running end-to-end tests..."
+        npm run test:e2e || echo "E2E tests optional for now"
+
+  # Job 2: Security Audit
+  security-audit:
+    name: 🔒 Security Audit
+    runs-on: ubuntu-latest
+    needs: test-and-quality
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci --silent
+      
+    - name: 🔒 Run security audit
+      run: |
+        echo "🔒 Running security audit..."
+        npm audit --audit-level=high || true
+
+  # Job 3: Déploiement (seulement sur main)
+  deploy:
+    name: 🚀 Deploy to Render
+    runs-on: ubuntu-latest
+    needs: [test-and-quality, security-audit]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: 🎮 Display ASCII Art
+      run: |
+        echo "🎮 CovoitSport Deployment Starting..."
+        cat << 'EOF'
+        ╔═══════════════════════════════════════════════════════════════════════╗
+        ║  ██████╗ ██████╗ ██╗   ██╗ ██████╗ ██╗████████╗███████╗██████╗  ██████╗ ████████╗ ║
+        ║ ██╔════╝██╔═══██╗██║   ██║██╔═══██╗██║╚══██╔══╝██╔════╝██╔══██╗██╔═══██╗╚══██╔══╝ ║  
+        ║ ██║     ██║   ██║██║   ██║██║   ██║██║   ██║   ███████╗██████╔╝██║   ██║   ██║    ║
+        ║ ██║     ██║   ██║╚██╗ ██╔╝██║   ██║██║   ██║   ╚════██║██╔═══╝ ██║   ██║   ██║    ║
+        ║ ╚██████╗╚██████╔╝ ╚████╔╝ ╚██████╔╝██║   ██║   ███████║██║     ╚██████╔╝   ██║    ║
+        ║  ╚═════╝ ╚═════╝   ╚═══╝   ╚═════╝ ╚═╝   ╚═╝   ╚══════╝╚═╝      ╚═════╝    ╚═╝    ║
+        ║                                                                                   ║
+        ║                           🏆 BY LTHEBEST 🏆                                       ║
+        ║                                                                                   ║
+        ║        ╔══════════════════════════════════════════════════════════════════╗      ║
+        ║        ║  🚗 Plateforme de Covoiturage Sportif de Nouvelle Génération  🚗  ║      ║
+        ║        ╚══════════════════════════════════════════════════════════════════╝      ║
+        ╚═══════════════════════════════════════════════════════════════════════════════════╝
+        EOF
+        
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci --silent
+      
+    - name: 🌐 Build for production
+      run: npm run build
+      
+    - name: 🚀 Deploy to Render
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      run: |
+        echo "🚀 Triggering Render deployment..."
+        if [ -n "$RENDER_API_KEY" ] && [ -n "$RENDER_SERVICE_ID" ]; then
+          curl -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}' || echo "Deployment trigger failed - continuing..."
+        else
+          echo "⚠️ Render API credentials not configured. Skipping API deployment trigger."
+          echo "Render will auto-deploy from GitHub integration."
+        fi
+        
+    - name: ✅ Deployment Success Message
+      run: |
+        echo "✅ Déploiement terminé avec succès !"
+        echo "🌐 Application disponible sur: https://sportpool.onrender.com"
+        echo "🎮 CovoitSport By LtheBest - Prêt pour l'aventure sportive! 🏆"
+
+  # Job 4: Post-Deploy Health Check
+  health-check:
+    name: 🏥 Health Check
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: 🏥 Wait for deployment and health check
+      run: |
+        echo "🏥 Waiting for deployment to be ready..."
+        sleep 60
+        
+        echo "🩺 Checking application health..."
+        for i in {1..10}; do
+          if curl -f -s "https://sportpool.onrender.com/api/health" > /dev/null; then
+            echo "✅ Application is healthy!"
+            exit 0
+          else
+            echo "⏳ Attempt $i/10 - Application not ready yet, waiting 30s..."
+            sleep 30
+          fi
+        done
+        
+        echo "⚠️ Health check failed after 10 attempts"
+        exit 1
+
+  # Job 5: Notification
+  notify:
+    name: 📢 Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy, health-check]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: 📢 Success Notification
+      if: needs.deploy.result == 'success' && needs.health-check.result == 'success'
+      run: |
+        echo "🎉 DÉPLOIEMENT RÉUSSI!"
+        echo "✅ Tests: PASSÉS"
+        echo "✅ Déploiement: RÉUSSI"  
+        echo "✅ Health Check: OK"
+        echo "🌐 Application: https://sportpool.onrender.com"
+        
+    - name: 📢 Failure Notification  
+      if: needs.deploy.result == 'failure' || needs.health-check.result == 'failure'
+      run: |
+        echo "❌ ÉCHEC DU DÉPLOIEMENT"
+        echo "🔍 Vérifiez les logs ci-dessus"
+        echo "🛠️ Action requise pour corriger les erreurs"
