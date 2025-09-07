@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
+import Admin from "@/pages/admin";
 import Invitation from "@/pages/invitation";
 import ResetPassword from "@/pages/reset-password";
 import EventPublic from "@/pages/event-public";
@@ -29,6 +30,7 @@ function Router() {
     <Switch>
       <Route path="/" component={isAuthenticated ? Dashboard : Home} />
       <Route path="/dashboard" component={isAuthenticated ? Dashboard : Home} />
+      <Route path="/admin" component={isAuthenticated ? Admin : Home} />
       <Route path="/invitation/:token" component={Invitation} />
       <Route path="/events/:id" component={EventPublic} />
       <Route path="/reset-password" component={ResetPassword} />

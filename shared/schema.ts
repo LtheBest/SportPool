@@ -19,6 +19,9 @@ export const organizations = pgTable("organizations", {
   contactLastName: text("contact_last_name").notNull(),
   sirenNumber: varchar("siren_number", { length: 9 }), // Numéro SIREN (9 chiffres)
   password: text("password").notNull(),
+  role: varchar("role", { enum: ["organization", "admin"] }).default("organization"),
+  isActive: boolean("is_active").default(true),
+  features: json("features").$type<string[]>().default([]), // Features available to this organization
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
