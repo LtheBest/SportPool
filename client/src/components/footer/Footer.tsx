@@ -1,15 +1,38 @@
 // src/components/Footer.tsx
 import React, { FormEvent, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Footer() {
   const [email, setEmail] = useState<string>("");
+  const { toast } = useToast();
+
+  const newsletterMutation = useMutation({
+    mutationFn: async (email: string) => {
+      return await apiRequest("POST", "/api/newsletter/subscribe", { email });
+    },
+    onSuccess: () => {
+      setEmail("");
+      toast({
+        title: "Inscription réussie !",
+        description: "Vous recevrez bientôt nos actualités par email.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error?.message || "Impossible de s'inscrire à la newsletter.",
+        variant: "destructive",
+      });
+    },
+  });
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    // Ici tu peux gérer l'inscription à la newsletter avec l'email
-    // Par exemple envoyer à une API ou afficher un message
-    console.log("Email newsletter soumis :", email);
-    setEmail("");
+    if (email.trim()) {
+      newsletterMutation.mutate(email.trim());
+    }
   }
 
   return (
@@ -75,10 +98,15 @@ export default function Footer() {
               />
               <button
                 type="submit"
-                className="rounded-r bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white text-sm font-medium transition-colors"
+                disabled={newsletterMutation.isPending || !email.trim()}
+                className="rounded-r bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Envoyer l'inscription newsletter"
               >
-                <i className="fas fa-paper-plane"></i>
+                {newsletterMutation.isPending ? (
+                  <i className="fas fa-spinner fa-spin"></i>
+                ) : (
+                  <i className="fas fa-paper-plane"></i>
+                )}
               </button>
             </form>
           </div>

@@ -32,6 +32,13 @@ export interface IStorage {
   getOrganizations(): Promise<Organization[]>;
   createOrganization(org: InsertOrganization): Promise<Organization>;
   updateOrganization(id: string, data: Partial<InsertOrganization>): Promise<Organization>;
+  updateOrganizationPassword(email: string, hashedPassword: string): Promise<void>;
+  
+  // Admin methods
+  getAllOrganizationsForAdmin(): Promise<Organization[]>;
+  updateOrganizationStatus(id: string, isActive: boolean): Promise<Organization>;
+  updateOrganizationFeatures(id: string, features: string[]): Promise<Organization>;
+  deleteOrganization(id: string): Promise<void>;
 
   // Events
   getEvent(id: string): Promise<Event | undefined>;
@@ -106,6 +113,43 @@ export class DatabaseStorage implements IStorage {
       .where(eq(organizations.id, id))
       .returning();
     return updatedOrg;
+  }
+
+  async updateOrganizationPassword(email: string, hashedPassword: string): Promise<void> {
+    await db
+      .update(organizations)
+      .set({ password: hashedPassword, updatedAt: new Date() })
+      .where(eq(organizations.email, email));
+  }
+
+  // Admin methods
+  async getAllOrganizationsForAdmin(): Promise<Organization[]> {
+    return await db.select().from(organizations).orderBy(desc(organizations.createdAt));
+  }
+
+  async updateOrganizationStatus(id: string, isActive: boolean): Promise<Organization> {
+    const [updatedOrg] = await db
+      .update(organizations)
+      .set({ isActive, updatedAt: new Date() })
+      .where(eq(organizations.id, id))
+      .returning();
+    return updatedOrg;
+  }
+
+  async updateOrganizationFeatures(id: string, features: string[]): Promise<Organization> {
+    const [updatedOrg] = await db
+      .update(organizations)
+      .set({ features, updatedAt: new Date() })
+      .where(eq(organizations.id, id))
+      .returning();
+    return updatedOrg;
+  }
+
+  async deleteOrganization(id: string): Promise<void> {
+    // Delete associated events first (cascade should handle this but let's be explicit)
+    await db.delete(events).where(eq(events.organizationId, id));
+    // Delete the organization
+    await db.delete(organizations).where(eq(organizations.id, id));
   }
 
   // Events

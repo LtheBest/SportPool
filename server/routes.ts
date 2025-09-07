@@ -699,13 +699,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const organization = await storage.getOrganization(event.organizationId);
       const participants = await storage.getEventParticipants(event.id);
 
-      res.json({
-        event: {
-          ...event,
-          organization: organization ? { name: organization.name, logoUrl: organization.logoUrl } : null
-        },
-        participants
-      });
+      // Format event data with organization details
+      const eventData = {
+        id: event.id,
+        name: event.name,
+        description: event.description,
+        sport: event.sport,
+        date: event.date,
+        eventDate: event.eventDate,
+        meetingPoint: event.meetingPoint,
+        destination: event.destination,
+        duration: event.duration,
+        status: event.status,
+        participants: participants,
+        organization: organization ? {
+          name: organization.name,
+          logoUrl: organization.logoUrl,
+          contactFirstName: organization.contactFirstName,
+          contactLastName: organization.contactLastName
+        } : null
+      };
+
+      res.json(eventData);
     } catch (error) {
       console.error("Get public event error:", error);
       res.status(500).json({ message: "Failed to get event details" });
@@ -1211,14 +1226,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const totalEvents = events.length;
       const activeEvents = events.filter(e => new Date(e.eventDate) >= new Date()).length;
-      const totalParticipants = events.reduce((sum, event) => {
-        return sum + (event.participants?.length || 0);
-      }, 0);
+      
+      // Calculate participants for all events
+      let totalParticipants = 0;
+      let totalDrivers = 0;
+      let totalSeats = 0;
+      let occupiedSeats = 0;
+
+      for (const event of events) {
+        if (event.participants && event.participants.length > 0) {
+          totalParticipants += event.participants.length;
+          
+          const drivers = event.participants.filter(p => p.role === 'driver');
+          const passengers = event.participants.filter(p => p.role === 'passenger');
+          
+          totalDrivers += drivers.length;
+          occupiedSeats += passengers.length;
+          
+          // Calculate total available seats from drivers
+          const eventSeats = drivers.reduce((sum, driver) => {
+            return sum + (driver.availableSeats || 0);
+          }, 0);
+          totalSeats += eventSeats;
+        }
+      }
+
+      const availableSeatsRemaining = totalSeats - occupiedSeats;
 
       res.json({
         totalEvents,
         activeEvents,
         totalParticipants,
+        totalDrivers,
+        totalSeats,
+        occupiedSeats,
+        availableSeatsRemaining: Math.max(0, availableSeatsRemaining),
         completedEvents: totalEvents - activeEvents
       });
     } catch (error) {
@@ -1315,6 +1357,293 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Messages routes
+  app.get("/api/events/:id/messages", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const event = await storage.getEvent(req.params.id);
+      
+      if (!event || event.organizationId !== authReq.user.organizationId) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const messages = await storage.getEventMessages(event.id);
+      res.json(messages);
+    } catch (error) {
+      console.error("Get messages error:", error);
+      res.status(500).json({ message: "Failed to get messages" });
+    }
+  });
+
+  app.post("/api/events/:id/messages", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const { content } = req.body;
+
+      if (!content) {
+        return res.status(400).json({ message: "Content is required" });
+      }
+
+      const event = await storage.getEvent(req.params.id);
+      if (!event || event.organizationId !== authReq.user.organizationId) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const organization = await storage.getOrganization(authReq.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Create message record
+      const messageData: any = {
+        eventId: event.id,
+        senderName: `${organization.contactFirstName} ${organization.contactLastName}`,
+        senderEmail: organization.email,
+        content,
+        isFromOrganizer: true,
+      };
+
+      const message = await storage.createMessage(messageData);
+
+      // Get all participants for this event
+      const participants = await storage.getEventParticipants(event.id);
+
+      // Send email to each participant with reply functionality
+      let successCount = 0;
+      for (const participant of participants) {
+        try {
+          // Create a unique reply token for this message-participant combination
+          const replyToken = `${message.id}_${participant.id}_${Date.now()}`;
+          
+          const sent = await emailService.sendMessageToParticipant(
+            participant.email,
+            participant.name,
+            content,
+            event.name,
+            organization.name,
+            `${organization.contactFirstName} ${organization.contactLastName}`,
+            replyToken
+          );
+          if (sent.success) successCount++;
+        } catch (error) {
+          console.error(`Failed to send message to ${participant.email}:`, error);
+        }
+      }
+
+      res.json({
+        message: `Message sent to ${successCount} out of ${participants.length} participants`,
+        messageId: message.id
+      });
+    } catch (error) {
+      console.error("Send message error:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.delete("/api/messages/:id", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const message = await storage.getMessage(req.params.id);
+      
+      if (!message) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+
+      // Verify that the message belongs to an event owned by this organization
+      const event = await storage.getEvent(message.eventId);
+      if (!event || event.organizationId !== authReq.user.organizationId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      await storage.deleteMessage(req.params.id);
+      res.json({ message: "Message deleted successfully" });
+    } catch (error) {
+      console.error("Delete message error:", error);
+      res.status(500).json({ message: "Failed to delete message" });
+    }
+  });
+
+  // Handle participant replies (webhook endpoint for email replies)
+  app.post("/api/messages/reply/:replyToken", async (req, res) => {
+    try {
+      const { replyToken } = req.params;
+      const { content, senderEmail, senderName } = req.body;
+
+      if (!content || !senderEmail || !senderName) {
+        return res.status(400).json({ message: "Content, senderEmail, and senderName are required" });
+      }
+
+      // Parse reply token to get message and participant info
+      const tokenParts = replyToken.split('_');
+      if (tokenParts.length !== 3) {
+        return res.status(400).json({ message: "Invalid reply token" });
+      }
+
+      const [messageId, participantId] = tokenParts;
+
+      // Get original message to find the event
+      const originalMessage = await storage.getMessage(messageId);
+      if (!originalMessage) {
+        return res.status(404).json({ message: "Original message not found" });
+      }
+
+      // Verify participant exists for this event
+      const participants = await storage.getEventParticipants(originalMessage.eventId);
+      const participant = participants.find(p => p.id === participantId && p.email === senderEmail);
+      
+      if (!participant) {
+        return res.status(403).json({ message: "Unauthorized - participant not found" });
+      }
+
+      // Create reply message
+      const replyData: any = {
+        eventId: originalMessage.eventId,
+        senderName,
+        senderEmail,
+        content,
+        isFromOrganizer: false,
+      };
+
+      const replyMessage = await storage.createMessage(replyData);
+
+      // Send notification to organizer
+      const event = await storage.getEvent(originalMessage.eventId);
+      const organization = await storage.getOrganization(event.organizationId);
+
+      if (organization) {
+        try {
+          await emailService.sendReplyNotificationToOrganizer(
+            organization.email,
+            `${organization.contactFirstName} ${organization.contactLastName}`,
+            senderName,
+            content,
+            event.name
+          );
+        } catch (error) {
+          console.error("Failed to send reply notification to organizer:", error);
+        }
+      }
+
+      res.json({ message: "Reply sent successfully", replyId: replyMessage.id });
+    } catch (error) {
+      console.error("Handle reply error:", error);
+      res.status(500).json({ message: "Failed to process reply" });
+    }
+  });
+
+  // Admin endpoints - protected by admin role check
+  const requireAdmin = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const organization = await storage.getOrganization(authReq.user.organizationId);
+      
+      if (!organization || organization.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      next();
+    } catch (error) {
+      console.error("Admin check error:", error);
+      res.status(500).json({ message: "Failed to verify admin permissions" });
+    }
+  };
+
+  // Get all organizations (admin only)
+  app.get("/api/admin/organizations", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const organizations = await storage.getAllOrganizationsForAdmin();
+      res.json(organizations.map(org => ({ ...org, password: undefined })));
+    } catch (error) {
+      console.error("Get all organizations error:", error);
+      res.status(500).json({ message: "Failed to get organizations" });
+    }
+  });
+
+  // Update organization status (admin only)
+  app.patch("/api/admin/organizations/:id/status", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { isActive } = req.body;
+      
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ message: "isActive must be a boolean" });
+      }
+
+      const updatedOrg = await storage.updateOrganizationStatus(req.params.id, isActive);
+      res.json({ ...updatedOrg, password: undefined });
+    } catch (error) {
+      console.error("Update organization status error:", error);
+      res.status(500).json({ message: "Failed to update organization status" });
+    }
+  });
+
+  // Update organization features (admin only)
+  app.patch("/api/admin/organizations/:id/features", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { features } = req.body;
+      
+      if (!Array.isArray(features)) {
+        return res.status(400).json({ message: "features must be an array" });
+      }
+
+      const updatedOrg = await storage.updateOrganizationFeatures(req.params.id, features);
+      res.json({ ...updatedOrg, password: undefined });
+    } catch (error) {
+      console.error("Update organization features error:", error);
+      res.status(500).json({ message: "Failed to update organization features" });
+    }
+  });
+
+  // Delete organization (admin only)
+  app.delete("/api/admin/organizations/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Check if trying to delete own organization
+      const authReq = req as AuthenticatedRequest;
+      if (id === authReq.user.organizationId) {
+        return res.status(400).json({ message: "Cannot delete your own organization" });
+      }
+
+      await storage.deleteOrganization(id);
+      res.json({ message: "Organization deleted successfully" });
+    } catch (error) {
+      console.error("Delete organization error:", error);
+      res.status(500).json({ message: "Failed to delete organization" });
+    }
+  });
+
+  // Get admin dashboard stats
+  app.get("/api/admin/stats", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const organizations = await storage.getAllOrganizationsForAdmin();
+      const events = await storage.getEvents();
+      
+      const totalOrganizations = organizations.length;
+      const activeOrganizations = organizations.filter(org => org.isActive).length;
+      const inactiveOrganizations = totalOrganizations - activeOrganizations;
+      const totalEvents = events.length;
+      
+      // Get participants count across all events
+      let totalParticipants = 0;
+      for (const event of events) {
+        const participants = await storage.getEventParticipants(event.id);
+        totalParticipants += participants.length;
+      }
+
+      res.json({
+        totalOrganizations,
+        activeOrganizations,
+        inactiveOrganizations,
+        totalEvents,
+        totalParticipants,
+        averageEventsPerOrg: totalOrganizations > 0 ? Math.round(totalEvents / totalOrganizations * 100) / 100 : 0
+      });
+    } catch (error) {
+      console.error("Get admin stats error:", error);
+      res.status(500).json({ message: "Failed to get admin stats" });
+    }
+  });
+
   // Test endpoint pour vérifier l'authentification JWT
   app.get("/api/auth-test", requireAuth, (req, res) => {
     const authReq = req as AuthenticatedRequest;
@@ -1332,6 +1661,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
       timestamp: new Date().toISOString(),
       auth: "jwt"
     });
+  });
+
+  // Newsletter subscription endpoint (public)
+  app.post("/api/newsletter/subscribe", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Send welcome email (optional)
+      try {
+        await emailService.sendCustomEmail(
+          email,
+          "Bienvenue dans la newsletter SportPool !",
+          `Merci de vous être inscrit(e) à notre newsletter !\n\nVous recevrez désormais nos dernières actualités et nouveautés concernant SportPool.\n\nÀ bientôt !`
+        );
+      } catch (emailError) {
+        console.error("Failed to send welcome email:", emailError);
+        // Don't fail the subscription if email fails
+      }
+
+      res.json({ 
+        message: "Inscription réussie ! Vous recevrez bientôt nos actualités.",
+        success: true 
+      });
+    } catch (error) {
+      console.error("Newsletter subscription error:", error);
+      res.status(500).json({ message: "Erreur lors de l'inscription" });
+    }
+  });
+
+  // Contact form endpoint (public)
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const { name, email, subject, message } = req.body;
+
+      if (!name || !email || !subject || !message) {
+        return res.status(400).json({ 
+          message: "Tous les champs sont requis (nom, email, sujet, message)" 
+        });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Format d'email invalide" });
+      }
+
+      // Send email to support
+      const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDGRID_FROM_EMAIL;
+      if (adminEmail) {
+        try {
+          await emailService.sendCustomEmail(
+            adminEmail,
+            `Nouveau message de contact : ${subject}`,
+            `Nouveau message reçu via le formulaire de contact :\n\nDe : ${name} (${email})\nSujet : ${subject}\n\nMessage :\n${message}\n\n---\nEnvoyé depuis SportPool`
+          );
+        } catch (emailError) {
+          console.error("Failed to send contact email:", emailError);
+        }
+      }
+
+      res.json({ 
+        message: "Message envoyé avec succès ! Nous vous répondrons rapidement.",
+        success: true 
+      });
+    } catch (error) {
+      console.error("Contact form error:", error);
+      res.status(500).json({ message: "Erreur lors de l'envoi du message" });
+    }
   });
 
   // SEO Endpoints - Sitemap

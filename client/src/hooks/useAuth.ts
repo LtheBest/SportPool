@@ -110,12 +110,13 @@ export class AuthService {
       });
 
       // Invalider les requêtes d'auth pour forcer un rechargement
-      if (this.queryClient) {
+      const currentQueryClient = this.queryClient;
+      if (currentQueryClient) {
         try {
-          await this.queryClient.invalidateQueries({ queryKey: ["/api/me"] });
-          await this.queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+          await currentQueryClient.invalidateQueries({ queryKey: ["/api/me"] });
+          await currentQueryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
         } catch (error) {
-          console.error("Error invalidating queries:", error);
+          console.error("Error invalidating queries during login:", error);
         }
       }
 
@@ -145,12 +146,13 @@ export class AuthService {
       });
 
       // Invalider les requêtes d'auth pour forcer un rechargement
-      if (this.queryClient) {
+      const currentQueryClient = this.queryClient;
+      if (currentQueryClient) {
         try {
-          await this.queryClient.invalidateQueries({ queryKey: ["/api/me"] });
-          await this.queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+          await currentQueryClient.invalidateQueries({ queryKey: ["/api/me"] });
+          await currentQueryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
         } catch (error) {
-          console.error("Error invalidating queries:", error);
+          console.error("Error invalidating queries during registration:", error);
         }
       }
 
@@ -172,11 +174,12 @@ export class AuthService {
     
     try {
       // Invalider toutes les requêtes d'auth avant de supprimer les tokens
-      if (this.queryClient) {
-        await this.queryClient.clear();
+      const currentQueryClient = this.queryClient;
+      if (currentQueryClient) {
+        await currentQueryClient.clear();
       }
     } catch (error) {
-      console.error("Error clearing query cache:", error);
+      console.error("Error clearing query cache during logout:", error);
     }
     
     // Clear tokens after clearing cache

@@ -2,38 +2,44 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/navigation/Navbar";
-import DashboardSidebar from "@/components/navigation/DashboardSidebar";
-import Overview from "@/components/dashboard/Overview";
-import Events from "@/components/dashboard/Events";
-import Messages from "@/components/dashboard/Messages";
-import Profile from "@/components/dashboard/Profile";
+import AdminSidebar from "@/components/navigation/AdminSidebar";
+import AdminOverview from "@/components/admin/AdminOverview";
+import OrganizationsManagement from "@/components/admin/OrganizationsManagement";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
 
-export default function Dashboard() {
+export default function Admin() {
   const [activeSection, setActiveSection] = useState("overview");
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { organization, isAuthenticated, logout } = useAuth();
   const { toast } = useToast();
 
-  // Enable keyboard shortcuts
-  useCommonShortcuts();
+  // Check if user is admin
+  const { data: isAdmin, isLoading: isCheckingAdmin } = useQuery({
+    queryKey: ["/api/me"],
+    select: (data: any) => data?.role === 'admin',
+    enabled: !!isAuthenticated,
+  });
 
-  // 🔹 Redirection automatique si non connecté
+  // Redirect if not authenticated or not admin
   useEffect(() => {
     if (!isAuthenticated) {
       setLocation("/");
+    } else if (!isCheckingAdmin && !isAdmin) {
+      setLocation("/dashboard");
+      toast({
+        title: "Accès refusé",
+        description: "Vous n'avez pas les permissions d'administration.",
+        variant: "destructive",
+      });
     }
-  }, [isAuthenticated, setLocation]);
+  }, [isAuthenticated, isAdmin, isCheckingAdmin, setLocation, toast]);
 
   const handleLogout = async () => {
     try {
-      // Use AuthService.logout() which properly handles token cleanup
       await logout();
-
       toast({
         title: "Déconnexion réussie",
         description: "Vous avez été déconnecté avec succès.",
@@ -48,21 +54,30 @@ export default function Dashboard() {
     }
   };
 
-
   const renderContent = () => {
     switch (activeSection) {
       case "overview":
-        return <Overview />;
-      case "events":
-        return <Events />;
-      case "messages":
-        return <Messages />;
-      case "profile":
-        return <Profile />;
+        return <AdminOverview />;
+      case "organizations":
+        return <OrganizationsManagement />;
       default:
-        return <Overview />;
+        return <AdminOverview />;
     }
   };
+
+  // Show loading while checking admin status
+  if (isCheckingAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Don't render if not admin
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -74,30 +89,13 @@ export default function Dashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          <DashboardSidebar
+          <AdminSidebar
             activeSection={activeSection}
             onSectionChange={setActiveSection}
           />
           <div className="flex-1">
             {renderContent()}
           </div>
-        </div>
-        
-        {/* Keyboard shortcuts hint */}
-        <div className="fixed bottom-4 right-4 z-40">
-          <button 
-            className="bg-gray-800 text-white p-3 rounded-full shadow-lg hover:bg-gray-700 transition-colors"
-            onClick={() => {
-              const event = new KeyboardEvent('keydown', {
-                key: '?',
-                shiftKey: true
-              });
-              document.dispatchEvent(event);
-            }}
-            title="Afficher les raccourcis clavier (Shift + ?)"
-          >
-            <i className="fas fa-keyboard text-lg"></i>
-          </button>
         </div>
       </div>
     </div>

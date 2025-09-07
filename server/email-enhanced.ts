@@ -376,6 +376,344 @@ class EmailServiceEnhanced {
     });
   }
 
+  // Send message to participants with reply functionality
+  async sendMessageToParticipant(
+    participantEmail: string,
+    participantName: string,
+    messageContent: string,
+    eventName: string,
+    organizationName: string,
+    organizerName: string,
+    replyToken: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.isConfigured) {
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    const replyUrl = `${this.appUrl}/api/messages/reply/${replyToken}`;
+    
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
+        <div style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; padding: 30px; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: bold;">💬 Nouveau Message</h1>
+        </div>
+        <div style="padding: 30px;">
+          <p style="color: #333; font-size: 18px; margin-bottom: 20px;">
+            Bonjour ${participantName},
+          </p>
+          <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+            Vous avez reçu un nouveau message de <strong>${organizerName}</strong> concernant l'événement <strong>${eventName}</strong> :
+          </p>
+          
+          <div style="background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 20px; margin: 20px 0; border-radius: 4px;">
+            <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0;">
+              ${messageContent.replace(/\n/g, '<br>')}
+            </p>
+          </div>
+          
+          <div style="background-color: #e8f4ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p style="color: #0056b3; font-size: 16px; margin-bottom: 15px; font-weight: bold;">
+              💡 Vous pouvez répondre directement par email !
+            </p>
+            <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
+              Répondez simplement à cet email et votre message sera automatiquement transmis à l'organisateur.
+            </p>
+            <p style="color: #666; font-size: 12px; font-style: italic;">
+              Organisé par ${organizationName}
+            </p>
+          </div>
+          
+          <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
+            Ce message concerne l'événement "${eventName}"<br>
+            Organisé par ${organizationName}
+          </p>
+        </div>
+      </div>
+    `;
+
+    const text = `
+      Nouveau Message - ${eventName}
+      
+      Bonjour ${participantName},
+      
+      Vous avez reçu un nouveau message de ${organizerName} concernant l'événement "${eventName}" :
+      
+      "${messageContent}"
+      
+      Vous pouvez répondre directement à cet email et votre message sera automatiquement transmis à l'organisateur.
+      
+      Organisé par ${organizationName}
+    `;
+
+    return await this.sendEmail({
+      to: participantEmail,
+      subject: `Message de ${organizerName} - ${eventName}`,
+      html,
+      text,
+      replyTo: `${this.fromEmail}+${replyToken}@reply.sportpool.com`
+    });
+  }
+
+  // Send reply notification to organizer
+  async sendReplyNotificationToOrganizer(
+    organizerEmail: string,
+    organizerName: string,
+    participantName: string,
+    replyContent: string,
+    eventName: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.isConfigured) {
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
+        <div style="background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); color: white; padding: 30px; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: bold;">💬 Nouvelle Réponse</h1>
+        </div>
+        <div style="padding: 30px;">
+          <p style="color: #333; font-size: 18px; margin-bottom: 20px;">
+            Bonjour ${organizerName},
+          </p>
+          <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+            <strong>${participantName}</strong> a répondu à votre message concernant l'événement <strong>${eventName}</strong> :
+          </p>
+          
+          <div style="background-color: #f8f9fa; border-left: 4px solid #28a745; padding: 20px; margin: 20px 0; border-radius: 4px;">
+            <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0;">
+              ${replyContent.replace(/\n/g, '<br>')}
+            </p>
+          </div>
+          
+          <div style="background-color: #e8f5e8; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="color: #155724; font-size: 14px; margin: 0;">
+              <strong>De :</strong> ${participantName}<br>
+              <strong>Événement :</strong> ${eventName}
+            </p>
+          </div>
+          
+          <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
+            Vous pouvez répondre directement à ce participant en répondant à cet email.
+          </p>
+        </div>
+      </div>
+    `;
+
+    const text = `
+      Nouvelle Réponse - ${eventName}
+      
+      Bonjour ${organizerName},
+      
+      ${participantName} a répondu à votre message concernant l'événement "${eventName}" :
+      
+      "${replyContent}"
+      
+      Vous pouvez répondre directement à ce participant en répondant à cet email.
+    `;
+
+    return await this.sendEmail({
+      to: organizerEmail,
+      subject: `Réponse de ${participantName} - ${eventName}`,
+      html,
+      text
+    });
+  }
+
+  // Send reminder email to participants
+  async sendReminderEmail(
+    participantEmail: string,
+    participantName: string,
+    eventName: string,
+    organizationName: string,
+    eventDate: Date,
+    meetingPoint: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.isConfigured) {
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    const formattedDate = eventDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const formattedTime = eventDate.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
+        <div style="background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #333; padding: 30px; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: bold;">⏰ Rappel d'Événement</h1>
+        </div>
+        <div style="padding: 30px;">
+          <p style="color: #333; font-size: 18px; margin-bottom: 20px;">
+            Bonjour ${participantName},
+          </p>
+          <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+            Nous vous rappelons que l'événement <strong>${eventName}</strong> approche !
+          </p>
+          
+          <div style="background-color: #fff8e1; border: 2px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 8px;">
+            <h3 style="color: #333; margin-top: 0; margin-bottom: 15px;">📅 Détails de l'événement</h3>
+            <p style="color: #666; margin: 8px 0;"><strong>Événement :</strong> ${eventName}</p>
+            <p style="color: #666; margin: 8px 0;"><strong>Date :</strong> ${formattedDate}</p>
+            <p style="color: #666; margin: 8px 0;"><strong>Heure :</strong> ${formattedTime}</p>
+            <p style="color: #666; margin: 8px 0;"><strong>Rendez-vous :</strong> ${meetingPoint}</p>
+            <p style="color: #666; margin: 8px 0;"><strong>Organisé par :</strong> ${organizationName}</p>
+          </div>
+          
+          <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+            N'oubliez pas de vous présenter à l'heure au point de rendez-vous. À bientôt !
+          </p>
+          
+          <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
+            Ceci est un rappel automatique pour l'événement "${eventName}"
+          </p>
+        </div>
+      </div>
+    `;
+
+    const text = `
+      Rappel d'Événement - ${eventName}
+      
+      Bonjour ${participantName},
+      
+      Nous vous rappelons que l'événement "${eventName}" approche !
+      
+      Détails :
+      - Événement : ${eventName}
+      - Date : ${formattedDate}
+      - Heure : ${formattedTime}
+      - Rendez-vous : ${meetingPoint}
+      - Organisé par : ${organizationName}
+      
+      N'oubliez pas de vous présenter à l'heure au point de rendez-vous. À bientôt !
+    `;
+
+    return await this.sendEmail({
+      to: participantEmail,
+      subject: `Rappel : ${eventName} - ${formattedDate}`,
+      html,
+      text
+    });
+  }
+
+  // Send password reset email
+  async sendPasswordResetEmail(
+    email: string,
+    name: string,
+    resetToken: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.isConfigured) {
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    const resetLink = `${this.appUrl}/reset-password?token=${resetToken}`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
+        <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 30px; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🔒 Réinitialisation du mot de passe</h1>
+        </div>
+        <div style="padding: 30px;">
+          <p style="color: #333; font-size: 18px; margin-bottom: 20px;">
+            Bonjour ${name},
+          </p>
+          <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+            Vous avez demandé une réinitialisation de votre mot de passe. Cliquez sur le lien ci-dessous pour créer un nouveau mot de passe :
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" style="display: inline-block; background-color: #dc3545; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+              Réinitialiser mon mot de passe
+            </a>
+          </div>
+          
+          <div style="background-color: #fff5f5; border: 1px solid #fecaca; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="color: #b91c1c; font-size: 14px; margin: 0;">
+              <strong>⚠️ Important :</strong> Ce lien expirera dans 1 heure. Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
+            </p>
+          </div>
+          
+          <p style="color: #666; font-size: 12px; text-align: center;">
+            Si le bouton ne fonctionne pas, copiez ce lien :<br>
+            <a href="${resetLink}" style="color: #007bff;">${resetLink}</a>
+          </p>
+        </div>
+      </div>
+    `;
+
+    const text = `
+      Réinitialisation du mot de passe
+      
+      Bonjour ${name},
+      
+      Vous avez demandé une réinitialisation de votre mot de passe. Cliquez sur le lien ci-dessous pour créer un nouveau mot de passe :
+      
+      ${resetLink}
+      
+      IMPORTANT : Ce lien expirera dans 1 heure. Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      subject: 'Réinitialisation de votre mot de passe - SportPool',
+      html,
+      text
+    });
+  }
+
+  // Send custom email with organization branding
+  async sendCustomEmail(
+    to: string,
+    subject: string,
+    content: string,
+    organization?: any
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.isConfigured) {
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    const organizationName = organization?.name || 'SportPool';
+    const organizerName = organization ? `${organization.contactFirstName} ${organization.contactLastName}` : 'SportPool';
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
+        <div style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; padding: 30px; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: bold;">📧 ${organizationName}</h1>
+        </div>
+        <div style="padding: 30px;">
+          <div style="background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px; line-height: 1.6;">
+            ${content.replace(/\n/g, '<br>')}
+          </div>
+          
+          <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
+            Message envoyé par ${organizerName} via SportPool
+          </p>
+        </div>
+      </div>
+    `;
+
+    const text = `
+      ${subject}
+      
+      ${content}
+      
+      ---
+      Message envoyé par ${organizerName} via SportPool
+    `;
+
+    return await this.sendEmail({
+      to,
+      subject,
+      html,
+      text
+    });
+  }
+
   // Diagnostic complet du service email
   async diagnoseService(): Promise<string> {
     const config = await this.testConfiguration();
