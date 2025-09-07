@@ -17,7 +17,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto py-8 px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Section principale - centrée sur mobile */}
         <div className="text-center md:text-left">
-          <h4 className="font-semibold text-lg text-gray-900">🏆 Covoit'Sports </h4>
+          <h4 className="font-semibold text-lg text-gray-900">🏆 Team Move </h4>
           <p className="text-sm text-gray-600 mt-2">Plateforme moderne de covoiturage pour événements sportifs.</p>
           <div className="flex justify-center md:justify-start mt-4 space-x-4">
             <a href="#" className="text-gray-400 hover:text-blue-600 transition-colors">
@@ -51,7 +51,7 @@ export default function Footer() {
           <h5 className="font-medium text-gray-900 mb-3">Contact & Newsletter</h5>
           <p className="text-sm text-gray-600 mb-3">
             <i className="fas fa-envelope mr-2"></i>
-            support@covoitsport.com
+            support@teammove.com
           </p>
           <p className="text-sm text-gray-600 mb-4">
             <i className="fas fa-phone mr-2"></i>
@@ -87,7 +87,7 @@ export default function Footer() {
       
       <div className="bg-gray-100 py-4 text-center text-xs text-gray-600">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-center md:justify-between">
-          <p>© {new Date().getFullYear()} Covoit'Sports  — Tous droits réservés</p>
+          <p>© {new Date().getFullYear()} Team Move  — Tous droits réservés</p>
           <div className="mt-2 md:mt-0 flex items-center space-x-4">
             <span className="text-green-600">
               <i className="fas fa-leaf mr-1"></i>

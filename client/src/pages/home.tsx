@@ -22,10 +22,11 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-            Organisez vos covoiturages sportifs en toute simplicité
+            Team Move – pilotez vos déplacements, gagnez du temps 
           </h1>
           <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
-            La plateforme dédiée aux clubs, associations et entreprises sportives pour organiser efficacement leurs déplacements en covoiturage.
+            Team Move est la plateforme numérique qui facilite et sécurise la mobilité des équipes.
+Clubs, associations, entreprises ou collectivités peuvent planifier leurs déplacements, communiquer en temps réel et réagir instantanément aux imprévus. Plus qu’un outil logistique, Team Move est un véritable cockpit de pilotage de la mobilité collective, simple, efficace et durable.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button 
@@ -53,11 +54,11 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Tout ce dont vous avez besoin pour vos covoiturages
+               Team Move – la mobilité simplifiée pour toutes vos équipes 
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            {/* <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Une solution complète pour gérer vos événements sportifs et organiser les déplacements de vos membres.
-            </p>
+            </p> */}
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">

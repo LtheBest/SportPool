@@ -32,7 +32,7 @@ export default function Navbar({
             <div className="flex-shrink-0">
               <div className="flex items-center space-x-2">
                 <i className="fas fa-car text-primary text-2xl"></i>
-                <span className="text-xl font-bold text-gray-900">Covoit'Sports</span>
+                <span className="text-xl font-bold text-gray-900">TEAM MOVE</span>
               </div>
             </div>
             
@@ -110,7 +110,7 @@ export default function Navbar({
                 <SheetHeader className="text-left">
                   <SheetTitle className="flex items-center space-x-2">
                     <i className="fas fa-car text-primary text-xl"></i>
-                    <span className="text-lg font-bold text-gray-900">Covoit'Sports</span>
+                    <span className="text-lg font-bold text-gray-900">TEAM MOVE</span>
                   </SheetTitle>
                 </SheetHeader>
                 
