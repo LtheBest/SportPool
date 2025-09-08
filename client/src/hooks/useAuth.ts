@@ -221,10 +221,15 @@ export class AuthService {
 }
 
 export function useAuth() {
-  const queryClient = useQueryClient();
-  
-  // Set query client for AuthService (ensure it's always set)
-  AuthService.setQueryClient(queryClient);
+  let queryClient;
+  try {
+    queryClient = useQueryClient();
+    // Set query client for AuthService (ensure it's always set)
+    AuthService.setQueryClient(queryClient);
+  } catch (error) {
+    console.warn("QueryClient not available in useAuth:", error);
+    queryClient = null;
+  }
 
   const { data: organization, isLoading, error } = useQuery({
     queryKey: ["/api/me"],

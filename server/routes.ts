@@ -15,7 +15,7 @@ import {
 } from "./auth";
 import { randomUUID } from "crypto";
 import { insertOrganizationSchema, insertEventSchema, insertEventParticipantSchema, insertMessageSchema } from "../shared/schema";
-import { emailServiceEnhanced as emailService } from "./email-enhanced";
+import { emailServiceEnhanced as emailService, emailServiceEnhanced } from "./email-enhanced";
 import { chatbotService } from "./openai";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
@@ -23,6 +23,45 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
+
+// Utility function to clean email reply content
+function cleanEmailReply(content: string): string {
+  if (!content) return '';
+  
+  // Remove HTML tags if present
+  const textContent = content.replace(/<[^>]*>/g, '');
+  
+  // Split by lines
+  const lines = textContent.split('\n');
+  const cleanLines = [];
+  
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    
+    // Stop at common email reply indicators
+    if (
+      trimmedLine.startsWith('On ') && (trimmedLine.includes(' wrote:') || trimmedLine.includes(' a écrit :')) ||
+      trimmedLine.startsWith('Le ') && (trimmedLine.includes(' a écrit :') || trimmedLine.includes(' wrote:')) ||
+      trimmedLine.startsWith('From:') ||
+      trimmedLine.startsWith('De :') ||
+      trimmedLine.startsWith('-----Original Message-----') ||
+      trimmedLine.startsWith('-----Message d\'origine-----') ||
+      trimmedLine.match(/^\d{4}-\d{2}-\d{2}.*:$/) ||
+      trimmedLine.startsWith('>')
+    ) {
+      break;
+    }
+    
+    // Skip empty lines at the beginning
+    if (cleanLines.length === 0 && trimmedLine === '') {
+      continue;
+    }
+    
+    cleanLines.push(line);
+  }
+  
+  return cleanLines.join('\n').trim();
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Configuration CORS dynamique et optimisée pour Render
@@ -136,6 +175,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ---------- AUTH ROUTES ----------
 
   // Register endpoint
+  // Hidden admin registration endpoint (development only)
+  app.post("/api/admin/register-super-user", async (req, res) => {
+    try {
+      // Security: Only allow in development or with special environment variable
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const allowAdminCreation = process.env.ALLOW_ADMIN_CREATION === 'true';
+      
+      if (!isDevelopment && !allowAdminCreation) {
+        return res.status(404).json({ message: "Not found" });
+      }
+
+      const { name, email, password, firstName, lastName, secretKey } = req.body;
+      
+      // Additional security check with secret key
+      const expectedSecret = process.env.ADMIN_CREATION_SECRET || 'dev-admin-secret-2024';
+      if (secretKey !== expectedSecret) {
+        return res.status(403).json({ message: "Invalid secret key" });
+      }
+
+      if (!name || !email || !password || !firstName || !lastName) {
+        return res.status(400).json({ 
+          message: "Name, email, password, firstName, and lastName are required" 
+        });
+      }
+
+      // Check if admin already exists
+      const existingAdmin = await storage.getOrganizationByEmail(email);
+      if (existingAdmin) {
+        return res.status(400).json({ message: "Admin with this email already exists" });
+      }
+
+      // Validate password strength
+      if (!validatePasswordStrength(password)) {
+        return res.status(400).json({ 
+          message: "Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character" 
+        });
+      }
+
+      const hashedPassword = await hashPassword(password);
+
+      // Create admin organization
+      const adminData = {
+        name: `${name} (Admin)`,
+        type: "company" as const,
+        email,
+        contactFirstName: firstName,
+        contactLastName: lastName,
+        password: hashedPassword,
+        role: "admin" as const,
+        description: "System Administrator",
+        sports: [],
+        features: ["all"], // Admin gets all features
+        isActive: true,
+      };
+
+      const admin = await storage.createOrganization(adminData);
+
+      // Generate tokens for immediate login
+      const tokens = generateTokenPair(admin.id, admin.email, admin.role);
+
+      console.log(`✅ Admin user created successfully: ${email}`);
+
+      res.status(201).json({
+        message: "Admin created successfully",
+        organization: {
+          id: admin.id,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role,
+          contactFirstName: admin.contactFirstName,
+          contactLastName: admin.contactLastName,
+        },
+        ...tokens,
+      });
+    } catch (error) {
+      console.error("Admin creation error:", error);
+      res.status(500).json({ message: "Failed to create admin" });
+    }
+  });
+
   app.post("/api/register", async (req, res) => {
     try {
       const data = insertOrganizationSchema.parse(req.body);
@@ -484,21 +603,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Création du lien d'invitation
               const invitationLink = `${process.env.APP_URL || 'http://localhost:8080'}/events/${event.id}?token=${invitationToken}`;
               
-              // Envoi de l'email d'invitation
-              await emailService.sendEventInvitation({
-                to: email,
-                eventName: event.name,
-                eventDate: new Date(event.date),
-                organizationName: organization.name,
-                invitationLink: invitationLink,
-                meetingPoint: event.meetingPoint,
-                destination: event.destination,
-                sport: event.sport || 'Sport',
-                customMessage: `Vous êtes invité(e) à participer à l'événement ${event.name} organisé par ${organization.name}.`
-              });
+              // Envoi de l'email d'invitation avec le service amélioré
+              const emailSent = await emailServiceEnhanced.sendEventInvitationWithLink(
+                email,
+                event.name,
+                organization.name,
+                new Date(event.date),
+                invitationLink,
+                event.meetingPoint,
+                event.destination,
+                event.sport || 'Sport',
+                undefined, // duration
+                `${organization.contactFirstName} ${organization.contactLastName}`,
+                organization.email
+              );
               
-              console.log(`✅ Invitation envoyée avec succès à ${email}`);
-              return { email, success: true };
+              if (emailSent) {
+                console.log(`✅ Invitation envoyée avec succès à ${email}`);
+                return { email, success: true };
+              } else {
+                throw new Error('Failed to send email');
+              }
             } catch (error) {
               console.error(`❌ Erreur envoi invitation à ${email}:`, error);
               return { email, success: false, error: error.message };
@@ -1054,21 +1179,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const participants = await storage.getEventParticipants(event.id);
 
         for (const participant of participants) {
-          const emailSent = await emailService.sendMessageNotificationEmail(
+          // Create a unique reply token for each participant
+          const replyToken = randomUUID();
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+          await storage.createEmailReplyToken({
+            token: replyToken,
+            eventId: event.id,
+            participantEmail: participant.email,
+            participantName: participant.name,
+            organizerEmail: organization.email,
+            organizerName: `${organization.contactFirstName} ${organization.contactLastName}`,
+            expiresAt,
+          });
+
+          // Send message using enhanced email service with reply token
+          const emailSent = await emailServiceEnhanced.sendBroadcastMessage(
             participant.email,
             participant.name,
             event.name,
             organization.name,
-            organization.name,
             data.content,
-            event.id,
-            message.id
+            `${organization.contactFirstName} ${organization.contactLastName}`,
+            event.id
           );
 
           if (emailSent) {
-            console.log(`Message notification sent to ${participant.email}`);
+            console.log(`✅ Message notification sent to ${participant.email} with reply token ${replyToken}`);
           } else {
-            console.error(`Failed to send message notification to ${participant.email}`);
+            console.error(`❌ Failed to send message notification to ${participant.email}`);
           }
         }
       } catch (error) {
@@ -1463,8 +1602,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Handle participant replies (webhook endpoint for email replies)
+  // Handle participant replies via email
   app.post("/api/messages/reply/:replyToken", async (req, res) => {
+    try {
+      const { replyToken } = req.params;
+      const { content, senderEmail, senderName } = req.body;
+
+      if (!content || !senderEmail || !senderName) {
+        return res.status(400).json({ message: "Content, sender email, and sender name are required" });
+      }
+
+      // Get the reply token information
+      const tokenData = await storage.getEmailReplyToken(replyToken);
+      if (!tokenData) {
+        return res.status(404).json({ message: "Invalid or expired reply token" });
+      }
+
+      // Verify the sender email matches the token
+      if (tokenData.participantEmail !== senderEmail) {
+        return res.status(403).json({ message: "Unauthorized: email doesn't match token" });
+      }
+
+      // Check if token is expired
+      if (new Date() > tokenData.expiresAt) {
+        await storage.deactivateEmailReplyToken(replyToken);
+        return res.status(410).json({ message: "Reply token has expired" });
+      }
+
+      // Get event information
+      const event = await storage.getEvent(tokenData.eventId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Create the reply message in the database
+      const replyMessage = await storage.createMessage({
+        eventId: tokenData.eventId,
+        senderName: tokenData.participantName,
+        senderEmail: tokenData.participantEmail,
+        content: content.trim(),
+        isFromOrganizer: false,
+      });
+
+      // Send notification to organizer
+      try {
+        await emailServiceEnhanced.sendReplyNotificationToOrganizer(
+          tokenData.organizerEmail,
+          tokenData.organizerName,
+          tokenData.participantName,
+          content.trim(),
+          event.name
+        );
+        console.log(`✅ Reply notification sent to organizer ${tokenData.organizerEmail}`);
+      } catch (emailError) {
+        console.error(`❌ Failed to send reply notification to organizer:`, emailError);
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Reply processed successfully",
+        messageId: replyMessage.id 
+      });
+
+    } catch (error) {
+      console.error("Reply processing error:", error);
+      res.status(500).json({ message: "Failed to process reply" });
+    }
+  });
+
+  // SendGrid webhook endpoint for processing inbound emails
+  app.post("/api/webhooks/sendgrid/inbound", express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+      const payload = JSON.parse(req.body.toString());
+      
+      // Parse inbound email data from SendGrid
+      for (const email of payload) {
+        const toEmail = email.to?.[0]?.email || '';
+        const fromEmail = email.from?.email || '';
+        const fromName = email.from?.name || fromEmail;
+        const subject = email.subject || '';
+        const text = email.text || '';
+        const html = email.html || '';
+        
+        // Extract reply token from email address (e.g., reply+token@sportpool.com)
+        const replyTokenMatch = toEmail.match(/reply\+([^@]+)@/);
+        if (!replyTokenMatch) {
+          console.log(`No reply token found in email address: ${toEmail}`);
+          continue;
+        }
+        
+        const replyToken = replyTokenMatch[1];
+        
+        // Process the reply using the same logic as the API endpoint
+        const tokenData = await storage.getEmailReplyToken(replyToken);
+        if (!tokenData || new Date() > tokenData.expiresAt) {
+          console.log(`Invalid or expired reply token: ${replyToken}`);
+          continue;
+        }
+        
+        if (tokenData.participantEmail !== fromEmail) {
+          console.log(`Email sender mismatch: ${fromEmail} vs ${tokenData.participantEmail}`);
+          continue;
+        }
+        
+        // Clean up the reply content (remove quotes, signatures, etc.)
+        const cleanContent = cleanEmailReply(text || html);
+        if (!cleanContent.trim()) {
+          console.log(`Empty reply content from ${fromEmail}`);
+          continue;
+        }
+        
+        // Get event information
+        const event = await storage.getEvent(tokenData.eventId);
+        if (!event) {
+          console.log(`Event not found for token: ${replyToken}`);
+          continue;
+        }
+        
+        // Create the reply message
+        const replyMessage = await storage.createMessage({
+          eventId: tokenData.eventId,
+          senderName: tokenData.participantName,
+          senderEmail: tokenData.participantEmail,
+          content: cleanContent.trim(),
+          isFromOrganizer: false,
+        });
+        
+        // Send notification to organizer
+        try {
+          await emailServiceEnhanced.sendReplyNotificationToOrganizer(
+            tokenData.organizerEmail,
+            tokenData.organizerName,
+            tokenData.participantName,
+            cleanContent.trim(),
+            event.name
+          );
+          console.log(`✅ Inbound email reply processed for event ${event.name}: ${replyMessage.id}`);
+        } catch (emailError) {
+          console.error(`❌ Failed to send organizer notification:`, emailError);
+        }
+      }
+      
+      res.status(200).json({ message: "Webhook processed successfully" });
+      
+    } catch (error) {
+      console.error("SendGrid webhook error:", error);
+      res.status(500).json({ message: "Webhook processing failed" });
+    }
+  });
+
+  // Original route with modifications for better compatibility
+  app.post("/api/messages/reply-old/:replyToken", async (req, res) => {
     try {
       const { replyToken } = req.params;
       const { content, senderEmail, senderName } = req.body;
