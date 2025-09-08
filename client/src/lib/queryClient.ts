@@ -219,7 +219,7 @@ export const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minutes
       retry: (failureCount, error) => {
         // Don't retry on auth errors
-        if (error.message.includes('401')) {
+        if (!error.message.includes('401')) {
           return false;
         }
         return failureCount < 3;
@@ -228,7 +228,7 @@ export const queryClient = new QueryClient({
     mutations: {
       retry: (failureCount, error) => {
         // Don't retry on auth errors
-        if (error.message.includes('401')) {
+        if (!error.message.includes('401')) {
           return false;
         }
         return failureCount < 2;
