@@ -7,6 +7,7 @@ import {
   notifications,
   passwordResetTokens,
   participantChangeRequests,
+  emailReplyTokens,
   type Organization,
   type InsertOrganization,
   type Event,
@@ -23,6 +24,8 @@ import {
   type InsertPasswordResetToken,
   type ParticipantChangeRequest,
   type InsertParticipantChangeRequest,
+  type EmailReplyToken,
+  type InsertEmailReplyToken,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, isNull } from "drizzle-orm";
@@ -89,6 +92,11 @@ export interface IStorage {
   getParticipantChangeRequestsByEvent(eventId: string): Promise<ParticipantChangeRequest[]>;
   getParticipantChangeRequest(id: string): Promise<ParticipantChangeRequest | undefined>;
   updateParticipantChangeRequest(id: string, data: Partial<InsertParticipantChangeRequest>): Promise<ParticipantChangeRequest>;
+
+  // Email Reply Tokens
+  createEmailReplyToken(token: InsertEmailReplyToken): Promise<EmailReplyToken>;
+  getEmailReplyToken(token: string): Promise<EmailReplyToken | undefined>;
+  deactivateEmailReplyToken(token: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -403,6 +411,30 @@ export class DatabaseStorage implements IStorage {
         eq(notifications.id, id),
         eq(notifications.organizationId, organizationId)
       ));
+  }
+
+  // Email Reply Tokens
+  async createEmailReplyToken(token: InsertEmailReplyToken): Promise<EmailReplyToken> {
+    const [newToken] = await db.insert(emailReplyTokens).values(token).returning();
+    return newToken;
+  }
+
+  async getEmailReplyToken(token: string): Promise<EmailReplyToken | undefined> {
+    const [replyToken] = await db
+      .select()
+      .from(emailReplyTokens)
+      .where(and(
+        eq(emailReplyTokens.token, token),
+        eq(emailReplyTokens.isActive, true)
+      ));
+    return replyToken;
+  }
+
+  async deactivateEmailReplyToken(token: string): Promise<void> {
+    await db
+      .update(emailReplyTokens)
+      .set({ isActive: false })
+      .where(eq(emailReplyTokens.token, token));
   }
 }
 

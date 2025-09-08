@@ -91,6 +91,20 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Email reply tokens table for bidirectional messaging
+export const emailReplyTokens = pgTable("email_reply_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: text("token").notNull().unique(),
+  eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  participantEmail: text("participant_email").notNull(),
+  participantName: text("participant_name").notNull(),
+  organizerEmail: text("organizer_email").notNull(),
+  organizerName: text("organizer_name").notNull(),
+  isActive: boolean("is_active").default(true),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Notifications table
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -212,6 +226,11 @@ export const insertParticipantChangeRequestSchema = createInsertSchema(participa
   processedAt: true,
 });
 
+export const insertEmailReplyTokenSchema = createInsertSchema(emailReplyTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -229,3 +248,5 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type ParticipantChangeRequest = typeof participantChangeRequests.$inferSelect;
 export type InsertParticipantChangeRequest = z.infer<typeof insertParticipantChangeRequestSchema>;
+export type EmailReplyToken = typeof emailReplyTokens.$inferSelect;
+export type InsertEmailReplyToken = z.infer<typeof insertEmailReplyTokenSchema>;

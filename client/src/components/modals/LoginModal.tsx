@@ -29,15 +29,14 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
   const [, setLocation] = useLocation();
   const { login } = useAuth();
   
-  // Use queryClient safely - get it from useAuth hook that handles initialization
-  const queryClient = (() => {
-    try {
-      return useQueryClient();
-    } catch (error) {
-      console.warn("QueryClient not available yet:", error);
-      return null;
-    }
-  })();
+  // Get queryClient safely
+  let queryClient;
+  try {
+    queryClient = useQueryClient();
+  } catch (error) {
+    console.warn("QueryClient not available in LoginModal:", error);
+    queryClient = null;
+  }
 
   // Load remembered email on component mount
   useEffect(() => {

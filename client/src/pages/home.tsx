@@ -1,14 +1,41 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/navigation/Navbar";
 import LoginModal from "@/components/modals/LoginModal";
 import RegistrationModal from "@/components/modals/RegistrationModal";
 import DemoModal from "@/components/modals/DemoModal";
+import AdminRegistrationModal from "@/components/admin/AdminRegistrationModal";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
+  const [showAdminRegistration, setShowAdminRegistration] = useState(false);
+  const [konami, setKonami] = useState<string[]>([]);
+
+  // Secret key sequence for admin registration (Konami code + 'admin')
+  const secretSequence = [
+    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
+    'KeyB', 'KeyA', 'KeyA', 'KeyD', 'KeyM', 'KeyI', 'KeyN'
+  ];
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const newKonami = [...konami, e.code].slice(-secretSequence.length);
+      setKonami(newKonami);
+
+      // Check if the sequence matches
+      if (newKonami.length === secretSequence.length && 
+          newKonami.every((key, index) => key === secretSequence[index])) {
+        setShowAdminRegistration(true);
+        setKonami([]); // Reset
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [konami]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -146,6 +173,15 @@ Clubs, associations, entreprises ou collectivités peuvent planifier leurs dépl
       <DemoModal 
         isOpen={showDemo}
         onClose={() => setShowDemo(false)}
+      />
+      
+      <AdminRegistrationModal 
+        isOpen={showAdminRegistration}
+        onClose={() => setShowAdminRegistration(false)}
+        onSuccess={() => {
+          setShowAdminRegistration(false);
+          setShowLogin(true);
+        }}
       />
     </div>
   );
