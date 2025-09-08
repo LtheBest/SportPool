@@ -4,8 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import type { Event, Message } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import BroadcastMessageModal from "@/components/messaging/BroadcastMessageModal";
+import { useMessaging } from "@/contexts/MessagingContext";
 
 interface Conversation {
   eventId: string;
@@ -18,6 +21,8 @@ interface Conversation {
 export default function Messages() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageContent, setMessageContent] = useState("");
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   const { data: events = [] } = useQuery<Event[]>({
     queryKey: ["/api/events"],
@@ -80,16 +85,36 @@ export default function Messages() {
 
   const handleSendMessage = () => {
     if (!messageContent.trim() || !selectedConversation) return;
-
-    // TODO: Send message via API
     sendMessageMutation.mutate();
+  };
+
+  const handleBroadcastMessage = (event: Event) => {
+    setSelectedEvent(event);
+    setShowBroadcastModal(true);
   };
 
   return (
     <div className="animate-fade-in">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Messages</h1>
-        <p className="text-gray-600">Communiquez avec les participants de vos événements.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Messages</h1>
+            <p className="text-gray-600">Communiquez avec les participants de vos événements.</p>
+          </div>
+          <Button
+            onClick={() => {
+              if (events.length > 0) {
+                setSelectedEvent(events[0]);
+                setShowBroadcastModal(true);
+              }
+            }}
+            className="bg-primary hover:bg-blue-700"
+            disabled={events.length === 0}
+          >
+            <i className="fas fa-bullhorn mr-2"></i>
+            Diffuser un message
+          </Button>
+        </div>
       </div>
 
       <Card className="h-96 flex">
@@ -149,18 +174,31 @@ export default function Messages() {
           {selectedConversation ? (
             <>
               <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <div className="flex items-center space-x-3">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback>
-                      <i className="fas fa-calendar text-gray-500"></i>
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {conversations.find(c => c.eventId === selectedConversation)?.eventName}
-                    </p>
-                    <p className="text-sm text-gray-600">Conversation de l'événement</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="w-10 h-10">
+                      <AvatarFallback>
+                        <i className="fas fa-calendar text-gray-500"></i>
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {conversations.find(c => c.eventId === selectedConversation)?.eventName}
+                      </p>
+                      <p className="text-sm text-gray-600">Conversation de l'événement</p>
+                    </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const event = events.find(e => e.id === selectedConversation);
+                      if (event) handleBroadcastMessage(event);
+                    }}
+                  >
+                    <i className="fas fa-bullhorn mr-1"></i>
+                    Diffuser
+                  </Button>
                 </div>
               </div>
 
@@ -245,6 +283,12 @@ export default function Messages() {
           )}
         </div>
       </Card>
+      
+      <BroadcastMessageModal
+        isOpen={showBroadcastModal}
+        onClose={() => setShowBroadcastModal(false)}
+        event={selectedEvent}
+      />
     </div>
   );
 }

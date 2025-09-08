@@ -743,6 +743,160 @@ class EmailServiceEnhanced {
     
     return report;
   }
+
+  // Broadcast message to all participants
+  async sendBroadcastMessage(
+    participantEmail: string,
+    participantName: string,
+    eventName: string,
+    organizationName: string,
+    messageContent: string,
+    organizerName: string,
+    eventId: string
+  ): Promise<boolean> {
+    if (!this.isConfigured) {
+      console.error('❌ EmailService not configured for broadcast message');
+      return false;
+    }
+
+    try {
+      const replyUrl = `${this.appUrl}/events/${eventId}#reply`;
+      
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Message de l'organisateur - ${eventName}</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+            .message-box { background: white; padding: 20px; border-left: 4px solid #667eea; margin: 20px 0; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+            .event-info { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            .cta-button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📢 Message de l'organisateur</h1>
+              <p>Nouveau message concernant votre événement</p>
+            </div>
+            
+            <div class="content">
+              <p>Bonjour <strong>${participantName}</strong>,</p>
+              
+              <p>Vous avez reçu un nouveau message de <strong>${organizerName}</strong> concernant l'événement :</p>
+              
+              <div class="event-info">
+                <h3>🏃 ${eventName}</h3>
+                <p><strong>Organisation:</strong> ${organizationName}</p>
+              </div>
+
+              <div class="message-box">
+                <h4>💬 Message :</h4>
+                <p>${messageContent.replace(/\n/g, '<br>')}</p>
+                <p><em>— ${organizerName}, ${organizationName}</em></p>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${replyUrl}" class="cta-button">
+                  ↩️ Répondre au message
+                </a>
+              </div>
+
+              <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p><strong>💡 Comment répondre :</strong></p>
+                <p>Cliquez sur le bouton "Répondre au message" ci-dessus pour accéder à l'interface de réponse. Votre réponse sera directement transmise à l'organisateur.</p>
+              </div>
+
+              <p>Si vous avez des questions, n'hésitez pas à contacter l'organisateur.</p>
+              
+              <p>Sportivement,<br><strong>L'équipe SportPool</strong></p>
+            </div>
+            
+            <div class="footer">
+              <p>Cet email a été envoyé par ${organizationName} via SportPool</p>
+              <p>Pour plus d'informations : <a href="${this.appUrl}">${this.appUrl}</a></p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const textContent = `
+Message de l'organisateur - ${eventName}
+
+Bonjour ${participantName},
+
+Vous avez reçu un nouveau message de ${organizerName} concernant l'événement "${eventName}" (${organizationName}).
+
+Message :
+${messageContent}
+
+— ${organizerName}, ${organizationName}
+
+Pour répondre à ce message, visitez : ${replyUrl}
+
+Sportivement,
+L'équipe SportPool
+
+${this.appUrl}
+      `;
+
+      const msg = {
+        to: participantEmail,
+        from: { email: this.fromEmail, name: this.fromName },
+        replyTo: { email: this.fromEmail, name: organizationName },
+        subject: `📢 Message de ${organizationName} - ${eventName}`,
+        text: textContent.trim(),
+        html: htmlContent,
+        trackingSettings: {
+          clickTracking: { enable: true },
+          openTracking: { enable: true },
+        },
+        categories: ['broadcast_message', 'event_communication'],
+      };
+
+      await sgMail.send(msg);
+      console.log(`✅ Broadcast message sent to ${participantEmail} for event ${eventName}`);
+      return true;
+
+    } catch (error) {
+      console.error(`❌ Failed to send broadcast message to ${participantEmail}:`, error);
+      return false;
+    }
+  }
+
+  // Send custom email (for contact form, etc.)
+  async sendCustomEmail(to: string, subject: string, text: string, html?: string): Promise<boolean> {
+    if (!this.isConfigured) {
+      console.error('❌ EmailService not configured for custom email');
+      return false;
+    }
+
+    try {
+      const msg = {
+        to,
+        from: { email: this.fromEmail, name: this.fromName },
+        subject,
+        text,
+        html: html || text.replace(/\n/g, '<br>'),
+      };
+
+      await sgMail.send(msg);
+      console.log(`✅ Custom email sent to ${to}`);
+      return true;
+
+    } catch (error) {
+      console.error(`❌ Failed to send custom email to ${to}:`, error);
+      return false;
+    }
+  }
 }
 
 export const emailServiceEnhanced = new EmailServiceEnhanced();

@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface Notification {
   id: string;
@@ -18,39 +19,13 @@ interface Notification {
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const { isAuthenticated } = useAuth();
-
-  // Mock notifications - in a real app, this would come from an API
-  const mockNotifications: Notification[] = [
-    {
-      id: "1",
-      type: "success",
-      title: "Nouveau participant",
-      message: "Marie Dubois s'est inscrite à votre événement 'Match de Tennis'",
-      read: false,
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-      actionUrl: "/dashboard?section=events"
-    },
-    {
-      id: "2",
-      type: "info",
-      title: "Rappel événement",
-      message: "N'oubliez pas d'envoyer les rappels pour l'événement de demain",
-      read: false,
-      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-      actionUrl: "/dashboard?section=events"
-    },
-    {
-      id: "3",
-      type: "warning",
-      title: "Places disponibles",
-      message: "Il ne reste plus que 2 places pour votre événement 'Course à pied'",
-      read: true,
-      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-      actionUrl: "/dashboard?section=events"
-    }
-  ];
-
-  const unreadCount = mockNotifications.filter(n => !n.read).length;
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead, 
+    removeNotification 
+  } = useNotifications();
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -127,19 +102,22 @@ export default function NotificationCenter() {
               </div>
 
               <div className="max-h-96 overflow-y-auto">
-                {mockNotifications.length === 0 ? (
+                {notifications.length === 0 ? (
                   <div className="p-8 text-center">
                     <i className="fas fa-bell-slash text-gray-400 text-3xl mb-3"></i>
                     <p className="text-gray-600">Aucune notification</p>
                   </div>
                 ) : (
-                  mockNotifications.map((notification) => (
+                  notifications.map((notification) => (
                     <div
                       key={notification.id}
                       className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
                         !notification.read ? "bg-blue-50" : ""
                       }`}
                       onClick={() => {
+                        if (!notification.read) {
+                          markAsRead(notification.id);
+                        }
                         if (notification.actionUrl) {
                           window.location.href = notification.actionUrl;
                         }
@@ -171,15 +149,25 @@ export default function NotificationCenter() {
                 )}
               </div>
 
-              {mockNotifications.length > 0 && (
+              {notifications.length > 0 && (
                 <div className="p-3 bg-gray-50 border-t border-gray-200">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                  >
-                    Voir toutes les notifications
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      onClick={markAllAsRead}
+                    >
+                      Tout marquer lu
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      Voir toutes
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

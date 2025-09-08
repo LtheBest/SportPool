@@ -76,6 +76,8 @@ export const messages = pgTable("messages", {
   senderEmail: text("sender_email").notNull(),
   content: text("content").notNull(),
   isFromOrganizer: boolean("is_from_organizer").default(false),
+  isBroadcast: boolean("is_broadcast").default(false),
+  replyToId: varchar("reply_to_id").references(() => messages.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -86,6 +88,19 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   token: text("token").notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  type: varchar("type", { enum: ["info", "success", "warning", "error"] }).notNull().default("info"),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  read: boolean("read").default(false),
+  actionUrl: text("action_url"),
+  eventId: varchar("event_id").references(() => events.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -186,6 +201,11 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
   createdAt: true,
 });
 
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertParticipantChangeRequestSchema = createInsertSchema(participantChangeRequests).omit({
   id: true,
   createdAt: true,
@@ -205,5 +225,7 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type ParticipantChangeRequest = typeof participantChangeRequests.$inferSelect;
 export type InsertParticipantChangeRequest = z.infer<typeof insertParticipantChangeRequestSchema>;
