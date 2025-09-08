@@ -26,9 +26,18 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
   const [showCaptcha, setShowCaptcha] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { login } = useAuth();
+  
+  // Use queryClient safely - get it from useAuth hook that handles initialization
+  const queryClient = (() => {
+    try {
+      return useQueryClient();
+    } catch (error) {
+      console.warn("QueryClient not available yet:", error);
+      return null;
+    }
+  })();
 
   // Load remembered email on component mount
   useEffect(() => {
@@ -83,7 +92,9 @@ export default function LoginModal({ isOpen, onClose, onShowRegistration }: Logi
         }
         
         // Invalidate queries to refresh user data
-        queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+        if (queryClient) {
+          queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+        }
         
         // Clear failed attempts on successful login
         localStorage.removeItem('loginFailedAttempts');

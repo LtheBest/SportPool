@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useStats } from "@/contexts/StatsContext";
 import type { Event } from "@shared/schema";
 import { useEffect } from "react";
 
@@ -17,14 +18,8 @@ interface DashboardStats {
 export default function Overview() {
   const { organization } = useAuth();
   
-  // Use realtime stats endpoint for auto-updates
-  const { data: stats, refetch: refetchStats, error: statsError } = useQuery<DashboardStats>({
-    queryKey: ["/api/dashboard/stats"],
-    refetchInterval: 30000, // Refetch every 30 seconds
-    refetchOnWindowFocus: true,
-    retry: 2,
-    staleTime: 1000 * 60 * 2, // 2 minutes
-  });
+  // Use the real-time stats context
+  const { stats, isLoading: statsLoading, error: statsError, refreshStats } = useStats();
 
   const { data: events = [], refetch: refetchEvents } = useQuery<Event[]>({
     queryKey: ["/api/events"],
@@ -33,15 +28,15 @@ export default function Overview() {
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 
-  // Auto-refresh stats when component mounts
+  // Auto-refresh stats when component mounts - now handled by StatsContext
   useEffect(() => {
     const interval = setInterval(() => {
-      refetchStats();
+      refreshStats();
       refetchEvents();
     }, 15000); // Refetch every 15 seconds
 
     return () => clearInterval(interval);
-  }, [refetchStats, refetchEvents]);
+  }, [refreshStats, refetchEvents]);
   
   // Debug des erreurs
   useEffect(() => {

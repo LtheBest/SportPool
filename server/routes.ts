@@ -1700,6 +1700,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notifications API
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const notifications = await storage.getNotificationsByOrganization(authReq.user.organizationId);
+      res.json(notifications || []);
+    } catch (error) {
+      console.error("Get notifications error:", error);
+      res.status(500).json({ message: "Failed to get notifications" });
+    }
+  });
+
+  app.put("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      await storage.markNotificationAsRead(req.params.id, authReq.user.organizationId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Mark notification as read error:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.put("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      await storage.markAllNotificationsAsRead(authReq.user.organizationId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Mark all notifications as read error:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      await storage.deleteNotification(req.params.id, authReq.user.organizationId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete notification error:", error);
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  // Broadcast messaging API
+  app.post("/api/events/:id/broadcast", requireAuth, async (req, res) => {
+    try {
+      const { message } = req.body;
+      
+      if (!message || !message.trim()) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      const authReq = req as AuthenticatedRequest;
+      const event = await storage.getEvent(req.params.id);
+      
+      if (!event || event.organizationId !== authReq.user.organizationId) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      const organization = await storage.getOrganization(event.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Get all event participants
+      const participants = await storage.getEventParticipants(event.id);
+      const emailPromises = [];
+
+      // Send email to all participants
+      for (const participant of participants) {
+        const emailPromise = emailService.sendBroadcastMessage(
+          participant.email,
+          participant.name,
+          event.name,
+          organization.name,
+          message,
+          `${organization.contactFirstName} ${organization.contactLastName}`,
+          event.id
+        );
+        emailPromises.push(emailPromise);
+      }
+
+      // Send emails in parallel
+      await Promise.all(emailPromises);
+
+      // Store the broadcast message in database
+      await storage.createMessage({
+        eventId: event.id,
+        content: message,
+        senderName: organization.name,
+        senderEmail: organization.email,
+        isFromOrganizer: true,
+        isBroadcast: true,
+      });
+
+      res.json({ 
+        message: "Broadcast message sent successfully",
+        recipientCount: participants.length 
+      });
+    } catch (error) {
+      console.error("Broadcast message error:", error);
+      res.status(500).json({ message: "Failed to send broadcast message" });
+    }
+  });
+
   // Contact form endpoint (public)
   app.post("/api/contact", async (req, res) => {
     try {
