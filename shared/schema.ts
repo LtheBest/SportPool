@@ -100,6 +100,8 @@ export const emailReplyTokens = pgTable("email_reply_tokens", {
   participantName: text("participant_name").notNull(),
   organizerEmail: text("organizer_email").notNull(),
   organizerName: text("organizer_name").notNull(),
+  originalMessage: text("original_message"),
+  originalMessageId: varchar("original_message_id").references(() => messages.id),
   isActive: boolean("is_active").default(true),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),

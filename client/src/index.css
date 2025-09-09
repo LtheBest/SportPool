@@ -62,6 +62,14 @@
   --border: hsl(210 5.2632% 14.9020%);
   --input: hsl(207.6923 27.6596% 18.4314%);
   --ring: hsl(217 91% 60%);
+  --sidebar: hsl(228 9.8039% 10%);
+  --sidebar-foreground: hsl(0 0% 85.0980%);
+  --sidebar-primary: hsl(217 91% 60%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(210 5.2632% 14.9020%);
+  --sidebar-accent-foreground: hsl(217 91% 60%);
+  --sidebar-border: hsl(210 5.2632% 14.9020%);
+  --sidebar-ring: hsl(217 91% 60%);
 }
 
 @layer base {

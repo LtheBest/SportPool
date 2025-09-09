@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { StatsProvider } from "@/contexts/StatsContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import Admin from "@/pages/admin";
@@ -14,12 +15,13 @@ import Invitation from "@/pages/invitation";
 import ResetPassword from "@/pages/reset-password";
 import EventPublic from "@/pages/event-public";
 import NotFound from "@/pages/not-found";
+import ReplyMessage from "@/pages/reply-message";
 import Cookies from "@/components/cookies/Cookies";
 import Chatbot from "./components/chatbot/Chatbot";
 import Footer from "./components/footer/Footer";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, organization } = useAuth();
 
   if (isLoading) {
     return (
@@ -31,12 +33,15 @@ function Router() {
 
   return (
     <Switch>
-      <Route path="/" component={isAuthenticated ? Dashboard : Home} />
+      <Route path="/" component={isAuthenticated ? 
+        (organization?.role === 'admin' ? Admin : Dashboard) 
+        : Home} />
       <Route path="/dashboard" component={isAuthenticated ? Dashboard : Home} />
       <Route path="/admin" component={isAuthenticated ? Admin : Home} />
       <Route path="/invitation/:token" component={Invitation} />
       <Route path="/events/:id" component={EventPublic} />
       <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/reply-message" component={ReplyMessage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -45,19 +50,21 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <NotificationProvider>
-          <StatsProvider>
-            <MessagingProvider>
-              <Toaster />
-              <Router />
-              <Chatbot />
-              <Footer />
-              <Cookies />
-            </MessagingProvider>
-          </StatsProvider>
-        </NotificationProvider>
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <NotificationProvider>
+            <StatsProvider>
+              <MessagingProvider>
+                <Toaster />
+                <Router />
+                <Chatbot />
+                <Footer />
+                <Cookies />
+              </MessagingProvider>
+            </StatsProvider>
+          </NotificationProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
