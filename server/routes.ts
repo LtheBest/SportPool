@@ -591,11 +591,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 📧 Envoi automatique des invitations par email
       try {
-        const inviteEmails = req.body.inviteEmails;
-        if (inviteEmails && Array.isArray(inviteEmails) && inviteEmails.length > 0) {
-          console.log(`📧 Envoi d'invitations à ${inviteEmails.length} adresses email pour l'événement ${event.id}`);
-          
-          // Envoi des invitations en parallèle
+        // Vérifier la configuration du service email d'abord
+        const emailConfig = await emailServiceEnhanced.testConfiguration();
+        console.log('📧 Email service configuration:', emailConfig);
+        
+        if (!emailConfig.canSendEmails) {
+          console.warn('⚠️ Email service not properly configured. Skipping automatic invitations.');
+          console.warn('Please check SENDGRID_API_KEY and SENDGRID_FROM_EMAIL environment variables.');
+        } else {
+          const inviteEmails = req.body.inviteEmails;
+          if (inviteEmails && Array.isArray(inviteEmails) && inviteEmails.length > 0) {
+            console.log(`📧 Envoi d'invitations à ${inviteEmails.length} adresses email pour l'événement ${event.id}`);
+            
+            // Envoi des invitations en parallèle
           const invitationPromises = inviteEmails.map(async (email: string) => {
             try {
               const invitationToken = randomUUID();
@@ -633,11 +641,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const invitationResults = await Promise.all(invitationPromises);
           const successCount = invitationResults.filter(r => r.success).length;
           
-          console.log(`📊 Invitations envoyées: ${successCount}/${inviteEmails.length}`);
-        }
+            console.log(`📊 Invitations envoyées: ${successCount}/${inviteEmails.length}`);
+          } else {
+            console.log('📧 Aucun email d\'invitation spécifique fourni lors de la création');
+          }
         
-        // 📧 Récupération des participants des événements précédents pour invitations
-        try {
+          // 📧 Récupération des participants des événements précédents pour invitations
+          try {
           const organizationEvents = await storage.getEventsByOrganization(authReq.user.organizationId);
           const allParticipantEmails = new Set<string>();
           
@@ -655,7 +665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          if (allParticipantEmails.size > 0) {
+          if (allParticipantEmails.size > 0 && emailConfig.canSendEmails) {
             console.log(`📧 Envoi d'invitations à ${allParticipantEmails.size} membres précédents`);
             
             const existingInvitationPromises = Array.from(allParticipantEmails).map(async (email) => {
@@ -685,9 +695,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const existingSuccessCount = existingResults.filter(r => r.success).length;
             
             console.log(`📊 Invitations membres: ${existingSuccessCount}/${allParticipantEmails.size}`);
+          } else if (allParticipantEmails.size > 0 && !emailConfig.canSendEmails) {
+            console.warn(`⚠️ ${allParticipantEmails.size} membres existants trouvés mais service email non configuré`);
           }
-        } catch (membersError) {
-          console.error('❌ Erreur lors de la récupération des membres existants:', membersError);
+          } catch (membersError) {
+            console.error('❌ Erreur lors de la récupération des membres existants:', membersError);
+          }
         }
       } catch (emailError) {
         console.error('❌ Erreur lors de l\'envoi des invitations:', emailError);
@@ -2058,25 +2071,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const participants = await storage.getEventParticipants(event.id);
       const emailPromises = [];
 
-      // Send email to all participants
-      for (const participant of participants) {
-        const emailPromise = emailService.sendBroadcastMessage(
-          participant.email,
-          participant.name,
-          event.name,
-          organization.name,
-          message,
-          `${organization.contactFirstName} ${organization.contactLastName}`,
-          event.id
-        );
-        emailPromises.push(emailPromise);
-      }
-
-      // Send emails in parallel
-      await Promise.all(emailPromises);
-
-      // Store the broadcast message in database
-      await storage.createMessage({
+      // Store the broadcast message in database first to get the ID
+      const broadcastMessage = await storage.createMessage({
         eventId: event.id,
         content: message,
         senderName: organization.name,
@@ -2084,6 +2080,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isFromOrganizer: true,
         isBroadcast: true,
       });
+
+      // Send email to all participants with reply tokens
+      for (const participant of participants) {
+        // Create unique reply token for this participant and message
+        const replyToken = randomUUID();
+        
+        await storage.createEmailReplyToken({
+          token: replyToken,
+          eventId: event.id,
+          participantEmail: participant.email,
+          participantName: participant.name,
+          organizerEmail: organization.email,
+          organizerName: `${organization.contactFirstName} ${organization.contactLastName}`,
+          originalMessage: message,
+          originalMessageId: broadcastMessage.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        });
+
+        const emailPromise = emailServiceEnhanced.sendBroadcastMessageWithReplyButton(
+          participant.email,
+          participant.name,
+          event.name,
+          organization.name,
+          message,
+          `${organization.contactFirstName} ${organization.contactLastName}`,
+          event.id,
+          replyToken
+        );
+        emailPromises.push(emailPromise);
+      }
+
+      // Send emails in parallel
+      await Promise.all(emailPromises);
 
       res.json({ 
         message: "Broadcast message sent successfully",
@@ -2133,6 +2162,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Contact form error:", error);
       res.status(500).json({ message: "Erreur lors de l'envoi du message" });
+    }
+  });
+
+  // Reply token routes for external messaging
+  // Get reply data from token
+  app.get("/api/reply-token/:token", async (req, res) => {
+    try {
+      const token = req.params.token;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token is required" });
+      }
+
+      const replyTokenData = await storage.getReplyTokenData(token);
+      
+      if (!replyTokenData) {
+        return res.status(404).json({ message: "Invalid or expired reply token" });
+      }
+
+      // Get event and organization data
+      const event = await storage.getEvent(replyTokenData.eventId);
+      const organization = await storage.getOrganization(event.organizationId);
+
+      res.json({
+        eventName: event.name,
+        organizerName: organization.name,
+        originalMessage: replyTokenData.originalMessage || "Message de l'organisateur",
+        messageDate: new Date(replyTokenData.createdAt).toLocaleDateString('fr-FR'),
+        participantName: replyTokenData.participantName,
+        participantEmail: replyTokenData.participantEmail,
+      });
+    } catch (error) {
+      console.error("Get reply token error:", error);
+      res.status(500).json({ message: "Failed to get reply token data" });
+    }
+  });
+
+  // Handle reply message submission
+  app.post("/api/reply-message/:token", async (req, res) => {
+    try {
+      const token = req.params.token;
+      const { content, participantName, participantEmail } = req.body;
+      
+      if (!token || !content || !participantName || !participantEmail) {
+        return res.status(400).json({ 
+          message: "Token, content, participantName, and participantEmail are required" 
+        });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(participantEmail)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      const replyTokenData = await storage.getReplyTokenData(token);
+      
+      if (!replyTokenData) {
+        return res.status(404).json({ message: "Invalid or expired reply token" });
+      }
+
+      // Store the reply message
+      const messageData = {
+        eventId: replyTokenData.eventId,
+        content: content.trim(),
+        senderName: participantName.trim(),
+        senderEmail: participantEmail.trim(),
+        isFromOrganizer: false,
+        isBroadcast: false,
+        replyToId: replyTokenData.originalMessageId,
+      };
+
+      const replyMessage = await storage.createMessage(messageData);
+
+      // Get event and organization data for notification
+      const event = await storage.getEvent(replyTokenData.eventId);
+      const organization = await storage.getOrganization(event.organizationId);
+
+      // Send notification to organizer
+      if (organization) {
+        try {
+          await emailServiceEnhanced.sendReplyNotificationToOrganizer(
+            organization.email,
+            `${organization.contactFirstName} ${organization.contactLastName}`,
+            participantName,
+            content,
+            event.name
+          );
+          console.log(`✅ Notification envoyée à l'organisateur ${organization.email}`);
+        } catch (emailError) {
+          console.error("Failed to send reply notification to organizer:", emailError);
+        }
+      }
+
+      // Mark reply token as used (optional, depending on your business logic)
+      await storage.markReplyTokenAsUsed(token);
+
+      res.json({ 
+        message: "Reply sent successfully", 
+        replyId: replyMessage.id 
+      });
+    } catch (error) {
+      console.error("Handle reply message error:", error);
+      res.status(500).json({ message: "Failed to process reply" });
     }
   });
 

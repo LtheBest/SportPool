@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Menu, X } from "lucide-react";
 import NotificationCenter from "@/components/ui/notification-center";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -25,7 +26,7 @@ export default function Navbar({
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-background shadow-sm border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -33,17 +34,17 @@ export default function Navbar({
             <div className="flex-shrink-0">
               <div className="flex items-center space-x-2">
                 <i className="fas fa-car text-primary text-2xl"></i>
-                <span className="text-xl font-bold text-gray-900">TEAM MOVE</span>
+                <span className="text-xl font-bold text-foreground">TEAM MOVE</span>
               </div>
             </div>
             
             {/* Desktop Navigation Links - Only when not authenticated */}
             {!isAuthenticated && (
               <div className="hidden md:flex items-center ml-8 space-x-6">
-                <a href="#features" className="text-gray-600 hover:text-primary transition-colors font-medium">
+                <a href="#features" className="text-muted-foreground hover:text-primary transition-colors font-medium">
                   Fonctionnalités
                 </a>
-                <a href="#how-it-works" className="text-gray-600 hover:text-primary transition-colors font-medium">
+                <a href="#how-it-works" className="text-muted-foreground hover:text-primary transition-colors font-medium">
                   Comment ça marche
                 </a>
                 {/* <a href="#pricing" className="text-gray-600 hover:text-primary transition-colors font-medium">
@@ -61,6 +62,7 @@ export default function Navbar({
             {isAuthenticated && organization ? (
               <>
                 <NotificationCenter />
+                <ThemeToggle />
                 <div className="flex items-center space-x-2">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={organization.logoUrl} alt={organization.name} />
@@ -68,13 +70,13 @@ export default function Navbar({
                       {organization.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="font-medium text-gray-900 max-w-32 truncate">{organization.name}</span>
+                  <span className="font-medium text-foreground max-w-32 truncate">{organization.name}</span>
                 </div>
                 <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={onLogout}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-muted-foreground hover:text-foreground"
                   title="Se déconnecter"
                 >
                   <i className="fas fa-sign-out-alt"></i>
@@ -82,10 +84,11 @@ export default function Navbar({
               </>
             ) : (
               <>
+                <ThemeToggle />
                 <Button 
                   variant="outline"
                   onClick={onShowLogin}
-                  className="border-gray-300 text-gray-600 hover:text-primary hover:border-primary"
+                  className="border-border text-muted-foreground hover:text-primary hover:border-primary"
                 >
                   Se connecter
                 </Button>

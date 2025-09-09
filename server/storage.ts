@@ -97,6 +97,8 @@ export interface IStorage {
   createEmailReplyToken(token: InsertEmailReplyToken): Promise<EmailReplyToken>;
   getEmailReplyToken(token: string): Promise<EmailReplyToken | undefined>;
   deactivateEmailReplyToken(token: string): Promise<void>;
+  getReplyTokenData(token: string): Promise<any>;
+  markReplyTokenAsUsed(token: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -431,6 +433,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deactivateEmailReplyToken(token: string): Promise<void> {
+    await db
+      .update(emailReplyTokens)
+      .set({ isActive: false })
+      .where(eq(emailReplyTokens.token, token));
+  }
+
+  async getReplyTokenData(token: string): Promise<any> {
+    const replyToken = await this.getEmailReplyToken(token);
+    if (!replyToken) return null;
+    
+    return {
+      eventId: replyToken.eventId,
+      participantName: replyToken.participantName,
+      participantEmail: replyToken.participantEmail,
+      originalMessage: replyToken.originalMessage,
+      originalMessageId: replyToken.originalMessageId,
+      createdAt: replyToken.createdAt,
+    };
+  }
+
+  async markReplyTokenAsUsed(token: string): Promise<void> {
     await db
       .update(emailReplyTokens)
       .set({ isActive: false })
