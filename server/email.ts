@@ -557,9 +557,9 @@ class EmailService {
     
     return `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//CovoitSport//FR
+PRODID:-//TEAM MOVE//FR
 BEGIN:VEVENT
-UID:${Date.now()}@covoitsport.fr
+UID:${Date.now()}@teammove.fr
 DTSTAMP:${formatDate(new Date())}
 DTSTART:${startDate}
 DTEND:${endDate}
@@ -631,7 +631,7 @@ END:VCALENDAR`;
               
               
               <div class="footer">
-                <p>🚗 <strong>CovoitSport</strong> - Plateforme de covoiturage sportif</p>
+                <p>🚗 <strong>TEAM MOVE</strong> - Plateforme de covoiturage sportif</p>
                 <p>Pour vous désabonner de ces notifications, <a href="${eventLink}/unsubscribe?email=${encodeURIComponent(participantEmail)}">cliquez ici</a></p>
               </div>
             </div>
@@ -657,7 +657,7 @@ END:VCALENDAR`;
       ${eventLink}
       
       ---
-      CovoitSport - Plateforme de covoiturage sportif
+      TEAM MOVE - Plateforme de covoiturage sportif
       `;
 
       const success = await this.sendEmail({

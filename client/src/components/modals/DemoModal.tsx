@@ -30,10 +30,9 @@ export default function DemoModal({ isOpen, onClose }: DemoModalProps) {
             <div className="text-center text-white z-10">
               <div className="mb-4">
                 <i className="fas fa-car text-6xl opacity-60 mb-4"></i>
-                <h3 className="text-2xl font-bold mb-2">CovoitSport en action</h3>
+                <h3 className="text-2xl font-bold mb-2">TEAM MOVE en action</h3>
                 <p className="text-white/80 max-w-md mx-auto">
-                  Découvrez comment notre plateforme simplifie l'organisation 
-                  de covoiturages pour vos événements sportifs
+                  A venir : une vidéo de démonstration de 3 minutes montrant les principales fonctionnalités de la plateforme.
                 </p>
               </div>
               
@@ -60,7 +59,7 @@ export default function DemoModal({ isOpen, onClose }: DemoModalProps) {
         </div>
 
         <p className="text-gray-600 text-center">
-          Découvrez comment CovoitSport simplifie l'organisation de vos covoiturages sportifs en 3 minutes.
+          Découvrez comment TEAM MOVE simplifie l'organisation de vos covoiturages sportifs en 3 minutes.
         </p>
 
         {/* Demo features list */}

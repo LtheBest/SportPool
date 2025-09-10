@@ -41,7 +41,6 @@ export default function Footer() {
         {/* Section principale - centrée sur mobile */}
         <div className="text-center md:text-left">
           <h4 className="font-semibold text-lg text-gray-900">🏆 Team Move </h4>
-          <p className="text-sm text-gray-600 mt-2">Plateforme moderne de covoiturage pour événements sportifs.</p>
           <div className="flex justify-center md:justify-start mt-4 space-x-4">
             <a href="#" className="text-gray-400 hover:text-blue-600 transition-colors">
               <i className="fab fa-facebook-f text-lg"></i>
@@ -78,7 +77,7 @@ export default function Footer() {
           </p>
           <p className="text-sm text-gray-600 mb-4">
             <i className="fas fa-phone mr-2"></i>
-            +33 1 23 45 67 89
+            +33 7 56 83 23 13
           </p>
           
           <div className="max-w-sm mx-auto md:mx-0">

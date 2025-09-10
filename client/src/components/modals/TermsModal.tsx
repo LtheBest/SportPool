@@ -17,14 +17,14 @@ export default function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
         <h3 className="text-lg font-semibold mb-3">1. Objet</h3>
         <p className="text-gray-600">
           Les présentes conditions générales d'utilisation (CGU) régissent l'utilisation de la plateforme 
-          CovoitSport, une application de covoiturage dédiée aux événements sportifs.
+          TEAM MOVE, une application de covoiturage dédiée aux événements sportifs.
         </p>
       </section>
 
       <section>
         <h3 className="text-lg font-semibold mb-3">2. Définitions</h3>
         <ul className="space-y-2 text-gray-600">
-          <li><strong>Plateforme :</strong> L'application web CovoitSport accessible via navigateur</li>
+          <li><strong>Plateforme :</strong> L'application web TEAM MOVE accessible via navigateur</li>
           <li><strong>Utilisateur :</strong> Toute personne physique ou morale utilisant la plateforme</li>
           <li><strong>Organisation :</strong> Club, association ou entreprise créant des événements</li>
           <li><strong>Événement :</strong> Activité sportive organisée via la plateforme</li>
@@ -69,7 +69,7 @@ export default function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
             de la véracité des informations communiquées et du respect de la réglementation en vigueur.
           </p>
           <p>
-            <strong>CovoitSport :</strong> fournit uniquement les outils techniques permettant l'organisation. 
+            <strong>TEAM MOVE :</strong> fournit uniquement les outils techniques permettant l'organisation. 
             La plateforme ne saurait être tenue responsable des incidents lors des trajets ou événements.
           </p>
         </div>
@@ -94,7 +94,7 @@ export default function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
       <section>
         <h3 className="text-lg font-semibold mb-3">8. Modification des CGU</h3>
         <p className="text-gray-600">
-          CovoitSport se réserve le droit de modifier les présentes CGU. Les utilisateurs seront 
+          TEAM MOVE se réserve le droit de modifier les présentes CGU. Les utilisateurs seront 
           informés des modifications par email ou via la plateforme.
         </p>
       </section>
@@ -167,7 +167,7 @@ export default function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
             <li>Droit d'opposition</li>
           </ul>
           <p className="mt-2">
-            Pour exercer ces droits, contactez-nous à : <strong>privacy@covoitsport.fr</strong>
+            Pour exercer ces droits, contactez-nous à : <strong>privacy@teammove.fr</strong>
           </p>
         </div>
       </section>
@@ -198,7 +198,7 @@ export default function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
 
       <section className="bg-gray-50 p-4 rounded-lg">
         <p className="text-sm text-gray-500">
-          <strong>Contact DPO :</strong> privacy@covoitsport.fr<br/>
+          <strong>Contact DPO :</strong> privacy@teammove.fr<br/>
           <strong>Dernière mise à jour :</strong> {new Date().toLocaleDateString('fr-FR')}
         </p>
       </section>
