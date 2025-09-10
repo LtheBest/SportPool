@@ -23,12 +23,14 @@ interface Organization {
 }
 
 const AVAILABLE_FEATURES = [
-  { id: "messaging", name: "Messagerie avancée", description: "Communication avec participants" },
-  { id: "analytics", name: "Analytics", description: "Statistiques détaillées" },
+  { id: "messaging", name: "Messagerie avancée", description: "Communication avec participants et notifications" },
+  { id: "analytics", name: "Analytics", description: "Statistiques détaillées et rapports avancés" },
   { id: "custom_branding", name: "Personnalisation", description: "Logo et couleurs personnalisés" },
-  { id: "bulk_invite", name: "Invitations en masse", description: "Inviter plusieurs participants" },
-  { id: "event_templates", name: "Modèles d'événements", description: "Réutiliser des configurations" },
-  { id: "priority_support", name: "Support prioritaire", description: "Assistance dédiée" },
+  { id: "bulk_invite", name: "Invitations en masse", description: "Inviter plusieurs participants simultanément" },
+  { id: "event_templates", name: "Modèles d'événements", description: "Réutiliser des configurations d'événements" },
+  { id: "priority_support", name: "Support prioritaire", description: "Assistance dédiée et réponse rapide" },
+  { id: "csv_import", name: "Import CSV/Excel", description: "Importer des listes d'emails depuis des fichiers" },
+  { id: "advanced_stats", name: "Statistiques avancées", description: "Analyses poussées et tableaux de bord détaillés" },
 ];
 
 export default function OrganizationsManagement() {

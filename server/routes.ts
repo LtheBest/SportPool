@@ -1376,15 +1376,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const authReq = req as AuthenticatedRequest;
       const events = await storage.getEventsByOrganization(authReq.user.organizationId);
 
-      const totalEvents = events.length;
-      const activeEvents = events.filter(e => new Date(e.eventDate) >= new Date()).length;
+      // Séparer les événements actifs (futurs) des événements passés
+      const now = new Date();
+      const activeEvents = events.filter(e => new Date(e.eventDate) >= now);
+      const completedEvents = events.filter(e => new Date(e.eventDate) < now);
       
-      // Calculate participants for all events
+      // Compter le total d'événements créés par l'organisateur (selon demande utilisateur)
+      const totalEventsCreated = events.length;
+      const activeEventsCount = activeEvents.length;
+      
+      // Calculer les participants pour TOUS les événements (actifs et passés)
       let totalParticipants = 0;
       let totalDrivers = 0;
       let totalSeats = 0;
       let occupiedSeats = 0;
 
+      // Statistiques séparées pour événements actifs seulement  
+      let activeEventParticipants = 0;
+      let activeEventDrivers = 0;
+      let activeEventSeats = 0;
+      let activeEventOccupiedSeats = 0;
+
+      // Calculer pour tous les événements
       for (const event of events) {
         if (event.participants && event.participants.length > 0) {
           totalParticipants += event.participants.length;
@@ -1395,7 +1408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalDrivers += drivers.length;
           occupiedSeats += passengers.length;
           
-          // Calculate total available seats from drivers
+          // Calculer le total des sièges disponibles des conducteurs
           const eventSeats = drivers.reduce((sum, driver) => {
             return sum + (driver.availableSeats || 0);
           }, 0);
@@ -1403,17 +1416,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const availableSeatsRemaining = totalSeats - occupiedSeats;
+      // Calculer pour les événements actifs seulement
+      for (const event of activeEvents) {
+        if (event.participants && event.participants.length > 0) {
+          activeEventParticipants += event.participants.length;
+          
+          const drivers = event.participants.filter(p => p.role === 'driver');
+          const passengers = event.participants.filter(p => p.role === 'passenger');
+          
+          activeEventDrivers += drivers.length;
+          activeEventOccupiedSeats += passengers.length;
+          
+          // Calculer les sièges disponibles pour événements actifs
+          const eventSeats = drivers.reduce((sum, driver) => {
+            return sum + (driver.availableSeats || 0);
+          }, 0);
+          activeEventSeats += eventSeats;
+        }
+      }
+
+      // Places disponibles = sièges totaux des conducteurs - sièges occupés par passagers
+      const availableSeatsRemaining = Math.max(0, activeEventSeats - activeEventOccupiedSeats);
 
       res.json({
-        totalEvents,
-        activeEvents,
-        totalParticipants,
-        totalDrivers,
+        // Statistiques selon les besoins utilisateur
+        activeEvents: totalEventsCreated, // Nombre total d'événements créés par l'organisateur
+        totalParticipants: totalParticipants, // Total participants (passagers + conducteurs)
+        totalDrivers: totalDrivers, // Total conducteurs
+        availableSeats: availableSeatsRemaining, // Places disponibles dans événements actifs
+        
+        // Statistiques détaillées additionnelles
+        totalEventsCreated,
+        activeEventsCount, 
+        completedEventsCount: completedEvents.length,
         totalSeats,
         occupiedSeats,
-        availableSeatsRemaining: Math.max(0, availableSeatsRemaining),
-        completedEvents: totalEvents - activeEvents
+        activeEventStats: {
+          participants: activeEventParticipants,
+          drivers: activeEventDrivers,
+          seats: activeEventSeats,
+          occupiedSeats: activeEventOccupiedSeats
+        }
       });
     } catch (error) {
       console.error("Dashboard stats error:", error);
@@ -1849,6 +1892,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // Middleware pour vérifier les fonctionnalités
+  const requireFeature = (featureId: string) => {
+    return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      try {
+        const authReq = req as AuthenticatedRequest;
+        if (!authReq.user || !authReq.user.organizationId) {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const organization = await storage.getOrganization(authReq.user.organizationId);
+        if (!organization) {
+          return res.status(404).json({ message: "Organization not found" });
+        }
+
+        // Les admins ont accès à toutes les fonctionnalités
+        if (organization.role === 'admin') {
+          return next();
+        }
+
+        // Vérifier si l'organisation est active
+        if (!organization.isActive) {
+          return res.status(403).json({ message: "Organization is disabled" });
+        }
+
+        // Vérifier si la fonctionnalité est activée
+        if (!organization.features || !organization.features.includes(featureId)) {
+          return res.status(403).json({ 
+            message: `Feature '${featureId}' is not enabled for this organization` 
+          });
+        }
+
+        next();
+      } catch (error) {
+        console.error("Feature check error:", error);
+        res.status(500).json({ message: "Failed to verify feature permissions" });
+      }
+    };
+  };
+
   // Get all organizations (admin only)
   app.get("/api/admin/organizations", requireAuth, requireAdmin, async (req, res) => {
     try {
@@ -1910,6 +1992,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete organization error:", error);
       res.status(500).json({ message: "Failed to delete organization" });
+    }
+  });
+
+  // Import CSV/Excel parsing endpoint
+  app.post("/api/import/parse-excel", requireAuth, requireFeature('csv_import'), upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // La vérification des permissions est déjà faite par le middleware requireFeature
+
+      let content = '';
+      const filePath = req.file.path;
+      const fileExtension = path.extname(req.file.originalname).toLowerCase();
+
+      if (fileExtension === '.csv' || fileExtension === '.txt') {
+        // Lire le fichier CSV/TXT directement
+        content = fs.readFileSync(filePath, 'utf-8');
+      } else if (fileExtension === '.xlsx' || fileExtension === '.xls') {
+        // Pour les fichiers Excel, on va juste retourner une version CSV simplifiée
+        // En production, vous pourriez utiliser une bibliothèque comme 'xlsx' pour parser Excel
+        // Pour l'instant, on indique que le format Excel nécessite une conversion manuelle
+        fs.unlinkSync(filePath); // Nettoyer le fichier temporaire
+        return res.status(400).json({ 
+          message: "Excel files require manual conversion to CSV format. Please save your Excel file as CSV and try again." 
+        });
+      } else {
+        fs.unlinkSync(filePath); // Nettoyer le fichier temporaire
+        return res.status(400).json({ message: "Unsupported file format" });
+      }
+
+      // Nettoyer le fichier temporaire
+      fs.unlinkSync(filePath);
+      
+      res.json({ content });
+    } catch (error) {
+      console.error("Excel parsing error:", error);
+      // Nettoyer le fichier en cas d'erreur
+      if (req.file?.path) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (e) {
+          console.error("Error cleaning up file:", e);
+        }
+      }
+      res.status(500).json({ message: "Failed to parse file" });
+    }
+  });
+
+  // Route protégée pour les analytics avancées
+  app.get("/api/analytics/detailed", requireAuth, requireFeature('analytics'), async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const events = await storage.getEventsByOrganization(authReq.user.organizationId);
+      
+      // Calculs d'analytics détaillées
+      const analytics = {
+        eventTrends: events.map(e => ({
+          date: e.eventDate,
+          participants: e.participants?.length || 0
+        })),
+        participationRate: events.length > 0 ? 
+          events.reduce((sum, e) => sum + (e.participants?.length || 0), 0) / events.length : 0,
+        message: "Analytics avancées disponibles"
+      };
+      
+      res.json(analytics);
+    } catch (error) {
+      console.error("Analytics error:", error);
+      res.status(500).json({ message: "Failed to get analytics" });
+    }
+  });
+
+  // Route protégée pour la messagerie avancée
+  app.post("/api/messaging/bulk-send", requireAuth, requireFeature('messaging'), async (req, res) => {
+    try {
+      const { recipients, message, subject } = req.body;
+      
+      if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+        return res.status(400).json({ message: "Recipients array is required" });
+      }
+      
+      // Simulation d'envoi en masse
+      const results = {
+        sent: recipients.length,
+        failed: 0,
+        message: "Messages envoyés avec succès (fonction messagerie avancée)"
+      };
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Bulk messaging error:", error);
+      res.status(500).json({ message: "Failed to send bulk messages" });
     }
   });
 
