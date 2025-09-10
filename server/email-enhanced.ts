@@ -1008,31 +1008,7 @@ ${this.appUrl}
     }
   }
 
-  // Send custom email (for contact form, etc.)
-  async sendCustomEmail(to: string, subject: string, text: string, html?: string): Promise<boolean> {
-    if (!this.isConfigured) {
-      console.error('❌ EmailService not configured for custom email');
-      return false;
-    }
 
-    try {
-      const msg = {
-        to,
-        from: { email: this.fromEmail, name: this.fromName },
-        subject,
-        text,
-        html: html || text.replace(/\n/g, '<br>'),
-      };
-
-      await sgMail.send(msg);
-      console.log(`✅ Custom email sent to ${to}`);
-      return true;
-
-    } catch (error) {
-      console.error(`❌ Failed to send custom email to ${to}:`, error);
-      return false;
-    }
-  }
 }
 
 export const emailServiceEnhanced = new EmailServiceEnhanced();
