@@ -560,6 +560,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authReq = req as AuthenticatedRequest;
 
+      // Vérifier les limites d'abonnement avant de créer l'événement
+      const eventPermission = await canCreateEvent(authReq.user.organizationId);
+      if (!eventPermission.allowed) {
+        return res.status(403).json({
+          message: eventPermission.reason,
+          type: "subscription_limit"
+        });
+      }
+
       // Transformation de la date string en Date
       const inputData = {
         ...req.body,
@@ -577,17 +586,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Organization not found" });
       }
 
-      // Check event limit based on plan
-      if (organization.planType === 'basic') {
-        const existingEvents = await storage.getEventsByOrganization(authReq.user.organizationId);
-        if (existingEvents.length >= 5) {
-          return res.status(403).json({
-            message: "Event limit reached for basic plan. Upgrade to create more events."
-          });
-        }
-      }
-
       const event = await storage.createEvent(data);
+      
+      // Incrémenter le compteur d'événements créés
+      await incrementEventCount(authReq.user.organizationId);
+      
+      // Créer une notification de succès
+      await createNotification({
+        organizationId: authReq.user.organizationId,
+        ...NotificationTemplates.EVENT_CREATED(event.name),
+      });
       
       // 📧 Envoi automatique des invitations par email
       try {
@@ -601,6 +609,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           const inviteEmails = req.body.inviteEmails;
           if (inviteEmails && Array.isArray(inviteEmails) && inviteEmails.length > 0) {
+            // Vérifier les limites d'invitations pour le lot
+            const invitationPermission = await canSendInvitations(authReq.user.organizationId, inviteEmails.length);
+            if (!invitationPermission.allowed) {
+              console.warn(`⚠️ Limite d'invitations atteinte: ${invitationPermission.reason}`);
+              // Ne pas faire échouer la création de l'événement, mais limiter les invitations
+              const maxAllowed = invitationPermission.remainingInvitations || 0;
+              if (maxAllowed > 0) {
+                inviteEmails.splice(maxAllowed); // Réduire la liste aux invitations possibles
+                console.log(`📧 Réduction des invitations à ${maxAllowed} (limite atteinte)`);
+              } else {
+                console.log('📧 Aucune invitation envoyée (limite atteinte)');
+                // Continuer sans envoyer d'invitations
+                return res.json({ 
+                  event, 
+                  message: "Event created successfully, but invitation limit reached. Upgrade to send more invitations.",
+                  invitationLimitReached: true
+                });
+              }
+            }
+            
             console.log(`📧 Envoi d'invitations à ${inviteEmails.length} adresses email pour l'événement ${event.id}`);
             
             // Envoi des invitations en parallèle
@@ -641,7 +669,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const invitationResults = await Promise.all(invitationPromises);
           const successCount = invitationResults.filter(r => r.success).length;
           
-            console.log(`📊 Invitations envoyées: ${successCount}/${inviteEmails.length}`);
+          // Incrémenter le compteur d'invitations pour les envois réussis
+          if (successCount > 0) {
+            await incrementInvitationCount(authReq.user.organizationId, successCount);
+          }
+          
+          console.log(`📊 Invitations envoyées: ${successCount}/${inviteEmails.length}`);
           } else {
             console.log('📧 Aucun email d\'invitation spécifique fourni lors de la création');
           }
@@ -953,6 +986,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const authReq = req as AuthenticatedRequest;
+      
+      // Vérifier les limites d'invitations avant d'envoyer
+      const invitationPermission = await canSendInvitations(authReq.user.organizationId, 1);
+      if (!invitationPermission.allowed) {
+        return res.status(403).json({
+          message: invitationPermission.reason,
+          type: "subscription_limit",
+          remainingInvitations: invitationPermission.remainingInvitations
+        });
+      }
+
       const event = await storage.getEvent(req.params.id);
       if (!event || event.organizationId !== authReq.user.organizationId) {
         return res.status(404).json({ message: "Event not found" });
@@ -987,6 +1031,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: email.trim(),
             token,
           });
+          
+          // Incrémenter le compteur d'invitations envoyées
+          await incrementInvitationCount(authReq.user.organizationId, 1);
         } catch (error) {
           console.error(`Failed to create invitation record for ${email}:`, error);
         }
@@ -2481,6 +2528,458 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Sitemap generation error:", error);
       res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // ========== SUBSCRIPTION & BILLING ROUTES ==========
+  // Import subscription services
+  const { 
+    canCreateEvent, 
+    canSendInvitations, 
+    incrementEventCount, 
+    incrementInvitationCount,
+    createStripeSubscription,
+    upgradeSubscription,
+    cancelSubscription,
+    createStripeCustomer,
+    initializeSubscriptionPlans,
+    SUBSCRIPTION_LIMITS
+  } = await import('./stripe');
+  
+  // Import theme services
+  const { 
+    getUserPreferences, 
+    updateUserPreferences, 
+    resetUserPreferences 
+  } = await import('./theme');
+  
+  // Import notification services
+  const { 
+    createNotification,
+    getOrganizationNotifications,
+    getUnreadNotifications,
+    getUnreadNotificationCount,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    deleteNotification,
+    createSystemNotification,
+    NotificationTemplates
+  } = await import('./notifications');
+  
+  // Import admin communication services
+  const {
+    createConversation,
+    sendMessage,
+    getOrganizationConversations,
+    getConversationMessages,
+    markMessagesAsRead,
+    closeConversation,
+    getAllConversationsForAdmin
+  } = await import('./admin-communication');
+
+  // Initialize subscription plans on startup
+  await initializeSubscriptionPlans();
+
+  // Get subscription info for an organization
+  app.get("/api/subscription/info", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organisation not found" });
+      }
+
+      const limits = SUBSCRIPTION_LIMITS[organization.subscriptionType];
+      
+      res.json({
+        subscriptionType: organization.subscriptionType,
+        subscriptionStatus: organization.subscriptionStatus,
+        paymentMethod: organization.paymentMethod,
+        subscriptionStartDate: organization.subscriptionStartDate,
+        subscriptionEndDate: organization.subscriptionEndDate,
+        eventCreatedCount: organization.eventCreatedCount || 0,
+        invitationsSentCount: organization.invitationsSentCount || 0,
+        limits: limits,
+        remainingEvents: limits.maxEvents ? Math.max(0, limits.maxEvents - (organization.eventCreatedCount || 0)) : null,
+        remainingInvitations: limits.maxInvitations ? Math.max(0, limits.maxInvitations - (organization.invitationsSentCount || 0)) : null,
+      });
+    } catch (error) {
+      console.error("Subscription info error:", error);
+      res.status(500).json({ message: "Failed to get subscription info" });
+    }
+  });
+
+  // Check if organization can create event
+  app.get("/api/subscription/can-create-event", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await canCreateEvent(req.user.organizationId);
+      res.json(result);
+    } catch (error) {
+      console.error("Can create event check error:", error);
+      res.status(500).json({ message: "Failed to check event creation permission" });
+    }
+  });
+
+  // Check if organization can send invitations
+  app.post("/api/subscription/can-send-invitations", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { count } = req.body;
+      if (!count || count <= 0) {
+        return res.status(400).json({ message: "Invalid invitation count" });
+      }
+      
+      const result = await canSendInvitations(req.user.organizationId, count);
+      res.json(result);
+    } catch (error) {
+      console.error("Can send invitations check error:", error);
+      res.status(500).json({ message: "Failed to check invitation permission" });
+    }
+  });
+
+  // Create Stripe customer
+  app.post("/api/subscription/create-customer", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const customer = await createStripeCustomer(req.user.organizationId);
+      res.json({ customerId: customer.id });
+    } catch (error) {
+      console.error("Create Stripe customer error:", error);
+      res.status(500).json({ message: "Failed to create Stripe customer" });
+    }
+  });
+
+  // Upgrade to Premium
+  app.post("/api/subscription/upgrade", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { billingInterval, paymentMethodId } = req.body;
+      
+      if (!billingInterval || !paymentMethodId) {
+        return res.status(400).json({ message: "Billing interval and payment method are required" });
+      }
+
+      if (!['monthly', 'annual'].includes(billingInterval)) {
+        return res.status(400).json({ message: "Invalid billing interval" });
+      }
+
+      const result = await upgradeSubscription({
+        organizationId: req.user.organizationId,
+        newPlanType: 'premium',
+        billingInterval,
+        paymentMethodId,
+      });
+
+      // Create notification
+      await createNotification({
+        organizationId: req.user.organizationId,
+        ...NotificationTemplates.SUBSCRIPTION_UPGRADED('Premium', billingInterval),
+        sendEmail: true,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Subscription upgrade error:", error);
+      res.status(500).json({ message: "Failed to upgrade subscription" });
+    }
+  });
+
+  // Cancel subscription
+  app.post("/api/subscription/cancel", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await cancelSubscription(req.user.organizationId);
+      
+      // Create notification
+      await createNotification({
+        organizationId: req.user.organizationId,
+        ...NotificationTemplates.SUBSCRIPTION_CANCELLED(),
+        sendEmail: true,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Subscription cancellation error:", error);
+      res.status(500).json({ message: "Failed to cancel subscription" });
+    }
+  });
+
+  // ========== USER PREFERENCES & THEME ROUTES ==========
+
+  // Get user preferences
+  app.get("/api/preferences", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const preferences = await getUserPreferences(req.user.organizationId);
+      res.json(preferences);
+    } catch (error) {
+      console.error("Get preferences error:", error);
+      res.status(500).json({ message: "Failed to get user preferences" });
+    }
+  });
+
+  // Update user preferences
+  app.put("/api/preferences", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { theme, language, emailNotifications, pushNotifications, marketingEmails } = req.body;
+      
+      const result = await updateUserPreferences(req.user.organizationId, {
+        theme,
+        language,
+        emailNotifications,
+        pushNotifications,
+        marketingEmails,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Update preferences error:", error);
+      res.status(500).json({ message: "Failed to update user preferences" });
+    }
+  });
+
+  // Reset user preferences
+  app.post("/api/preferences/reset", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await resetUserPreferences(req.user.organizationId);
+      res.json(result);
+    } catch (error) {
+      console.error("Reset preferences error:", error);
+      res.status(500).json({ message: "Failed to reset user preferences" });
+    }
+  });
+
+  // ========== ENHANCED NOTIFICATIONS ROUTES ==========
+
+  // Get notifications for organization
+  app.get("/api/notifications", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      const notifications = await getOrganizationNotifications(req.user.organizationId, limit, offset);
+      const unreadCount = await getUnreadNotificationCount(req.user.organizationId);
+      
+      res.json({ notifications, unreadCount });
+    } catch (error) {
+      console.error("Get notifications error:", error);
+      res.status(500).json({ message: "Failed to get notifications" });
+    }
+  });
+
+  // Get unread notifications count
+  app.get("/api/notifications/unread-count", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const count = await getUnreadNotificationCount(req.user.organizationId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Get unread count error:", error);
+      res.status(500).json({ message: "Failed to get unread count" });
+    }
+  });
+
+  // Mark notification as read
+  app.put("/api/notifications/:id/read", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const result = await markNotificationAsRead(id, req.user.organizationId);
+      
+      if (!result) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Mark notification as read error:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // Mark all notifications as read
+  app.put("/api/notifications/read-all", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await markAllNotificationsAsRead(req.user.organizationId);
+      res.json(result);
+    } catch (error) {
+      console.error("Mark all notifications as read error:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Delete notification
+  app.delete("/api/notifications/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const result = await deleteNotification(id, req.user.organizationId);
+      
+      if (!result) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Delete notification error:", error);
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  // ========== ADMIN COMMUNICATION ROUTES ==========
+
+  // Create conversation with admin
+  app.post("/api/admin/conversations", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { subject, message, priority } = req.body;
+      
+      if (!subject || !message) {
+        return res.status(400).json({ message: "Subject and message are required" });
+      }
+
+      const conversation = await createConversation({
+        organizationId: req.user.organizationId,
+        subject,
+        message,
+        priority,
+      });
+
+      res.json(conversation);
+    } catch (error) {
+      console.error("Create conversation error:", error);
+      res.status(500).json({ message: "Failed to create conversation" });
+    }
+  });
+
+  // Get organization conversations
+  app.get("/api/admin/conversations", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const conversations = await getOrganizationConversations(req.user.organizationId);
+      res.json(conversations);
+    } catch (error) {
+      console.error("Get conversations error:", error);
+      res.status(500).json({ message: "Failed to get conversations" });
+    }
+  });
+
+  // Get conversation messages
+  app.get("/api/admin/conversations/:id/messages", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const messages = await getConversationMessages(id, req.user.organizationId);
+      
+      // Mark messages as read
+      await markMessagesAsRead(id, req.user.organizationId, 'organization');
+      
+      res.json(messages);
+    } catch (error) {
+      console.error("Get conversation messages error:", error);
+      res.status(500).json({ message: "Failed to get conversation messages" });
+    }
+  });
+
+  // Send message in conversation
+  app.post("/api/admin/conversations/:id/messages", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { message } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      const result = await sendMessage({
+        conversationId: id,
+        senderId: req.user.organizationId,
+        senderType: 'organization',
+        message,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Send message error:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // Close conversation
+  app.put("/api/admin/conversations/:id/close", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const result = await closeConversation(id, 'organization');
+      res.json(result);
+    } catch (error) {
+      console.error("Close conversation error:", error);
+      res.status(500).json({ message: "Failed to close conversation" });
+    }
+  });
+
+  // ========== ADMIN ONLY ROUTES ==========
+
+  // Get all conversations for admin
+  app.get("/api/admin/all-conversations", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Check if user is admin
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization || organization.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const conversations = await getAllConversationsForAdmin();
+      res.json(conversations);
+    } catch (error) {
+      console.error("Get all conversations error:", error);
+      res.status(500).json({ message: "Failed to get all conversations" });
+    }
+  });
+
+  // Send admin message
+  app.post("/api/admin/conversations/:id/admin-message", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Check if user is admin
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization || organization.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { id } = req.params;
+      const { message } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      const result = await sendMessage({
+        conversationId: id,
+        senderId: req.user.organizationId,
+        senderType: 'admin',
+        message,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Send admin message error:", error);
+      res.status(500).json({ message: "Failed to send admin message" });
+    }
+  });
+
+  // Create system notification (admin only)
+  app.post("/api/admin/system-notification", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Check if user is admin
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization || organization.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { type, title, message, sendEmail } = req.body;
+      
+      if (!type || !title || !message) {
+        return res.status(400).json({ message: "Type, title and message are required" });
+      }
+
+      const result = await createSystemNotification({
+        type,
+        title,
+        message,
+        sendEmail,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Create system notification error:", error);
+      res.status(500).json({ message: "Failed to create system notification" });
     }
   });
 
