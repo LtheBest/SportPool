@@ -7,6 +7,7 @@ import Overview from "@/components/dashboard/Overview";
 import Events from "@/components/dashboard/Events";
 import Messages from "@/components/dashboard/Messages";
 import Profile from "@/components/dashboard/Profile";
+import AdminMessaging from "@/components/admin/AdminMessaging";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +58,8 @@ export default function Dashboard() {
         return <Events />;
       case "messages":
         return <Messages />;
+      case "support":
+        return <AdminMessaging />;
       case "profile":
         return <Profile />;
       default:

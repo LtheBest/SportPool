@@ -19,6 +19,12 @@ export default function AdminSidebar({ activeSection, onSectionChange }: AdminSi
       name: "Organisations",
       icon: "fas fa-building",
       description: "Gérer les organisations"
+    },
+    {
+      id: "support",
+      name: "Support Client",
+      icon: "fas fa-headset",
+      description: "Messages des utilisateurs"
     }
   ];
 

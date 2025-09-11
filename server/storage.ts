@@ -99,6 +99,11 @@ export interface IStorage {
   deactivateEmailReplyToken(token: string): Promise<void>;
   getReplyTokenData(token: string): Promise<any>;
   markReplyTokenAsUsed(token: string): Promise<void>;
+
+  // Subscription limits
+  checkEventLimit(organizationId: string): Promise<{ canCreate: boolean; currentCount: number; limit?: number }>;
+  checkInvitationLimit(eventId: string): Promise<{ canCreate: boolean; currentCount: number; limit?: number }>;
+  getSubscriptionLimits(organizationId: string): Promise<{ events: { current: number; limit?: number }; invitations: { current: number; limit?: number } }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -191,7 +196,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEvent(event: InsertEvent): Promise<Event> {
+    // Vérifier les limites d'abonnement
+    const organization = await this.getOrganization(event.organizationId);
+    if (!organization) {
+      throw new Error("Organisation non trouvée");
+    }
+
+    // Pour l'offre découverte, limiter à 1 événement
+    if (organization.subscriptionType === 'decouverte') {
+      const existingEvents = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(events)
+        .where(eq(events.organizationId, event.organizationId));
+      
+      if (existingEvents[0]?.count && existingEvents[0].count >= 1) {
+        throw new Error("Limite d'événements atteinte pour l'offre Découverte (1 événement maximum). Passez à l'offre Premium pour créer plus d'événements.");
+      }
+    }
+
     const [newEvent] = await db.insert(events).values(event).returning();
+    
+    // Incrémenter le compteur d'événements créés
+    await db
+      .update(organizations)
+      .set({ 
+        eventCreatedCount: sql`${organizations.eventCreatedCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(organizations.id, event.organizationId));
+    
     return newEvent;
   }
 
@@ -266,7 +299,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEventInvitation(invitation: InsertEventInvitation): Promise<EventInvitation> {
+    // Vérifier les limites d'invitations
+    const event = await this.getEvent(invitation.eventId);
+    if (!event) {
+      throw new Error("Événement non trouvé");
+    }
+
+    const organization = await this.getOrganization(event.organizationId);
+    if (!organization) {
+      throw new Error("Organisation non trouvée");
+    }
+
+    // Pour l'offre découverte, limiter à 20 invitations par événement
+    if (organization.subscriptionType === 'decouverte') {
+      const existingInvitations = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(eventInvitations)
+        .where(eq(eventInvitations.eventId, invitation.eventId));
+      
+      if (existingInvitations[0]?.count && existingInvitations[0].count >= 20) {
+        throw new Error("Limite d'invitations atteinte pour l'offre Découverte (20 invitations maximum par événement). Passez à l'offre Premium pour inviter plus de personnes.");
+      }
+    }
+
     const [newInvitation] = await db.insert(eventInvitations).values(invitation).returning();
+    
+    // Incrémenter le compteur d'invitations envoyées
+    await db
+      .update(organizations)
+      .set({ 
+        invitationsSentCount: sql`${organizations.invitationsSentCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(organizations.id, event.organizationId));
+    
     return newInvitation;
   }
 
@@ -458,6 +524,106 @@ export class DatabaseStorage implements IStorage {
       .update(emailReplyTokens)
       .set({ isActive: false })
       .where(eq(emailReplyTokens.token, token));
+  }
+
+  // Subscription limits methods
+  async checkEventLimit(organizationId: string): Promise<{ canCreate: boolean; currentCount: number; limit?: number }> {
+    const organization = await this.getOrganization(organizationId);
+    if (!organization) {
+      throw new Error("Organisation non trouvée");
+    }
+
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(events)
+      .where(eq(events.organizationId, organizationId));
+
+    const currentCount = result?.count || 0;
+
+    if (organization.subscriptionType === 'decouverte') {
+      return {
+        canCreate: currentCount < 1,
+        currentCount,
+        limit: 1
+      };
+    }
+
+    // Premium = illimité
+    return {
+      canCreate: true,
+      currentCount,
+      limit: undefined
+    };
+  }
+
+  async checkInvitationLimit(eventId: string): Promise<{ canCreate: boolean; currentCount: number; limit?: number }> {
+    const event = await this.getEvent(eventId);
+    if (!event) {
+      throw new Error("Événement non trouvé");
+    }
+
+    const organization = await this.getOrganization(event.organizationId);
+    if (!organization) {
+      throw new Error("Organisation non trouvée");
+    }
+
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(eventInvitations)
+      .where(eq(eventInvitations.eventId, eventId));
+
+    const currentCount = result?.count || 0;
+
+    if (organization.subscriptionType === 'decouverte') {
+      return {
+        canCreate: currentCount < 20,
+        currentCount,
+        limit: 20
+      };
+    }
+
+    // Premium = illimité
+    return {
+      canCreate: true,
+      currentCount,
+      limit: undefined
+    };
+  }
+
+  async getSubscriptionLimits(organizationId: string): Promise<{ events: { current: number; limit?: number }; invitations: { current: number; limit?: number } }> {
+    const organization = await this.getOrganization(organizationId);
+    if (!organization) {
+      throw new Error("Organisation non trouvée");
+    }
+
+    // Compter les événements
+    const [eventsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(events)
+      .where(eq(events.organizationId, organizationId));
+
+    const eventsCount = eventsResult?.count || 0;
+
+    // Compter toutes les invitations
+    const [invitationsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(eventInvitations)
+      .innerJoin(events, eq(eventInvitations.eventId, events.id))
+      .where(eq(events.organizationId, organizationId));
+
+    const invitationsCount = invitationsResult?.count || 0;
+
+    if (organization.subscriptionType === 'decouverte') {
+      return {
+        events: { current: eventsCount, limit: 1 },
+        invitations: { current: invitationsCount, limit: 20 }
+      };
+    }
+
+    return {
+      events: { current: eventsCount, limit: undefined },
+      invitations: { current: invitationsCount, limit: undefined }
+    };
   }
 }
 

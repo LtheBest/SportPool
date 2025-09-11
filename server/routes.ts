@@ -2822,30 +2822,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create conversation with admin
   app.post("/api/admin/conversations", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const { subject, message, priority } = req.body;
+      const { subject, message, priority, organizationId } = req.body;
       
       if (!subject || !message) {
         return res.status(400).json({ message: "Subject and message are required" });
       }
 
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      let targetOrgId = req.user.organizationId;
+
+      // Si l'utilisateur est admin et a spécifié une organisation cible
+      if (organization.role === 'admin' && organizationId) {
+        targetOrgId = organizationId;
+      }
+
       const conversation = await createConversation({
-        organizationId: req.user.organizationId,
+        organizationId: targetOrgId,
         subject,
         message,
         priority,
       });
 
-      res.json(conversation);
+      // Enrichir la réponse avec les messages pour l'interface
+      const messages = await getConversationMessages(conversation.id);
+      
+      res.json({ conversation: { ...conversation, messages } });
     } catch (error) {
       console.error("Create conversation error:", error);
       res.status(500).json({ message: "Failed to create conversation" });
     }
   });
 
-  // Get organization conversations
+  // Get conversations (for both admin and organizations)
   app.get("/api/admin/conversations", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const conversations = await getOrganizationConversations(req.user.organizationId);
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      let conversations;
+      
+      if (organization.role === 'admin') {
+        // Admin voit toutes les conversations avec plus de détails
+        const allConversations = await getAllConversationsForAdmin();
+        
+        // Enrichir avec le nombre de messages non lus et les messages
+        conversations = await Promise.all(allConversations.map(async (conv) => {
+          const messages = await getConversationMessages(conv.id);
+          const unreadCount = messages.filter(msg => !msg.read && msg.senderType === 'organization').length;
+          
+          return {
+            ...conv,
+            unreadCount,
+            messages
+          };
+        }));
+      } else {
+        // Organisation voit ses propres conversations
+        const orgConversations = await getOrganizationConversations(req.user.organizationId);
+        
+        // Enrichir avec le nombre de messages non lus et les messages
+        conversations = await Promise.all(orgConversations.map(async (conv) => {
+          const messages = await getConversationMessages(conv.id, req.user.organizationId);
+          const unreadCount = messages.filter(msg => !msg.read && msg.senderType === 'admin').length;
+          
+          return {
+            ...conv,
+            organizationName: organization.name,
+            organizationEmail: organization.email,
+            unreadCount,
+            messages
+          };
+        }));
+      }
+      
       res.json(conversations);
     } catch (error) {
       console.error("Get conversations error:", error);
@@ -2879,10 +2934,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Message is required" });
       }
 
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const senderType = organization.role === 'admin' ? 'admin' : 'organization';
+
       const result = await sendMessage({
         conversationId: id,
         senderId: req.user.organizationId,
-        senderType: 'organization',
+        senderType,
         message,
       });
 
@@ -2890,6 +2952,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Send message error:", error);
       res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // Mark conversation messages as read
+  app.post("/api/admin/conversations/:id/mark-read", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const userType = organization.role === 'admin' ? 'admin' : 'organization';
+
+      await markMessagesAsRead(id, req.user.organizationId, userType);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Mark messages as read error:", error);
+      res.status(500).json({ message: "Failed to mark messages as read" });
     }
   });
 
@@ -2980,6 +3063,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Create system notification error:", error);
       res.status(500).json({ message: "Failed to create system notification" });
+    }
+  });
+
+  // ========================
+  // STRIPE PAYMENT ROUTES
+  // ========================
+  
+  // Créer une session de checkout Stripe
+  app.post("/api/stripe/create-checkout-session", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId, interval } = req.body;
+      
+      if (!planId || !interval) {
+        return res.status(400).json({ error: "Plan ID et interval requis" });
+      }
+
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ error: "Organisation non trouvée" });
+      }
+
+      const { StripeService } = await import('./stripe');
+      
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      const result = await StripeService.createCheckoutSession({
+        priceId: `price_${planId}`, // On construira l'ID Stripe
+        planId,
+        interval,
+        organizationId: organization.id,
+        organizationEmail: organization.email,
+        successUrl: `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${baseUrl}/dashboard?payment=cancelled`,
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Erreur création session checkout:", error);
+      res.status(500).json({ error: error.message || "Erreur lors de la création de la session de paiement" });
+    }
+  });
+
+  // Webhook Stripe
+  app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+      const signature = req.get('stripe-signature');
+      if (!signature) {
+        return res.status(400).send('Signature manquante');
+      }
+
+      const { StripeService } = await import('./stripe');
+      await StripeService.handleWebhook(req.body, signature);
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('Erreur webhook Stripe:', error);
+      res.status(400).send(`Webhook Error: ${error.message}`);
+    }
+  });
+
+  // Créer un portail client Stripe
+  app.post("/api/stripe/create-portal-session", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization || !organization.stripeCustomerId) {
+        return res.status(400).json({ error: "Aucun customer Stripe associé" });
+      }
+
+      const { StripeService } = await import('./stripe');
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      
+      const result = await StripeService.createCustomerPortal(
+        organization.stripeCustomerId,
+        `${baseUrl}/dashboard`
+      );
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Erreur création portail client:", error);
+      res.status(500).json({ error: error.message || "Erreur lors de la création du portail client" });
+    }
+  });
+
+  // Récupérer les informations d'abonnement
+  app.get("/api/stripe/subscription-info", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ error: "Organisation non trouvée" });
+      }
+
+      if (!organization.stripeSubscriptionId) {
+        return res.json({ 
+          hasSubscription: false,
+          subscriptionType: organization.subscriptionType || 'decouverte',
+          subscriptionStatus: 'inactive'
+        });
+      }
+
+      const { StripeService } = await import('./stripe');
+      const subscription = await StripeService.getSubscription(organization.stripeSubscriptionId);
+
+      res.json({
+        hasSubscription: true,
+        subscriptionType: organization.subscriptionType,
+        subscriptionStatus: subscription.status,
+        currentPeriodEnd: subscription.current_period_end,
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        stripeSubscription: subscription,
+      });
+    } catch (error: any) {
+      console.error("Erreur récupération info abonnement:", error);
+      res.status(500).json({ error: error.message || "Erreur lors de la récupération des informations d'abonnement" });
+    }
+  });
+
+  // Annuler un abonnement
+  app.post("/api/stripe/cancel-subscription", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization || !organization.stripeSubscriptionId) {
+        return res.status(400).json({ error: "Aucun abonnement trouvé" });
+      }
+
+      const { StripeService } = await import('./stripe');
+      const subscription = await StripeService.cancelSubscription(organization.stripeSubscriptionId);
+
+      res.json({
+        success: true,
+        subscription: subscription,
+        message: "Abonnement programmé pour annulation à la fin de la période de facturation"
+      });
+    } catch (error: any) {
+      console.error("Erreur annulation abonnement:", error);
+      res.status(500).json({ error: error.message || "Erreur lors de l'annulation de l'abonnement" });
+    }
+  });
+
+  // Récupérer les limites d'abonnement
+  app.get("/api/subscription/limits", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const limits = await storage.getSubscriptionLimits(req.user.organizationId);
+      res.json(limits);
+    } catch (error: any) {
+      console.error("Erreur récupération limites:", error);
+      res.status(500).json({ error: error.message || "Erreur lors de la récupération des limites" });
     }
   });
 

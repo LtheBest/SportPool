@@ -6,6 +6,7 @@ import { useStats } from "@/contexts/StatsContext";
 import { useFeatures, AVAILABLE_FEATURES, FeatureGuard } from "@/hooks/useFeatures";
 import { CsvImportModal } from "@/components/import/CsvImportModal";
 import { FeatureStatus } from "@/components/dashboard/FeatureStatus";
+import SubscriptionInfo from "@/components/subscription/SubscriptionInfo";
 import type { Event } from "@shared/schema";
 import { useEffect, useState } from "react";
 
@@ -147,6 +148,11 @@ export default function Overview() {
       {/* Statut des fonctionnalités */}
       <div className="mb-8">
         <FeatureStatus />
+      </div>
+
+      {/* Informations d'abonnement */}
+      <div className="mb-8">
+        <SubscriptionInfo />
       </div>
 
       {/* Analyse détaillée et statistiques avancées */}

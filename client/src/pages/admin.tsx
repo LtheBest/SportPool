@@ -5,6 +5,7 @@ import Navbar from "@/components/navigation/Navbar";
 import AdminSidebar from "@/components/navigation/AdminSidebar";
 import AdminOverview from "@/components/admin/AdminOverview";
 import OrganizationsManagement from "@/components/admin/OrganizationsManagement";
+import AdminMessaging from "@/components/admin/AdminMessaging";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +61,8 @@ export default function Admin() {
         return <AdminOverview />;
       case "organizations":
         return <OrganizationsManagement />;
+      case "support":
+        return <AdminMessaging />;
       default:
         return <AdminOverview />;
     }
