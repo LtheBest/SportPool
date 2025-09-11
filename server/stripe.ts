@@ -241,5 +241,342 @@ export class StripeService {
   }
 }
 
+// Types et interfaces pour l'abonnement
+export interface SubscriptionPermissionResult {
+  allowed: boolean;
+  reason?: string;
+  remainingEvents?: number;
+  remainingInvitations?: number;
+}
+
+export interface UpgradeSubscriptionParams {
+  organizationId: string;
+  newPlanType: string;
+  billingInterval: 'monthly' | 'annual';
+  paymentMethodId: string;
+}
+
+// Configuration des limites d'abonnement
+export const SUBSCRIPTION_LIMITS = {
+  decouverte: {
+    maxEvents: 1,
+    maxInvitations: 20,
+    name: 'Découverte',
+    price: 0,
+  },
+  premium: {
+    maxEvents: null, // Illimité
+    maxInvitations: null, // Illimité
+    name: 'Premium',
+    price: 1299, // 12,99€/mois
+  },
+};
+
+// Import du storage - sera résolu à l'exécution
+let storage: any;
+
+// Initialiser les plans d'abonnement
+export async function initializeSubscriptionPlans(): Promise<void> {
+  try {
+    // Import dynamique pour éviter les dépendances circulaires
+    const { storage: storageInstance } = await import('./storage');
+    storage = storageInstance;
+    
+    console.log('✅ Subscription plans initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize subscription plans:', error);
+  }
+}
+
+// Vérifier si une organisation peut créer un événement
+export async function canCreateEvent(organizationId: string): Promise<SubscriptionPermissionResult> {
+  try {
+    const organization = await storage.getOrganization(organizationId);
+    if (!organization) {
+      return { allowed: false, reason: 'Organization not found' };
+    }
+
+    // Admin peut toujours créer des événements
+    if (organization.role === 'admin') {
+      return { allowed: true };
+    }
+
+    const limits = SUBSCRIPTION_LIMITS[organization.subscriptionType || 'decouverte'];
+    
+    // Si pas de limite (premium), autoriser
+    if (!limits.maxEvents) {
+      return { allowed: true };
+    }
+
+    const currentEventCount = organization.eventCreatedCount || 0;
+    const remaining = limits.maxEvents - currentEventCount;
+
+    if (remaining <= 0) {
+      return {
+        allowed: false,
+        reason: `Limite d'événements atteinte (${limits.maxEvents}). Passez à Premium pour créer des événements illimités.`,
+        remainingEvents: 0
+      };
+    }
+
+    return {
+      allowed: true,
+      remainingEvents: remaining
+    };
+  } catch (error) {
+    console.error('Error checking event creation permission:', error);
+    return { allowed: false, reason: 'Permission check failed' };
+  }
+}
+
+// Vérifier si une organisation peut envoyer des invitations
+export async function canSendInvitations(organizationId: string, count: number = 1): Promise<SubscriptionPermissionResult> {
+  try {
+    const organization = await storage.getOrganization(organizationId);
+    if (!organization) {
+      return { allowed: false, reason: 'Organization not found' };
+    }
+
+    // Admin peut toujours envoyer des invitations
+    if (organization.role === 'admin') {
+      return { allowed: true };
+    }
+
+    const limits = SUBSCRIPTION_LIMITS[organization.subscriptionType || 'decouverte'];
+    
+    // Si pas de limite (premium), autoriser
+    if (!limits.maxInvitations) {
+      return { allowed: true };
+    }
+
+    const currentInvitationCount = organization.invitationsSentCount || 0;
+    const remaining = limits.maxInvitations - currentInvitationCount;
+
+    if (remaining < count) {
+      return {
+        allowed: false,
+        reason: `Limite d'invitations atteinte (${limits.maxInvitations}). Passez à Premium pour envoyer des invitations illimitées.`,
+        remainingInvitations: Math.max(0, remaining)
+      };
+    }
+
+    return {
+      allowed: true,
+      remainingInvitations: remaining
+    };
+  } catch (error) {
+    console.error('Error checking invitation permission:', error);
+    return { allowed: false, reason: 'Permission check failed' };
+  }
+}
+
+// Incrémenter le compteur d'événements créés
+export async function incrementEventCount(organizationId: string): Promise<void> {
+  try {
+    const organization = await storage.getOrganization(organizationId);
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    const newCount = (organization.eventCreatedCount || 0) + 1;
+    await storage.updateOrganization(organizationId, {
+      eventCreatedCount: newCount
+    });
+
+    console.log(`✅ Event count incremented for organization ${organizationId}: ${newCount}`);
+  } catch (error) {
+    console.error('Error incrementing event count:', error);
+  }
+}
+
+// Incrémenter le compteur d'invitations envoyées
+export async function incrementInvitationCount(organizationId: string, count: number = 1): Promise<void> {
+  try {
+    const organization = await storage.getOrganization(organizationId);
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    const newCount = (organization.invitationsSentCount || 0) + count;
+    await storage.updateOrganization(organizationId, {
+      invitationsSentCount: newCount
+    });
+
+    console.log(`✅ Invitation count incremented for organization ${organizationId}: +${count} = ${newCount}`);
+  } catch (error) {
+    console.error('Error incrementing invitation count:', error);
+  }
+}
+
+// Créer un abonnement Stripe
+export async function createStripeSubscription(organizationId: string, priceId: string): Promise<any> {
+  try {
+    const organization = await storage.getOrganization(organizationId);
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    // Créer ou récupérer le customer Stripe
+    const customer = await StripeService.createOrGetCustomer(organizationId, organization.email);
+
+    // Créer l'abonnement
+    const subscription = await stripe.subscriptions.create({
+      customer: customer.id,
+      items: [{ price: priceId }],
+      metadata: {
+        organizationId: organizationId,
+      },
+    });
+
+    // Mettre à jour l'organisation
+    await storage.updateOrganization(organizationId, {
+      stripeCustomerId: customer.id,
+      stripeSubscriptionId: subscription.id,
+      subscriptionType: 'premium',
+      subscriptionStatus: subscription.status,
+      subscriptionStartDate: new Date(),
+    });
+
+    return subscription;
+  } catch (error) {
+    console.error('Error creating Stripe subscription:', error);
+    throw error;
+  }
+}
+
+// Mettre à niveau l'abonnement
+export async function upgradeSubscription(params: UpgradeSubscriptionParams): Promise<any> {
+  try {
+    const organization = await storage.getOrganization(params.organizationId);
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    // Créer ou récupérer le customer si nécessaire
+    const customer = await StripeService.createOrGetCustomer(params.organizationId, organization.email);
+
+    // Déterminer le prix basé sur le plan et l'intervalle
+    const priceKey = `premium-${params.billingInterval === 'annual' ? 'annual' : 'monthly'}`;
+    const priceConfig = PRICE_CONFIG[priceKey as keyof typeof PRICE_CONFIG];
+
+    if (!priceConfig) {
+      throw new Error('Invalid pricing configuration');
+    }
+
+    // Si l'organisation a déjà un abonnement, le mettre à jour
+    if (organization.stripeSubscriptionId) {
+      const subscription = await stripe.subscriptions.update(organization.stripeSubscriptionId, {
+        items: [{
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: priceConfig.product,
+            },
+            unit_amount: priceConfig.price,
+            recurring: {
+              interval: priceConfig.interval,
+            },
+          },
+        }],
+        default_payment_method: params.paymentMethodId,
+      });
+
+      await storage.updateOrganization(params.organizationId, {
+        subscriptionType: params.newPlanType,
+        subscriptionStatus: subscription.status,
+        paymentMethod: params.billingInterval,
+      });
+
+      return subscription;
+    } else {
+      // Créer un nouvel abonnement
+      const subscription = await stripe.subscriptions.create({
+        customer: customer.id,
+        items: [{
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: priceConfig.product,
+            },
+            unit_amount: priceConfig.price,
+            recurring: {
+              interval: priceConfig.interval,
+            },
+          },
+        }],
+        default_payment_method: params.paymentMethodId,
+        metadata: {
+          organizationId: params.organizationId,
+        },
+      });
+
+      await storage.updateOrganization(params.organizationId, {
+        stripeCustomerId: customer.id,
+        stripeSubscriptionId: subscription.id,
+        subscriptionType: params.newPlanType,
+        subscriptionStatus: subscription.status,
+        subscriptionStartDate: new Date(),
+        paymentMethod: params.billingInterval,
+      });
+
+      return subscription;
+    }
+  } catch (error) {
+    console.error('Error upgrading subscription:', error);
+    throw error;
+  }
+}
+
+// Annuler l'abonnement
+export async function cancelSubscription(organizationId: string): Promise<any> {
+  try {
+    const organization = await storage.getOrganization(organizationId);
+    if (!organization || !organization.stripeSubscriptionId) {
+      throw new Error('No active subscription found');
+    }
+
+    const subscription = await stripe.subscriptions.update(organization.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    await storage.updateOrganization(organizationId, {
+      subscriptionStatus: 'cancelled',
+      subscriptionEndDate: new Date(subscription.current_period_end * 1000),
+    });
+
+    return subscription;
+  } catch (error) {
+    console.error('Error cancelling subscription:', error);
+    throw error;
+  }
+}
+
+// Créer un customer Stripe
+export async function createStripeCustomer(organizationId: string): Promise<Stripe.Customer> {
+  try {
+    const organization = await storage.getOrganization(organizationId);
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    if (organization.stripeCustomerId) {
+      // Récupérer le customer existant
+      return await stripe.customers.retrieve(organization.stripeCustomerId) as Stripe.Customer;
+    }
+
+    const customer = await StripeService.createOrGetCustomer(organizationId, organization.email);
+    
+    // Sauvegarder l'ID du customer
+    await storage.updateOrganization(organizationId, {
+      stripeCustomerId: customer.id,
+    });
+
+    return customer;
+  } catch (error) {
+    console.error('Error creating Stripe customer:', error);
+    throw error;
+  }
+}
+
 export { stripe };
 export default StripeService;
