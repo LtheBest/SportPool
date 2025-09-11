@@ -11,6 +11,7 @@ export default function DashboardSidebar({ activeSection, onSectionChange }: Das
     { id: "overview", icon: "fas fa-chart-line", label: "Vue d'ensemble" },
     { id: "events", icon: "fas fa-calendar-alt", label: "Mes événements" },
     { id: "messages", icon: "fas fa-comments", label: "Messages", badge: 3 },
+    { id: "support", icon: "fas fa-headset", label: "Support" },
     { id: "profile", icon: "fas fa-user", label: "Mon profil" },
   ];
 

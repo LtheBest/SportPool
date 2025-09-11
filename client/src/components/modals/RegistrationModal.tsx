@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
@@ -20,6 +22,9 @@ const registrationSchema = z.object({
   name: z.string().min(1, "Le nom de l'organisation est requis"),
   type: z.enum(["club", "association", "company"], {
     required_error: "Veuillez sélectionner un type d'organisation",
+  }),
+  subscriptionType: z.enum(["decouverte", "premium"], {
+    required_error: "Veuillez choisir une offre",
   }),
   email: z.string().email("Email invalide"),
   phone: z.string().optional(),
@@ -64,6 +69,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
     defaultValues: {
       name: "",
       type: undefined,
+      subscriptionType: undefined,
       email: "",
       phone: "",
       address: "",
@@ -76,10 +82,15 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
     },
   });
 
-  // Watch the selected organization type to keep it highlighted
+  // Watch the selected organization type and subscription type to keep them highlighted
   const selectedType = useWatch({
     control: form.control,
     name: "type"
+  });
+  
+  const selectedSubscription = useWatch({
+    control: form.control,
+    name: "subscriptionType"
   });
 
   const handleTermsClick = (type: 'terms' | 'privacy') => {
@@ -92,26 +103,53 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
     
     try {
       const { confirmPassword, acceptTerms, ...registerData } = data;
-      const result = await register(registerData);
       
-      if (result.success) {
-        // Invalidate queries to refresh user data
-        queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      // Si l'offre premium est sélectionnée, rediriger vers le processus de paiement
+      if (data.subscriptionType === "premium") {
+        // Pour l'instant, créer le compte avec l'offre premium 
+        // Le paiement sera géré après la création du compte
+        const result = await register(registerData);
         
-        // Navigate to dashboard
-        setLocation("/dashboard");
-        onClose();
-        
-        toast({
-          title: "Inscription réussie",
-          description: "Votre compte a été créé avec succès. Vous êtes maintenant connecté.",
-        });
+        if (result.success) {
+          // Invalidate queries to refresh user data
+          queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+          
+          // Rediriger vers la page de paiement
+          setLocation("/dashboard?setup_payment=true");
+          onClose();
+          
+          toast({
+            title: "Compte créé",
+            description: "Votre compte a été créé. Veuillez configurer votre paiement pour activer l'offre Premium.",
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Erreur d'inscription",
+            description: result.error || "Une erreur est survenue lors de l'inscription.",
+            variant: "destructive",
+          });
+        }
       } else {
-        toast({
-          title: "Erreur d'inscription",
-          description: result.error || "Une erreur est survenue lors de l'inscription.",
-          variant: "destructive",
-        });
+        // Offre découverte - inscription normale
+        const result = await register(registerData);
+        
+        if (result.success) {
+          queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+          setLocation("/dashboard");
+          onClose();
+          
+          toast({
+            title: "Inscription réussie",
+            description: "Votre compte découverte a été créé avec succès. Vous êtes maintenant connecté.",
+          });
+        } else {
+          toast({
+            title: "Erreur d'inscription",
+            description: result.error || "Une erreur est survenue lors de l'inscription.",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error: any) {
       console.error("Registration error:", error);
@@ -201,6 +239,159 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* Subscription Plan Selection */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Choisissez votre offre</h3>
+              <FormField
+                control={form.control}
+                name="subscriptionType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="grid md:grid-cols-2 gap-6"
+                      >
+                        {/* Offre Découverte */}
+                        <FormItem>
+                          <FormControl>
+                            <RadioGroupItem
+                              value="decouverte"
+                              id="decouverte"
+                              className="sr-only peer"
+                            />
+                          </FormControl>
+                          <Label
+                            htmlFor="decouverte"
+                            className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
+                              selectedSubscription === "decouverte"
+                                ? 'border-green-500 bg-green-50 shadow-lg scale-[1.02] dark:bg-green-950 dark:border-green-400'
+                                : 'border-gray-200 hover:border-green-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-green-400 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            <Card className="border-0 shadow-none bg-transparent">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                                    🚀 Découverte
+                                  </CardTitle>
+                                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                                    GRATUIT
+                                  </Badge>
+                                </div>
+                                <CardDescription className="text-gray-600 dark:text-gray-300">
+                                  Parfait pour tester notre plateforme
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="space-y-3">
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-green-500 mr-2"></i>
+                                    <span>1 événement maximum</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-green-500 mr-2"></i>
+                                    <span>Jusqu'à 20 invitations</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-green-500 mr-2"></i>
+                                    <span>Gestion du covoiturage</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-green-500 mr-2"></i>
+                                    <span>Support par email</span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Label>
+                        </FormItem>
+
+                        {/* Offre Premium */}
+                        <FormItem>
+                          <FormControl>
+                            <RadioGroupItem
+                              value="premium"
+                              id="premium"
+                              className="sr-only peer"
+                            />
+                          </FormControl>
+                          <Label
+                            htmlFor="premium"
+                            className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
+                              selectedSubscription === "premium"
+                                ? 'border-blue-500 bg-blue-50 shadow-lg scale-[1.02] dark:bg-blue-950 dark:border-blue-400'
+                                : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-blue-400 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            <Card className="border-0 shadow-none bg-transparent">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                                    ⭐ Premium
+                                  </CardTitle>
+                                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+                                    POPULAIRE
+                                  </Badge>
+                                </div>
+                                <CardDescription className="text-gray-600 dark:text-gray-300">
+                                  Accès complet à toutes les fonctionnalités
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="mb-4">
+                                  <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                    À partir de 9,99€
+                                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/mois</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-3">
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-blue-500 mr-2"></i>
+                                    <span><strong>Événements illimités</strong></span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-blue-500 mr-2"></i>
+                                    <span><strong>Invitations illimitées</strong></span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-blue-500 mr-2"></i>
+                                    <span>Toutes les fonctionnalités</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-blue-500 mr-2"></i>
+                                    <span>Support prioritaire</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-blue-500 mr-2"></i>
+                                    <span>Statistiques avancées</span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Label>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {selectedSubscription === "premium" && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-950 dark:border-blue-800">
+                  <div className="flex items-start space-x-2">
+                    <i className="fas fa-info-circle text-blue-500 mt-0.5"></i>
+                    <div className="text-sm text-blue-700 dark:text-blue-300">
+                      <p className="font-medium">Configuration du paiement</p>
+                      <p>Après la création de votre compte, vous serez redirigé vers la page de configuration du paiement sécurisé via Stripe pour activer votre abonnement Premium.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Basic Info */}
