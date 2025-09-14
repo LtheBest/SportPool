@@ -22,13 +22,15 @@ export const organizations = pgTable("organizations", {
   role: varchar("role", { enum: ["organization", "admin"] }).default("organization"),
   isActive: boolean("is_active").default(true),
   features: json("features").$type<string[]>().default([]), // Features available to this organization
-  subscriptionType: varchar("subscription_type", { enum: ["decouverte", "premium"] }).default("decouverte"),
+  subscriptionType: varchar("subscription_type", { enum: ["decouverte", "evenementielle", "pro_club", "pro_pme", "pro_entreprise"] }).default("decouverte"),
   subscriptionStatus: varchar("subscription_status", { enum: ["active", "inactive", "cancelled", "past_due"] }).default("active"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   subscriptionStartDate: timestamp("subscription_start_date"),
   subscriptionEndDate: timestamp("subscription_end_date"),
-  paymentMethod: varchar("payment_method", { enum: ["monthly", "annual"] }),
+  paymentMethod: varchar("payment_method", { enum: ["monthly", "annual", "pack_single", "pack_10"] }),
+  packageRemainingEvents: integer("package_remaining_events"), // Pour les packs événementiels
+  packageExpiryDate: timestamp("package_expiry_date"), // Date d'expiration du pack
   eventCreatedCount: integer("event_created_count").default(0), // Pour tracking des limites
   invitationsSentCount: integer("invitations_sent_count").default(0), // Pour tracking des invitations
   lastResetDate: timestamp("last_reset_date").defaultNow(), // Pour reset mensuel des compteurs
@@ -134,11 +136,11 @@ export const notifications = pgTable("notifications", {
 export const subscriptionPlans = pgTable("subscription_plans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(), // "Découverte" ou "Premium"
-  type: varchar("type", { enum: ["decouverte", "premium"] }).notNull(),
+  type: varchar("type", { enum: ["decouverte", "evenementielle", "pro_club", "pro_pme", "pro_entreprise"] }).notNull(),
   description: text("description"),
   price: integer("price").notNull(), // Prix en centimes
   currency: varchar("currency", { length: 3 }).default("EUR"),
-  billingInterval: varchar("billing_interval", { enum: ["monthly", "annual"] }).notNull(),
+  billingInterval: varchar("billing_interval", { enum: ["monthly", "annual", "pack_single", "pack_10"] }).notNull(),
   maxEvents: integer("max_events"), // null pour illimité
   maxInvitations: integer("max_invitations"), // null pour illimité
   features: json("features").$type<string[]>().default([]),
