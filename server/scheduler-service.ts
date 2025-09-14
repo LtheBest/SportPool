@@ -383,5 +383,3 @@ export class SchedulerService {
     };
   }
 }
-
-export { SchedulerService };

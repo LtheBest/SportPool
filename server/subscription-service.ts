@@ -493,5 +493,3 @@ export class SubscriptionService {
     }
   }
 }
-
-export { SubscriptionService };

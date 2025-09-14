@@ -412,4 +412,4 @@ export class StripeService {
   }
 }
 
-export { stripe, StripeService };
+export { stripe };
