@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { api } from "@/lib/api";
 import type { Organization } from "@shared/schema";
 import BackendTestPanel from "@/components/debug/BackendTestPanel";
 
@@ -192,11 +193,7 @@ export default function Profile() {
                       fd.append("logo", file);
 
                       try {
-                        const res = await fetch("/api/profile/logo", {
-                          method: "POST",
-                          body: fd,
-                          credentials: "include", // important for session cookie
-                        });
+                        const res = await api.profile.uploadLogo(fd);
                         if (!res.ok) {
                           const text = await res.text().catch(() => null);
                           throw new Error(text || "Upload échoué");

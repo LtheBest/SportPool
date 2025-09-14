@@ -290,6 +290,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: organization.name,
       });
 
+      // Send welcome email (async, don't wait for it)
+      emailService.sendWelcomeEmail(
+        organization.email,
+        organization.name,
+        organization.contactFirstName,
+        organization.contactLastName,
+        organization.type as 'club' | 'association' | 'company'
+      ).catch(error => {
+        console.error('Failed to send welcome email:', error);
+        // Don't fail the registration if email fails
+      });
+
       res.json({
         organization: { ...organization, password: undefined },
         ...tokens,
@@ -739,6 +751,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('❌ Erreur lors de l\'envoi des invitations:', emailError);
         // On ne fait pas échouer la création d'événement si les emails échouent
       }
+
+      // Send event creation confirmation email to organizer (async, don't wait for it)
+      emailService.sendEventCreationConfirmation(
+        organization.email,
+        `${organization.contactFirstName} ${organization.contactLastName}`,
+        event.name,
+        organization.name,
+        new Date(event.date),
+        event.id,
+        event.meetingPoint,
+        event.destination,
+        event.sport,
+        event.description
+      ).catch(error => {
+        console.error('Failed to send event creation confirmation email:', error);
+        // Don't fail the event creation if email fails
+      });
       
       res.json(event);
     } catch (error) {
@@ -920,6 +949,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const participant = await storage.createEventParticipant(data);
+
+      // Send notification email to organizer about new participant (async, don't wait for it)
+      try {
+        const organization = await storage.getOrganization(event.organizationId);
+        if (organization) {
+          emailService.sendParticipantRegistrationNotification(
+            organization.email,
+            `${organization.contactFirstName} ${organization.contactLastName}`,
+            data.name,
+            data.role,
+            event.name,
+            organization.name,
+            event.id,
+            data.availableSeats,
+            data.comment
+          ).catch(error => {
+            console.error('Failed to send participant registration notification:', error);
+            // Don't fail the registration if email fails
+          });
+        }
+      } catch (error) {
+        console.error('Error sending participant registration notification:', error);
+      }
+
       res.json({ message: "Successfully registered for the event!" });
     } catch (error) {
       console.error("Join event error:", error);
