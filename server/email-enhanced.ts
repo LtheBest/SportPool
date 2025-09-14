@@ -1133,7 +1133,7 @@ ${this.appUrl}
               <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 8px; margin: 25px 0;">
                 <h4 style="color: #856404; margin: 0 0 10px;">🎁 Offre de lancement</h4>
                 <p style="color: #856404; margin: 0; font-size: 14px;">
-                  Profitez de toutes les fonctionnalités premium gratuitement pendant vos premiers événements. 
+                  Profitez de toutes les fonctionnalités avancées gratuitement pendant vos premiers événements. 
                   Découvrez tout le potentiel de TeamMove sans engagement !
                 </p>
               </div>
@@ -1184,7 +1184,7 @@ ${this.appUrl}/dashboard
 3. Invitez vos membres à rejoindre vos événements
 
 🎁 OFFRE DE LANCEMENT :
-Profitez gratuitement de toutes les fonctionnalités premium pour vos premiers événements !
+Profitez gratuitement de toutes les fonctionnalités avancées pour vos premiers événements !
 
 Besoin d'aide ?
 📧 ${this.fromEmail}

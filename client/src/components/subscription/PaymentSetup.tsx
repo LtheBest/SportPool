@@ -15,57 +15,138 @@ interface PaymentSetupProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  targetPlan?: string; // Plan cible depuis l'inscription
 }
 
 interface SubscriptionPlan {
   id: string;
   name: string;
   price: number;
-  interval: 'monthly' | 'annual';
+  type: 'payment' | 'subscription';
+  interval?: 'monthly' | 'annual' | 'pack_single' | 'pack_10';
   features: string[];
-  stripePriceId?: string;
-  savings?: string;
+  description: string;
+  badge?: string;
+  badgeColor?: string;
 }
 
 const subscriptionPlans: SubscriptionPlan[] = [
+  // Offres événementielles (paiements uniques)
   {
-    id: "premium-monthly",
-    name: "Premium Mensuel",
-    price: 1299, // 12,99€ en centimes
-    interval: "monthly",
-    stripePriceId: "price_premium_monthly", // À remplacer par le vrai ID Stripe
+    id: "evenementielle-single",
+    name: "Pack Événement",
+    price: 1500, // 15€
+    type: "payment",
+    interval: "pack_single", 
+    description: "Idéal pour organiser un événement ponctuel",
+    badge: "POPULAIRE",
+    badgeColor: "bg-orange-100 text-orange-800",
     features: [
-      "Événements illimités",
-      "Invitations illimitées",
-      "Statistiques avancées",
-      "Support prioritaire",
-      "Messagerie avancée",
-      "Export de données"
+      "1 événement complet",
+      "Profil de personnalisation",
+      "Gestion conducteurs/passagers", 
+      "Messagerie intégrée",
+      "Suivi en temps réel",
+      "Support prioritaire"
     ]
   },
   {
-    id: "premium-annual", 
-    name: "Premium Annuel",
-    price: 9999, // 99,99€ en centimes (économie de ~23%)
-    interval: "annual",
-    stripePriceId: "price_premium_annual", // À remplacer par le vrai ID Stripe  
-    savings: "Économisez 35%",
+    id: "evenementielle-pack10",
+    name: "Pack 10 Événements",
+    price: 15000, // 150€
+    type: "payment",
+    interval: "pack_10",
+    description: "Parfait pour les organisateurs réguliers",
+    badge: "ÉCONOMIQUE",
+    badgeColor: "bg-green-100 text-green-800",
+    features: [
+      "10 événements complets",
+      "Profil de personnalisation",
+      "Gestion conducteurs/passagers",
+      "Messagerie intégrée", 
+      "Suivi en temps réel",
+      "Support prioritaire",
+      "Valable 12 mois"
+    ]
+  },
+  // Formules Pro (abonnements mensuels)
+  {
+    id: "pro-club",
+    name: "Clubs & Associations", 
+    price: 1999, // 19,99€
+    type: "subscription",
+    interval: "monthly",
+    description: "Conçu pour les clubs sportifs et associations",
+    badge: "PRO",
+    badgeColor: "bg-blue-100 text-blue-800",
     features: [
       "Événements illimités",
-      "Invitations illimitées", 
-      "Statistiques avancées",
-      "Support prioritaire",
+      "Invitations illimitées",
+      "Profil de personnalisation avancé",
+      "Gestion multi-conducteurs",
       "Messagerie avancée",
-      "Export de données",
-      "Sauvegarde automatique"
+      "Suivi en temps réel",
+      "Statistiques détaillées",
+      "Support prioritaire",
+      "API d'intégration",
+      "Branding personnalisé"
+    ]
+  },
+  {
+    id: "pro-pme",
+    name: "PME",
+    price: 4900, // 49€
+    type: "subscription", 
+    interval: "monthly",
+    description: "Idéal pour les petites et moyennes entreprises",
+    badge: "BUSINESS",
+    badgeColor: "bg-purple-100 text-purple-800",
+    features: [
+      "Tout de Clubs & Associations",
+      "Multi-utilisateurs (5 admins)",
+      "Gestion des équipes", 
+      "Reporting avancé",
+      "Intégrations tierces",
+      "Support téléphonique",
+      "Formation personnalisée",
+      "SLA garanti"
+    ]
+  },
+  {
+    id: "pro-entreprise",
+    name: "Grandes Entreprises",
+    price: 9900, // 99€
+    type: "subscription",
+    interval: "monthly", 
+    description: "Solution entreprise complète et sur-mesure",
+    badge: "ENTERPRISE", 
+    badgeColor: "bg-yellow-100 text-yellow-800",
+    features: [
+      "Tout de PME",
+      "Multi-utilisateurs illimités",
+      "Gestion multi-sites",
+      "API complète",
+      "SSO/SAML",
+      "Hébergement dédié (option)",
+      "Support 24/7",
+      "Account Manager dédié",
+      "Personnalisation complète",
+      "Conformité RGPD avancée"
     ]
   }
 ];
 
-export default function PaymentSetup({ isOpen, onClose, onSuccess }: PaymentSetupProps) {
-  const [selectedPlan, setSelectedPlan] = useState<string>("premium-monthly");
+export default function PaymentSetup({ isOpen, onClose, onSuccess, targetPlan }: PaymentSetupProps) {
+  const [selectedPlan, setSelectedPlan] = useState<string>(targetPlan || "evenementielle-single");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Mettre à jour le plan sélectionné quand targetPlan change
+  useEffect(() => {
+    if (targetPlan) {
+      setSelectedPlan(targetPlan);
+    }
+  }, [targetPlan]);
 
   const handleSubscribe = async () => {
     setIsLoading(true);
@@ -82,15 +163,15 @@ export default function PaymentSetup({ isOpen, onClose, onSuccess }: PaymentSetu
       }
 
       // Créer la session de checkout
-      const response = await fetch('/api/stripe/create-checkout-session', {
+      const response = await fetch('/api/subscriptions/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          priceId: plan.stripePriceId,
           planId: plan.id,
-          interval: plan.interval,
+          successUrl: `${window.location.origin}/dashboard?payment_success=true`,
+          cancelUrl: `${window.location.origin}/dashboard?payment_cancelled=true`,
         }),
       });
 
@@ -120,9 +201,14 @@ export default function PaymentSetup({ isOpen, onClose, onSuccess }: PaymentSetu
     }
   };
 
-  const formatPrice = (priceInCents: number, interval: string) => {
+  const formatPrice = (priceInCents: number, interval?: string) => {
     const price = (priceInCents / 100).toFixed(2);
-    return `${price}€${interval === 'monthly' ? '/mois' : '/an'}`;
+    
+    if (interval === 'monthly') return `${price}€/mois`;
+    if (interval === 'pack_single') return `${price}€`;
+    if (interval === 'pack_10') return `${price}€`;
+    
+    return `${price}€`;
   };
 
   return (
@@ -130,10 +216,10 @@ export default function PaymentSetup({ isOpen, onClose, onSuccess }: PaymentSetu
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">
-            🎉 Activez votre abonnement Premium
+            🎉 Activez votre abonnement
           </DialogTitle>
           <p className="text-center text-muted-foreground">
-            Choisissez la durée de votre abonnement et commencez à profiter de toutes les fonctionnalités
+            Choisissez votre offre et commencez à profiter de toutes les fonctionnalités
           </p>
         </DialogHeader>
 
@@ -141,7 +227,7 @@ export default function PaymentSetup({ isOpen, onClose, onSuccess }: PaymentSetu
           <RadioGroup
             value={selectedPlan}
             onValueChange={setSelectedPlan}
-            className="grid md:grid-cols-2 gap-6"
+            className="grid lg:grid-cols-3 md:grid-cols-2 gap-6"
           >
             {subscriptionPlans.map((plan) => (
               <Label
@@ -162,46 +248,43 @@ export default function PaymentSetup({ isOpen, onClose, onSuccess }: PaymentSetu
                   selectedPlan === plan.id
                     ? 'border-primary shadow-lg bg-primary/5'
                     : 'border-border'
-                } ${plan.interval === 'annual' ? 'ring-2 ring-green-200 dark:ring-green-800' : ''}`}>
+                }`}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-xl">{plan.name}</CardTitle>
-                      {plan.savings && (
-                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                          {plan.savings}
-                        </Badge>
-                      )}
-                      {plan.interval === 'monthly' && (
-                        <Badge variant="outline">
-                          Le plus flexible
+                      <CardTitle className="text-lg">{plan.name}</CardTitle>
+                      {plan.badge && (
+                        <Badge className={plan.badgeColor}>
+                          {plan.badge}
                         </Badge>
                       )}
                     </div>
                     <div className="space-y-2">
-                      <div className="text-3xl font-bold">
+                      <div className="text-2xl font-bold">
                         {formatPrice(plan.price, plan.interval)}
                       </div>
-                      {plan.interval === 'annual' && (
+                      {plan.interval === 'pack_10' && (
                         <div className="text-sm text-muted-foreground">
-                          Soit {(plan.price / 12 / 100).toFixed(2)}€/mois
+                          Soit 15€ par événement
                         </div>
                       )}
                     </div>
-                    <CardDescription>
-                      {plan.interval === 'monthly' 
-                        ? 'Facturation mensuelle, résiliation à tout moment'
-                        : 'Facturation annuelle, économies maximales'
-                      }
+                    <CardDescription className="text-sm">
+                      {plan.description}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      {plan.features.map((feature, index) => (
+                    <div className="space-y-2">
+                      {plan.features.slice(0, 5).map((feature, index) => (
                         <div key={index} className="flex items-center text-sm">
-                          <i className="fas fa-check text-green-500 mr-3 w-4"></i>
+                          <i className="fas fa-check text-green-500 mr-2 w-3"></i>
                           <span>{feature}</span>
                         </div>
                       ))}
+                      {plan.features.length > 5 && (
+                        <div className="text-xs text-muted-foreground mt-2">
+                          + {plan.features.length - 5} autres fonctionnalités
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

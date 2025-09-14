@@ -36,7 +36,30 @@ export default function SubscriptionInfo() {
   if (!organization) return null;
 
   const isDiscoveryPlan = organization.subscriptionType === 'decouverte';
-  const isPremiumPlan = organization.subscriptionType === 'premium';
+  const isEventPlan = organization.subscriptionType === 'evenementielle';
+  const isProPlan = ['pro_club', 'pro_pme', 'pro_entreprise'].includes(organization.subscriptionType || '');
+  
+  const getSubscriptionName = () => {
+    switch (organization.subscriptionType) {
+      case 'decouverte': return 'Découverte';
+      case 'evenementielle': return 'Événementielle';
+      case 'pro_club': return 'Clubs & Associations';
+      case 'pro_pme': return 'PME';
+      case 'pro_entreprise': return 'Grandes Entreprises';
+      default: return 'Découverte';
+    }
+  };
+  
+  const getSubscriptionDescription = () => {
+    switch (organization.subscriptionType) {
+      case 'decouverte': return 'Parfait pour découvrir la plateforme';
+      case 'evenementielle': return 'Idéal pour les organisateurs occasionnels';
+      case 'pro_club': return 'Conçu pour les clubs sportifs et associations';
+      case 'pro_pme': return 'Idéal pour les petites et moyennes entreprises';
+      case 'pro_entreprise': return 'Solution entreprise complète';
+      default: return 'Parfait pour découvrir la plateforme';
+    }
+  };
 
   const getProgressPercentage = (current: number, limit?: number) => {
     if (!limit) return 0;
@@ -96,21 +119,24 @@ export default function SubscriptionInfo() {
               </div>
               <div>
                 <CardTitle className="text-lg">
-                  Abonnement {isDiscoveryPlan ? 'Découverte' : 'Premium'}
+                  Abonnement {getSubscriptionName()}
                 </CardTitle>
                 <CardDescription>
-                  {isDiscoveryPlan 
-                    ? 'Parfait pour découvrir la plateforme'
-                    : 'Accès complet à toutes les fonctionnalités'
-                  }
+                  {getSubscriptionDescription()}
                 </CardDescription>
               </div>
             </div>
             <Badge 
               variant={isDiscoveryPlan ? "secondary" : "default"}
-              className={isDiscoveryPlan ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"}
+              className={
+                isDiscoveryPlan 
+                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                  : isEventPlan
+                  ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100"
+                  : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+              }
             >
-              {isDiscoveryPlan ? 'GRATUIT' : 'PREMIUM'}
+              {isDiscoveryPlan ? 'GRATUIT' : isEventPlan ? 'PACK' : 'PRO'}
             </Badge>
           </div>
         </CardHeader>
@@ -135,7 +161,7 @@ export default function SubscriptionInfo() {
                   <Alert className="mt-2">
                     <i className="fas fa-exclamation-triangle w-4 h-4"></i>
                     <AlertDescription className="text-sm">
-                      Vous approchez de la limite d'événements. Passez au Premium pour créer des événements illimités.
+                      Vous approchez de la limite d'événements. Choisissez une offre payante pour créer plus d'événements.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -157,7 +183,7 @@ export default function SubscriptionInfo() {
                   <Alert className="mt-2">
                     <i className="fas fa-exclamation-triangle w-4 h-4"></i>
                     <AlertDescription className="text-sm">
-                      Vous approchez de la limite d'invitations. Passez au Premium pour inviter sans limite.
+                      Vous approchez de la limite d'invitations. Choisissez une offre payante pour inviter sans limite.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -165,8 +191,8 @@ export default function SubscriptionInfo() {
             </div>
           )}
 
-          {/* Statistiques pour Premium */}
-          {isPremiumPlan && limits && (
+          {/* Statistiques pour les offres payantes */}
+          {(isEventPlan || isProPlan) && limits && (
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-3 bg-blue-50 rounded-lg dark:bg-blue-950">
                 <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -241,7 +267,7 @@ export default function SubscriptionInfo() {
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 <i className="fas fa-arrow-up mr-2"></i>
-                Passer au Premium
+                Choisir une offre
               </Button>
             ) : (
               <div className="space-y-2">

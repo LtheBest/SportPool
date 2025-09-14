@@ -2830,34 +2830,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upgrade to Premium
+  // Upgrade subscription - LEGACY ENDPOINT (keep for compatibility)
   app.post("/api/subscription/upgrade", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const { billingInterval, paymentMethodId } = req.body;
+      const { billingInterval, paymentMethodId, planId } = req.body;
       
-      if (!billingInterval || !paymentMethodId) {
-        return res.status(400).json({ message: "Billing interval and payment method are required" });
+      if (!planId && (!billingInterval || !paymentMethodId)) {
+        return res.status(400).json({ message: "Plan ID or billing details are required" });
       }
 
-      if (!['monthly', 'annual'].includes(billingInterval)) {
-        return res.status(400).json({ message: "Invalid billing interval" });
+      // Support both new plan-based and legacy billing-based upgrades
+      if (planId) {
+        const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+        
+        const result = await SubscriptionService.createSubscription({
+          organizationId: req.user.organizationId,
+          planId,
+          successUrl: `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${baseUrl}/dashboard?payment=cancelled`,
+        });
+
+        res.json(result);
+      } else {
+        // Legacy flow - redirect to new system
+        return res.status(400).json({ 
+          message: "Legacy upgrade method deprecated. Use /api/subscriptions/create with planId instead.",
+          availablePlans: Object.keys(SUBSCRIPTION_PLANS)
+        });
       }
-
-      const result = await upgradeSubscription({
-        organizationId: req.user.organizationId,
-        newPlanType: 'premium',
-        billingInterval,
-        paymentMethodId,
-      });
-
-      // Create notification
-      await createNotification({
-        organizationId: req.user.organizationId,
-        ...NotificationTemplates.SUBSCRIPTION_UPGRADED('Premium', billingInterval),
-        sendEmail: true,
-      });
-
-      res.json(result);
     } catch (error) {
       console.error("Subscription upgrade error:", error);
       res.status(500).json({ message: "Failed to upgrade subscription" });
@@ -2911,7 +2911,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create subscription (for new purchases or upgrades)
+  // Create subscription (for new purchases or upgrades) - NEW ENDPOINT
+  app.post("/api/subscriptions/create", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId, successUrl, cancelUrl } = req.body;
+      
+      if (!planId) {
+        return res.status(400).json({ message: "Plan ID is required" });
+      }
+
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      
+      const result = await SubscriptionService.createSubscription({
+        organizationId: req.user.organizationId,
+        planId,
+        successUrl: successUrl || `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: cancelUrl || `${baseUrl}/dashboard?payment=cancelled`,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Subscription creation error:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // Create subscription (for new purchases or upgrades) - LEGACY ENDPOINT
   app.post("/api/subscription/create", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { planId, paymentMethodId } = req.body;
@@ -2959,6 +2984,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Subscription upgrade error:", error);
       res.status(500).json({ message: "Failed to upgrade subscription" });
+    }
+  });
+
+  // Handle successful payment from Stripe redirect
+  app.get("/api/subscriptions/success", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { session_id } = req.query;
+      
+      if (!session_id) {
+        return res.status(400).json({ message: "Session ID is required" });
+      }
+
+      // Récupérer la session Stripe
+      const session = await StripeService.getSession(session_id as string);
+      
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      // Vérifier que la session appartient à cette organisation
+      const organizationId = session.metadata?.organizationId;
+      if (organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Unauthorized session access" });
+      }
+
+      // Si le paiement est réussi, traiter l'activation
+      if (session.payment_status === 'paid') {
+        const planId = session.metadata?.planId;
+        if (planId) {
+          await SubscriptionService.handlePaymentSuccess(session_id as string, organizationId, planId);
+        }
+      }
+
+      res.json({
+        success: true,
+        payment_status: session.payment_status,
+        subscription_status: session.subscription?.status,
+        message: "Payment processed successfully"
+      });
+    } catch (error) {
+      console.error("Payment success handling error:", error);
+      res.status(500).json({ message: "Failed to process payment success" });
     }
   });
 

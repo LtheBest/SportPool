@@ -442,6 +442,207 @@ export class EmailService {
     }
   }
 
+  // Envoyer email d'abonnement avec facture
+  static async sendSubscriptionEmail(
+    organization: any,
+    plan: any,
+    type: 'activated' | 'cancelled' | 'expired' | 'renewal_reminder'
+  ): Promise<void> {
+    try {
+      let subject: string;
+      let content: string;
+
+      const planName = plan.name || plan.type || 'Votre plan';
+
+      switch (type) {
+        case 'activated':
+          subject = `🎉 Abonnement ${planName} activé !`;
+          content = `
+            <h2>Félicitations ! Votre abonnement a été activé</h2>
+            <p>Bonjour <strong>${organization.contactFirstName}</strong>,</p>
+            <p>Votre abonnement <strong>${planName}</strong> a été activé avec succès !</p>
+            
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3>Détails de votre abonnement :</h3>
+              <ul>
+                <li><strong>Plan :</strong> ${planName}</li>
+                <li><strong>Prix :</strong> ${this.formatPrice(plan.price)}${this.getIntervalSuffix(plan.billingInterval)}</li>
+                <li><strong>Statut :</strong> Actif</li>
+              </ul>
+            </div>
+
+            ${this.generateFeaturesList(plan)}
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.APP_URL}/dashboard" class="button">
+                    Accéder au tableau de bord
+                </a>
+            </div>
+
+            <p>Merci de faire confiance à TeamMove !</p>
+          `;
+          break;
+
+        case 'cancelled':
+          subject = `Annulation de votre abonnement ${planName}`;
+          content = `
+            <h2>Abonnement annulé</h2>
+            <p>Bonjour <strong>${organization.contactFirstName}</strong>,</p>
+            <p>Votre abonnement <strong>${planName}</strong> a été annulé comme demandé.</p>
+            <p>Vous avez été basculé vers l'offre <strong>Découverte</strong>. Vos données sont conservées et vous pouvez réactiver un abonnement à tout moment.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.APP_URL}/dashboard/subscription" class="button">
+                    Choisir un nouvel abonnement
+                </a>
+            </div>
+          `;
+          break;
+
+        case 'expired':
+          subject = `⚠️ Votre abonnement ${planName} a expiré`;
+          content = `
+            <h2>Abonnement expiré</h2>
+            <p>Bonjour <strong>${organization.contactFirstName}</strong>,</p>
+            <p>Votre abonnement <strong>${planName}</strong> a expiré et vous avez été automatiquement basculé vers l'offre Découverte.</p>
+            <p>Pour retrouver toutes vos fonctionnalités, renouvelez votre abonnement dès maintenant.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.APP_URL}/dashboard/subscription" class="button">
+                    Renouveler mon abonnement
+                </a>
+            </div>
+          `;
+          break;
+
+        case 'renewal_reminder':
+          const daysLeft = this.calculateDaysLeft(organization);
+          subject = `🔔 Rappel : Votre abonnement ${planName} expire ${daysLeft === 1 ? 'demain' : `dans ${daysLeft} jours`}`;
+          content = `
+            <h2>Rappel de renouvellement</h2>
+            <p>Bonjour <strong>${organization.contactFirstName}</strong>,</p>
+            <p>Votre abonnement <strong>${planName}</strong> expire ${daysLeft === 1 ? 'demain' : `dans ${daysLeft} jours`}.</p>
+            <p>Pour éviter toute interruption de service, renouvelez dès maintenant.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.APP_URL}/dashboard/subscription" class="button">
+                    Renouveler maintenant
+                </a>
+            </div>
+          `;
+          break;
+      }
+
+      const msg = {
+        to: organization.email,
+        from: {
+          email: FROM_EMAIL,
+          name: FROM_NAME
+        },
+        subject: subject,
+        html: this.createEmailTemplate(content),
+        text: subject + '\n\n' + content.replace(/<[^>]*>/g, '')
+      };
+
+      await sgMail.send(msg);
+      console.log(`✅ Email d'abonnement envoyé à: ${organization.email} (${type})`);
+    } catch (error) {
+      console.error('❌ Erreur envoi email abonnement:', error);
+      throw error;
+    }
+  }
+
+  // Envoyer email de rappel de renouvellement
+  static async sendRenewalReminder(organization: any): Promise<void> {
+    const planName = this.getSubscriptionName(organization.subscriptionType);
+    return this.sendSubscriptionEmail(organization, { name: planName }, 'renewal_reminder');
+  }
+
+  // Méthodes utilitaires pour les emails d'abonnement
+  private static formatPrice(priceInCents: number): string {
+    return `${(priceInCents / 100).toFixed(2)}€`;
+  }
+
+  private static getIntervalSuffix(interval: string): string {
+    switch (interval) {
+      case 'monthly': return '/mois';
+      case 'annual': return '/an';
+      case 'pack_single': return '';
+      case 'pack_10': return ' (pack 10)';
+      default: return '';
+    }
+  }
+
+  private static getSubscriptionName(subscriptionType: string): string {
+    switch (subscriptionType) {
+      case 'decouverte': return 'Découverte';
+      case 'evenementielle': return 'Événementielle';
+      case 'pro_club': return 'Clubs & Associations';
+      case 'pro_pme': return 'PME';
+      case 'pro_entreprise': return 'Grandes Entreprises';
+      default: return 'Abonnement';
+    }
+  }
+
+  private static calculateDaysLeft(organization: any): number {
+    if (!organization.subscriptionEndDate && !organization.packageExpiryDate) return 0;
+    
+    const expiryDate = new Date(organization.subscriptionEndDate || organization.packageExpiryDate);
+    const now = new Date();
+    const diffTime = expiryDate.getTime() - now.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  private static generateFeaturesList(plan: any): string {
+    let features: string[] = [];
+    
+    switch (plan.type) {
+      case 'evenementielle':
+        features = [
+          plan.id?.includes('pack10') ? '10 événements complets' : '1 événement complet',
+          'Invitations illimitées',
+          'Support prioritaire',
+          'Messagerie intégrée'
+        ];
+        break;
+      case 'pro_club':
+        features = [
+          'Événements illimités',
+          'Invitations illimitées',
+          'Branding personnalisé',
+          'API d\'intégration'
+        ];
+        break;
+      case 'pro_pme':
+        features = [
+          'Tout de Clubs & Associations',
+          'Multi-utilisateurs (5 admins)',
+          'Support téléphonique',
+          'Formation personnalisée'
+        ];
+        break;
+      case 'pro_entreprise':
+        features = [
+          'Tout de PME',
+          'Multi-utilisateurs illimités',
+          'Support 24/7',
+          'Account Manager dédié'
+        ];
+        break;
+      default:
+        features = ['Fonctionnalités avancées'];
+    }
+
+    return `
+      <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3>Vos fonctionnalités incluses :</h3>
+        <ul>
+          ${features.map(feature => `<li>${feature}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  }
+
   // Vérifier la configuration email
   static async verifyConfiguration(): Promise<{ valid: boolean; issues?: string[] }> {
     const issues: string[] = [];

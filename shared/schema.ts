@@ -135,7 +135,7 @@ export const notifications = pgTable("notifications", {
 // Subscription plans table
 export const subscriptionPlans = pgTable("subscription_plans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(), // "Découverte" ou "Premium"
+  name: text("name").notNull(), // "Découverte", "Événementielle", ou formules "Pro"
   type: varchar("type", { enum: ["decouverte", "evenementielle", "pro_club", "pro_pme", "pro_entreprise"] }).notNull(),
   description: text("description"),
   price: integer("price").notNull(), // Prix en centimes

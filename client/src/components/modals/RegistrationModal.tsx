@@ -23,7 +23,7 @@ const registrationSchema = z.object({
   type: z.enum(["club", "association", "company"], {
     required_error: "Veuillez sélectionner un type d'organisation",
   }),
-  subscriptionType: z.enum(["decouverte", "premium"], {
+  subscriptionType: z.enum(["decouverte", "evenementielle", "pro_club", "pro_pme", "pro_entreprise"], {
     required_error: "Veuillez choisir une offre",
   }),
   email: z.string().email("Email invalide"),
@@ -104,23 +104,21 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
     try {
       const { confirmPassword, acceptTerms, ...registerData } = data;
       
-      // Si l'offre premium est sélectionnée, rediriger vers le processus de paiement
-      if (data.subscriptionType === "premium") {
-        // Pour l'instant, créer le compte avec l'offre premium 
-        // Le paiement sera géré après la création du compte
+      // Si une offre payante est sélectionnée, rediriger vers le processus de paiement
+      if (data.subscriptionType !== "decouverte") {
         const result = await register(registerData);
         
         if (result.success) {
           // Invalidate queries to refresh user data
           queryClient.invalidateQueries({ queryKey: ["/api/me"] });
           
-          // Rediriger vers la page de paiement
-          setLocation("/dashboard?setup_payment=true");
+          // Rediriger vers la page de sélection/paiement des abonnements
+          setLocation(`/dashboard?upgrade_to=${data.subscriptionType}`);
           onClose();
           
           toast({
             title: "Compte créé",
-            description: "Votre compte a été créé. Veuillez configurer votre paiement pour activer l'offre Premium.",
+            description: "Votre compte a été créé. Veuillez configurer votre paiement pour activer votre offre.",
             variant: "default",
           });
         } else {
@@ -253,7 +251,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                       <RadioGroup
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        className="grid md:grid-cols-2 gap-6"
+                        className="grid lg:grid-cols-3 md:grid-cols-2 gap-6"
                       >
                         {/* Offre Découverte */}
                         <FormItem>
@@ -310,19 +308,80 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </Label>
                         </FormItem>
 
-                        {/* Offre Premium */}
+                        {/* Offre Événementielle */}
                         <FormItem>
                           <FormControl>
                             <RadioGroupItem
-                              value="premium"
-                              id="premium"
+                              value="evenementielle"
+                              id="evenementielle"
                               className="sr-only peer"
                             />
                           </FormControl>
                           <Label
-                            htmlFor="premium"
+                            htmlFor="evenementielle"
                             className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
-                              selectedSubscription === "premium"
+                              selectedSubscription === "evenementielle"
+                                ? 'border-orange-500 bg-orange-50 shadow-lg scale-[1.02] dark:bg-orange-950 dark:border-orange-400'
+                                : 'border-gray-200 hover:border-orange-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-orange-400 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            <Card className="border-0 shadow-none bg-transparent">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                                    🎯 Événementielle
+                                  </CardTitle>
+                                  <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100">
+                                    POPULAIRE
+                                  </Badge>
+                                </div>
+                                <CardDescription className="text-gray-600 dark:text-gray-300">
+                                  Idéal pour les organisateurs occasionnels
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="mb-4">
+                                  <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                    15€ - 150€
+                                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/pack</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-3">
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-orange-500 mr-2"></i>
+                                    <span>1 événement (15€) ou 10 événements (150€)</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-orange-500 mr-2"></i>
+                                    <span>Invitations illimitées</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-orange-500 mr-2"></i>
+                                    <span>Valable 12 mois</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-orange-500 mr-2"></i>
+                                    <span>Support prioritaire</span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Label>
+                        </FormItem>
+
+                        {/* Formule Pro Club */}
+                        <FormItem>
+                          <FormControl>
+                            <RadioGroupItem
+                              value="pro_club"
+                              id="pro_club"
+                              className="sr-only peer"
+                            />
+                          </FormControl>
+                          <Label
+                            htmlFor="pro_club"
+                            className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
+                              selectedSubscription === "pro_club"
                                 ? 'border-blue-500 bg-blue-50 shadow-lg scale-[1.02] dark:bg-blue-950 dark:border-blue-400'
                                 : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-blue-400 dark:hover:bg-gray-800'
                             }`}
@@ -331,20 +390,20 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                   <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                                    ⭐ Premium
+                                    🏆 Clubs & Associations
                                   </CardTitle>
                                   <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
-                                    POPULAIRE
+                                    PRO
                                   </Badge>
                                 </div>
                                 <CardDescription className="text-gray-600 dark:text-gray-300">
-                                  Accès complet à toutes les fonctionnalités
+                                  Pour les clubs sportifs et associations
                                 </CardDescription>
                               </CardHeader>
                               <CardContent className="pt-0">
                                 <div className="mb-4">
                                   <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                    À partir de 9,99€
+                                    19,99€
                                     <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/mois</span>
                                   </div>
                                 </div>
@@ -359,15 +418,133 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                                   </div>
                                   <div className="flex items-center text-sm">
                                     <i className="fas fa-check text-blue-500 mr-2"></i>
-                                    <span>Toutes les fonctionnalités</span>
+                                    <span>Branding personnalisé</span>
                                   </div>
                                   <div className="flex items-center text-sm">
                                     <i className="fas fa-check text-blue-500 mr-2"></i>
-                                    <span>Support prioritaire</span>
+                                    <span>API d'intégration</span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Label>
+                        </FormItem>
+
+                        {/* Formule Pro PME */}
+                        <FormItem>
+                          <FormControl>
+                            <RadioGroupItem
+                              value="pro_pme"
+                              id="pro_pme"
+                              className="sr-only peer"
+                            />
+                          </FormControl>
+                          <Label
+                            htmlFor="pro_pme"
+                            className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
+                              selectedSubscription === "pro_pme"
+                                ? 'border-purple-500 bg-purple-50 shadow-lg scale-[1.02] dark:bg-purple-950 dark:border-purple-400'
+                                : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-purple-400 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            <Card className="border-0 shadow-none bg-transparent">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                                    🏢 PME
+                                  </CardTitle>
+                                  <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100">
+                                    BUSINESS
+                                  </Badge>
+                                </div>
+                                <CardDescription className="text-gray-600 dark:text-gray-300">
+                                  Idéal pour les petites et moyennes entreprises
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="mb-4">
+                                  <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                    49€
+                                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/mois</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-3">
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-purple-500 mr-2"></i>
+                                    <span>Tout de Clubs & Associations</span>
                                   </div>
                                   <div className="flex items-center text-sm">
-                                    <i className="fas fa-check text-blue-500 mr-2"></i>
-                                    <span>Statistiques avancées</span>
+                                    <i className="fas fa-check text-purple-500 mr-2"></i>
+                                    <span>Multi-utilisateurs (5 admins)</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-purple-500 mr-2"></i>
+                                    <span>Support téléphonique</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-purple-500 mr-2"></i>
+                                    <span>Formation personnalisée</span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Label>
+                        </FormItem>
+
+                        {/* Formule Pro Entreprise */}
+                        <FormItem>
+                          <FormControl>
+                            <RadioGroupItem
+                              value="pro_entreprise"
+                              id="pro_entreprise"
+                              className="sr-only peer"
+                            />
+                          </FormControl>
+                          <Label
+                            htmlFor="pro_entreprise"
+                            className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
+                              selectedSubscription === "pro_entreprise"
+                                ? 'border-yellow-500 bg-yellow-50 shadow-lg scale-[1.02] dark:bg-yellow-950 dark:border-yellow-400'
+                                : 'border-gray-200 hover:border-yellow-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-yellow-400 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            <Card className="border-0 shadow-none bg-transparent">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                                    🌟 Grandes Entreprises
+                                  </CardTitle>
+                                  <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
+                                    ENTERPRISE
+                                  </Badge>
+                                </div>
+                                <CardDescription className="text-gray-600 dark:text-gray-300">
+                                  Solution complète pour grandes entreprises
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="mb-4">
+                                  <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                    99€
+                                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/mois</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-3">
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-yellow-500 mr-2"></i>
+                                    <span>Tout de PME</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-yellow-500 mr-2"></i>
+                                    <span>Multi-utilisateurs illimités</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-yellow-500 mr-2"></i>
+                                    <span>Support 24/7</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-yellow-500 mr-2"></i>
+                                    <span>Account Manager dédié</span>
                                   </div>
                                 </div>
                               </CardContent>
@@ -381,13 +558,13 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                 )}
               />
               
-              {selectedSubscription === "premium" && (
+              {selectedSubscription && selectedSubscription !== "decouverte" && (
                 <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-950 dark:border-blue-800">
                   <div className="flex items-start space-x-2">
                     <i className="fas fa-info-circle text-blue-500 mt-0.5"></i>
                     <div className="text-sm text-blue-700 dark:text-blue-300">
                       <p className="font-medium">Configuration du paiement</p>
-                      <p>Après la création de votre compte, vous serez redirigé vers la page de configuration du paiement sécurisé via Stripe pour activer votre abonnement Premium.</p>
+                      <p>Après la création de votre compte, vous serez redirigé vers la page de configuration du paiement sécurisé via Stripe pour activer votre abonnement.</p>
                     </div>
                   </div>
                 </div>

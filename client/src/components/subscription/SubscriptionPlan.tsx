@@ -7,11 +7,13 @@ import { Check, Crown, Star, AlertCircle, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SubscriptionInfo {
-  subscriptionType: 'decouverte' | 'premium';
+  subscriptionType: 'decouverte' | 'evenementielle' | 'pro_club' | 'pro_pme' | 'pro_entreprise';
   subscriptionStatus: 'active' | 'inactive' | 'cancelled' | 'past_due';
-  paymentMethod?: 'monthly' | 'annual';
+  paymentMethod?: 'monthly' | 'annual' | 'pack_single' | 'pack_10';
   subscriptionStartDate?: string;
   subscriptionEndDate?: string;
+  packageRemainingEvents?: number;
+  packageExpiryDate?: string;
   eventCreatedCount: number;
   invitationsSentCount: number;
   limits: {
@@ -84,7 +86,7 @@ export function SubscriptionPlan() {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm('Êtes-vous sûr de vouloir annuler votre abonnement Premium ?')) {
+    if (!confirm('Êtes-vous sûr de vouloir annuler votre abonnement ?')) {
       return;
     }
 
@@ -146,7 +148,42 @@ export function SubscriptionPlan() {
     );
   }
 
-  const isPremium = subscriptionInfo.subscriptionType === 'premium';
+  const isDiscovery = subscriptionInfo.subscriptionType === 'decouverte';
+  const isEventPlan = subscriptionInfo.subscriptionType === 'evenementielle';
+  const isProPlan = ['pro_club', 'pro_pme', 'pro_entreprise'].includes(subscriptionInfo.subscriptionType);
+  
+  const getSubscriptionName = () => {
+    switch (subscriptionInfo.subscriptionType) {
+      case 'decouverte': return 'Découverte';
+      case 'evenementielle': return 'Événementielle';
+      case 'pro_club': return 'Clubs & Associations';
+      case 'pro_pme': return 'PME';
+      case 'pro_entreprise': return 'Grandes Entreprises';
+      default: return 'Découverte';
+    }
+  };
+  
+  const getSubscriptionPrice = () => {
+    switch (subscriptionInfo.subscriptionType) {
+      case 'decouverte': return 'Gratuit';
+      case 'evenementielle': 
+        return subscriptionInfo.paymentMethod === 'pack_10' ? '150€' : '15€';
+      case 'pro_club': return '19,99€';
+      case 'pro_pme': return '49€';
+      case 'pro_entreprise': return '99€';
+      default: return 'Gratuit';
+    }
+  };
+  
+  const getSubscriptionInterval = () => {
+    switch (subscriptionInfo.paymentMethod) {
+      case 'monthly': return '/mois';
+      case 'annual': return '/an';
+      case 'pack_single': return '';
+      case 'pack_10': return ' (pack 10)';
+      default: return '';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -157,51 +194,56 @@ export function SubscriptionPlan() {
             Gérez votre abonnement et vos fonctionnalités
           </p>
         </div>
-        {isPremium && (
-          <Badge variant="secondary" className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white">
+        {!isDiscovery && (
+          <Badge variant="secondary" className="bg-gradient-to-r from-blue-400 to-purple-600 text-white">
             <Crown className="w-4 h-4 mr-1" />
-            Premium
+            {getSubscriptionName()}
           </Badge>
         )}
       </div>
 
       {/* Current Plan */}
-      <Card className={isPremium ? 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-amber-50' : ''}>
+      <Card className={!isDiscovery ? 'border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50' : ''}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                {isPremium ? (
-                  <>
-                    <Crown className="w-5 h-5 text-yellow-500" />
-                    Plan Premium
-                  </>
-                ) : (
+                {isDiscovery ? (
                   <>
                     <Star className="w-5 h-5 text-blue-500" />
                     Plan Découverte
                   </>
+                ) : isEventPlan ? (
+                  <>
+                    <Crown className="w-5 h-5 text-orange-500" />
+                    Plan Événementielle
+                  </>
+                ) : (
+                  <>
+                    <Crown className="w-5 h-5 text-blue-500" />
+                    Plan {getSubscriptionName()}
+                  </>
                 )}
               </CardTitle>
               <CardDescription>
-                {isPremium ? (
-                  `Facturation ${subscriptionInfo.paymentMethod === 'monthly' ? 'mensuelle' : 'annuelle'}`
-                ) : (
+                {isDiscovery ? (
                   'Plan gratuit avec limitations'
+                ) : isEventPlan ? (
+                  subscriptionInfo.paymentMethod === 'pack_10' 
+                    ? 'Pack 10 événements (valable 12 mois)'
+                    : 'Pack événement unique'
+                ) : (
+                  'Abonnement mensuel - Fonctionnalités avancées'
                 )}
               </CardDescription>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold">
-                {isPremium ? (
-                  subscriptionInfo.paymentMethod === 'monthly' ? '29€' : '290€'
-                ) : (
-                  'Gratuit'
-                )}
+                {getSubscriptionPrice()}
               </div>
-              {isPremium && (
+              {!isDiscovery && (
                 <div className="text-sm text-gray-500">
-                  {subscriptionInfo.paymentMethod === 'monthly' ? '/mois' : '/an'}
+                  {getSubscriptionInterval()}
                 </div>
               )}
             </div>
@@ -249,7 +291,47 @@ export function SubscriptionPlan() {
           <div className="pt-4 border-t">
             <h4 className="font-medium mb-3">Fonctionnalités incluses :</h4>
             <div className="space-y-2">
-              {isPremium ? (
+              {isDiscovery ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-green-500" />
+                    1 événement maximum
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-green-500" />
+                    20 invitations maximum
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-green-500" />
+                    Support par email
+                  </div>
+                </>
+              ) : isEventPlan ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-green-500" />
+                    {subscriptionInfo.paymentMethod === 'pack_10' ? '10 événements' : '1 événement complet'}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-green-500" />
+                    Invitations illimitées
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-green-500" />
+                    Support prioritaire
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-green-500" />
+                    Messagerie intégrée
+                  </div>
+                  {subscriptionInfo.paymentMethod === 'pack_10' && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Valable 12 mois
+                    </div>
+                  )}
+                </>
+              ) : (
                 <>
                   <div className="flex items-center gap-2 text-sm">
                     <Check className="w-4 h-4 text-green-500" />
@@ -265,27 +347,24 @@ export function SubscriptionPlan() {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Check className="w-4 h-4 text-green-500" />
-                    Analytics avancées
+                    Statistiques avancées
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Check className="w-4 h-4 text-green-500" />
-                    Thèmes personnalisés
+                    Branding personnalisé
                   </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4 text-green-500" />
-                    1 événement maximum
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4 text-green-500" />
-                    20 invitations maximum
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4 text-green-500" />
-                    Support communautaire
-                  </div>
+                  {subscriptionInfo.subscriptionType === 'pro_pme' && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Multi-utilisateurs (5 admins)
+                    </div>
+                  )}
+                  {subscriptionInfo.subscriptionType === 'pro_entreprise' && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Multi-utilisateurs illimités
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -293,39 +372,46 @@ export function SubscriptionPlan() {
 
           {/* Action Buttons */}
           <div className="pt-4 border-t space-y-3">
-            {!isPremium ? (
-              <>
-                <Button
-                  onClick={() => handleUpgrade('monthly')}
-                  disabled={upgrading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Passer au Premium - 29€/mois
-                </Button>
-                <Button
-                  onClick={() => handleUpgrade('annual')}
-                  disabled={upgrading}
-                  variant="outline"
-                  className="w-full border-yellow-300 text-yellow-700 hover:bg-yellow-50"
-                >
-                  <Crown className="w-4 h-4 mr-2" />
-                  Premium Annuel - 290€/an (2 mois gratuits)
-                </Button>
-              </>
+            {isDiscovery ? (
+              <Button
+                onClick={() => window.location.href = '/dashboard/subscription'}
+                disabled={upgrading}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                Choisir une offre
+              </Button>
             ) : (
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={handleCancelSubscription}
-                  className="flex-1"
-                >
-                  Annuler l'abonnement
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Gérer le paiement
-                </Button>
+              <div className="space-y-3">
+                {/* Informations sur l'abonnement en cours */}
+                {isEventPlan && subscriptionInfo.packageRemainingEvents !== undefined && (
+                  <div className="text-sm bg-orange-50 p-3 rounded-lg">
+                    <div className="font-medium">Événements restants : {subscriptionInfo.packageRemainingEvents}</div>
+                    {subscriptionInfo.packageExpiryDate && (
+                      <div className="text-gray-600">
+                        Expire le : {new Date(subscriptionInfo.packageExpiryDate).toLocaleDateString('fr-FR')}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelSubscription}
+                    className="flex-1"
+                  >
+                    Rétrograder vers Découverte
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = '/dashboard/subscription'}
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Changer d'offre
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -333,7 +419,7 @@ export function SubscriptionPlan() {
       </Card>
 
       {/* Subscription Status */}
-      {isPremium && subscriptionInfo.subscriptionStatus !== 'active' && (
+      {!isDiscovery && subscriptionInfo.subscriptionStatus !== 'active' && (
         <Card className="border-red-200 bg-red-50">
           <CardHeader>
             <CardTitle className="text-red-800 flex items-center gap-2">
@@ -347,6 +433,8 @@ export function SubscriptionPlan() {
                 'Votre abonnement a été annulé et se terminera à la fin de la période de facturation.'}
               {subscriptionInfo.subscriptionStatus === 'past_due' &&
                 'Votre paiement est en retard. Veuillez mettre à jour votre méthode de paiement.'}
+              {subscriptionInfo.subscriptionStatus === 'inactive' &&
+                'Votre abonnement est inactif. Contactez le support si le problème persiste.'}
             </p>
           </CardContent>
         </Card>
