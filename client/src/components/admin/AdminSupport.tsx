@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { api } from '@/lib/api';
 
 interface Conversation {
   id: string;
@@ -67,9 +68,7 @@ export function AdminSupport() {
 
   const fetchConversations = async () => {
     try {
-      const response = await fetch('/api/admin/conversations', {
-        credentials: 'include',
-      });
+      const response = await api.admin.getConversations();
       
       if (response.ok) {
         const data = await response.json();
@@ -87,9 +86,7 @@ export function AdminSupport() {
 
   const fetchMessages = async (conversationId: string) => {
     try {
-      const response = await fetch(`/api/admin/conversations/${conversationId}/messages`, {
-        credentials: 'include',
-      });
+      const response = await api.admin.getMessages(conversationId);
       
       if (response.ok) {
         const data = await response.json();
@@ -111,14 +108,7 @@ export function AdminSupport() {
 
     setSending(true);
     try {
-      const response = await fetch('/api/admin/conversations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(newConversationData),
-      });
+      const response = await api.admin.createConversation(newConversationData);
 
       if (response.ok) {
         const conversation = await response.json();
@@ -144,14 +134,7 @@ export function AdminSupport() {
 
     setSending(true);
     try {
-      const response = await fetch(`/api/admin/conversations/${selectedConversation}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ message: newMessage }),
-      });
+      const response = await api.admin.sendMessage(selectedConversation, newMessage);
 
       if (response.ok) {
         const message = await response.json();
@@ -179,10 +162,7 @@ export function AdminSupport() {
 
   const closeConversation = async (conversationId: string) => {
     try {
-      const response = await fetch(`/api/admin/conversations/${conversationId}/close`, {
-        method: 'PUT',
-        credentials: 'include',
-      });
+      const response = await api.admin.closeConversation(conversationId);
 
       if (response.ok) {
         setConversations(prev => 

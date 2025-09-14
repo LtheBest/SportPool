@@ -219,6 +219,15 @@ export const api = {
       makePublicRequest("POST", "/api/reset-password", { token, newPassword }),
   },
 
+  // Admin support endpoints
+  admin: {
+    getConversations: () => makeAuthenticatedRequest("GET", "/api/admin/conversations"),
+    createConversation: (data: any) => makeAuthenticatedRequest("POST", "/api/admin/conversations", data),
+    getMessages: (conversationId: string) => makeAuthenticatedRequest("GET", `/api/admin/conversations/${conversationId}/messages`),
+    sendMessage: (conversationId: string, message: string) => makeAuthenticatedRequest("POST", `/api/admin/conversations/${conversationId}/messages`, { message }),
+    closeConversation: (conversationId: string) => makeAuthenticatedRequest("PUT", `/api/admin/conversations/${conversationId}/close`),
+  },
+
   // Diagnostic and test endpoints
   health: () => makePublicRequest("GET", "/api/health"),
   authTest: () => makeAuthenticatedRequest("GET", "/api/auth-test"),
