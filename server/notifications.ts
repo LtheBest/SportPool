@@ -242,11 +242,11 @@ async function sendNotificationEmail(
 
     await sendEmail({
       to: organization.email,
-      subject: `[SportPool] ${notification.title}`,
+      subject: `[TeamMove] ${notification.title}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center;">
-            <h1 style="margin: 0; font-size: 24px;">SportPool</h1>
+            <h1 style="margin: 0; font-size: 24px;">TeamMove</h1>
           </div>
           
           <div style="padding: 30px; background: #f8f9fa;">
@@ -269,7 +269,7 @@ async function sendNotificationEmail(
           </div>
           
           <div style="padding: 20px; text-align: center; color: #666; font-size: 14px;">
-            <p>Vous recevez cet email car vous êtes inscrit aux notifications SportPool.</p>
+            <p>Vous recevez cet email car vous êtes inscrit aux notifications TeamMove.</p>
             <p><a href="${process.env.APP_URL}/dashboard/preferences" style="color: #667eea;">Gérer vos préférences de notification</a></p>
           </div>
         </div>
@@ -348,7 +348,7 @@ export const NotificationTemplates = {
 
   WELCOME: (organizationName: string) => ({
     type: 'success' as const,
-    title: 'Bienvenue sur SportPool !',
+    title: 'Bienvenue sur TeamMove !',
     message: `Bienvenue ${organizationName} ! Votre organisation a été créée avec succès. Vous pouvez maintenant commencer à organiser vos événements sportifs.`,
   }),
 

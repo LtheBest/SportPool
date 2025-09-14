@@ -1,20 +1,20 @@
 #!/bin/bash
 
-# Script de build et push Docker pour SportPool
+# Script de build et push Docker pour TeamMove
 # Usage: ./scripts/docker-build.sh [tag]
 
 set -e
 
 # Configuration
 DOCKER_USERNAME="lthebest"
-IMAGE_NAME="sportpool"
+IMAGE_NAME="TeamMove"
 DEFAULT_TAG="latest"
 
 # Utilise le tag passé en paramètre ou le tag par défaut
 TAG=${1:-$DEFAULT_TAG}
 FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 
-echo "🏗️  Building Docker image for SportPool..."
+echo "🏗️  Building Docker image for TeamMove..."
 echo "📦 Image: ${FULL_IMAGE_NAME}"
 
 # Build l'image

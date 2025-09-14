@@ -10,9 +10,9 @@ class EmailServiceEnhanced {
 
   constructor() {
     this.apiKey = process.env.SENDGRID_API_KEY || '';
-    this.fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@covoitsports.com';
-    this.fromName = process.env.SENDGRID_FROM_NAME || 'CovoitSports';
-    this.appUrl = process.env.APP_URL || 'https://sportpool.onrender.com';
+    this.fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@TeamMoves.com';
+    this.fromName = process.env.SENDGRID_FROM_NAME || 'TeamMoves';
+    this.appUrl = process.env.APP_URL || 'https://teammove.onrender.com';
     
     this.initializeService();
   }
@@ -450,7 +450,7 @@ class EmailServiceEnhanced {
       subject: `Message de ${organizerName} - ${eventName}`,
       html,
       text,
-      replyTo: `${this.fromEmail}+${replyToken}@reply.sportpool.com`
+      replyTo: `${this.fromEmail}+${replyToken}@reply.TeamMove.com`
     });
   }
 
@@ -660,7 +660,7 @@ class EmailServiceEnhanced {
 
     return await this.sendEmail({
       to: email,
-      subject: 'Réinitialisation de votre mot de passe - SportPool',
+      subject: 'Réinitialisation de votre mot de passe - TeamMove',
       html,
       text
     });
@@ -677,8 +677,8 @@ class EmailServiceEnhanced {
       return { success: false, error: 'Email service not configured' };
     }
 
-    const organizationName = organization?.name || 'SportPool';
-    const organizerName = organization ? `${organization.contactFirstName} ${organization.contactLastName}` : 'SportPool';
+    const organizationName = organization?.name || 'TeamMove';
+    const organizerName = organization ? `${organization.contactFirstName} ${organization.contactLastName}` : 'TeamMove';
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
@@ -691,7 +691,7 @@ class EmailServiceEnhanced {
           </div>
           
           <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
-            Message envoyé par ${organizerName} via SportPool
+            Message envoyé par ${organizerName} via TeamMove
           </p>
         </div>
       </div>
@@ -703,7 +703,7 @@ class EmailServiceEnhanced {
       ${content}
       
       ---
-      Message envoyé par ${organizerName} via SportPool
+      Message envoyé par ${organizerName} via TeamMove
     `;
 
     return await this.sendEmail({
@@ -816,11 +816,11 @@ class EmailServiceEnhanced {
 
               <p>Si vous avez des questions, n'hésitez pas à contacter l'organisateur.</p>
               
-              <p>Sportivement,<br><strong>L'équipe SportPool</strong></p>
+              <p>Sportivement,<br><strong>L'équipe TeamMove</strong></p>
             </div>
             
             <div class="footer">
-              <p>Cet email a été envoyé par ${organizationName} via SportPool</p>
+              <p>Cet email a été envoyé par ${organizationName} via TeamMove</p>
               <p>Pour plus d'informations : <a href="${this.appUrl}">${this.appUrl}</a></p>
             </div>
           </div>
@@ -843,7 +843,7 @@ ${messageContent}
 Pour répondre à ce message, visitez : ${replyUrl}
 
 Sportivement,
-L'équipe SportPool
+L'équipe TeamMove
 
 ${this.appUrl}
       `;
@@ -948,11 +948,11 @@ ${this.appUrl}
 
               <p>Si vous avez des questions urgentes, vous pouvez également contacter l'organisateur à l'adresse : <a href="mailto:${this.fromEmail}">${this.fromEmail}</a></p>
               
-              <p>Sportivement,<br><strong>L'équipe SportPool</strong></p>
+              <p>Sportivement,<br><strong>L'équipe TeamMove</strong></p>
             </div>
             
             <div class="footer">
-              <p>Cet email a été envoyé par ${organizationName} via SportPool</p>
+              <p>Cet email a été envoyé par ${organizationName} via TeamMove</p>
               <p>Pour plus d'informations : <a href="${this.appUrl}">${this.appUrl}</a></p>
             </div>
           </div>
@@ -979,7 +979,7 @@ Ce lien de réponse est valide pendant 7 jours.
 Si vous avez des questions urgentes, contactez : ${this.fromEmail}
 
 Sportivement,
-L'équipe SportPool
+L'équipe TeamMove
 
 ${this.appUrl}
       `;
@@ -1028,7 +1028,7 @@ ${this.appUrl}
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Bienvenue sur SportPool - ${organizationName}</title>
+          <title>Bienvenue sur TeamMove - ${organizationName}</title>
           <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
             .container { max-width: 700px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
@@ -1058,7 +1058,7 @@ ${this.appUrl}
         <body>
           <div class="container">
             <div class="header">
-              <h1>🎉 Bienvenue sur SportPool !</h1>
+              <h1>🎉 Bienvenue sur TeamMove !</h1>
               <p>Votre plateforme de covoiturage sportif est prête</p>
             </div>
             
@@ -1067,7 +1067,7 @@ ${this.appUrl}
                 <h2>Bonjour ${contactFirstName} ${contactLastName} !</h2>
                 <p style="font-size: 18px; color: #666; line-height: 1.6; margin-bottom: 20px;">
                   Félicitations ! Votre ${organizationTypeLabel} <strong>"${organizationName}"</strong> 
-                  vient d'être inscrite sur SportPool. Vous pouvez maintenant organiser et gérer 
+                  vient d'être inscrite sur TeamMove. Vous pouvez maintenant organiser et gérer 
                   le covoiturage pour tous vos événements sportifs en toute simplicité.
                 </p>
               </div>
@@ -1134,7 +1134,7 @@ ${this.appUrl}
                 <h4 style="color: #856404; margin: 0 0 10px;">🎁 Offre de lancement</h4>
                 <p style="color: #856404; margin: 0; font-size: 14px;">
                   Profitez de toutes les fonctionnalités premium gratuitement pendant vos premiers événements. 
-                  Découvrez tout le potentiel de SportPool sans engagement !
+                  Découvrez tout le potentiel de TeamMove sans engagement !
                 </p>
               </div>
 
@@ -1146,14 +1146,14 @@ ${this.appUrl}
             </div>
             
             <div class="footer">
-              <p><strong>Bienvenue dans la communauté SportPool !</strong></p>
+              <p><strong>Bienvenue dans la communauté TeamMove !</strong></p>
               <p>Ensemble, rendons le sport plus accessible et plus convivial.</p>
               <div class="social-links">
                 <a href="${this.appUrl}">🌐</a>
                 <a href="mailto:${this.fromEmail}">📧</a>
               </div>
               <p style="font-size: 12px; color: #999;">
-                SportPool - Plateforme de covoiturage sportif<br>
+                TeamMove - Plateforme de covoiturage sportif<br>
                 <a href="${this.appUrl}" style="color: #667eea;">${this.appUrl}</a>
               </p>
             </div>
@@ -1163,11 +1163,11 @@ ${this.appUrl}
     `;
 
     const text = `
-🎉 Bienvenue sur SportPool !
+🎉 Bienvenue sur TeamMove !
 
 Bonjour ${contactFirstName} ${contactLastName} !
 
-Félicitations ! Votre ${organizationTypeLabel} "${organizationName}" vient d'être inscrite sur SportPool.
+Félicitations ! Votre ${organizationTypeLabel} "${organizationName}" vient d'être inscrite sur TeamMove.
 
 Vous pouvez maintenant :
 🗓️ Créer et gérer vos événements sportifs
@@ -1190,15 +1190,15 @@ Besoin d'aide ?
 📧 ${this.fromEmail}
 🌐 ${this.appUrl}/support
 
-Bienvenue dans la communauté SportPool !
-L'équipe SportPool
+Bienvenue dans la communauté TeamMove !
+L'équipe TeamMove
 ${this.appUrl}
     `;
 
     return await this.sendEmail({
       to: email,
       toName: `${contactFirstName} ${contactLastName}`,
-      subject: `🎉 Bienvenue sur SportPool - ${organizationName}`,
+      subject: `🎉 Bienvenue sur TeamMove - ${organizationName}`,
       html,
       text
     });
@@ -1273,7 +1273,7 @@ ${this.appUrl}
             <div class="content">
               <p style="font-size: 18px; text-align: center; margin-bottom: 30px;">
                 Bonjour <strong>${organizerName}</strong>,<br>
-                Félicitations ! Votre événement a été créé avec succès sur SportPool.
+                Félicitations ! Votre événement a été créé avec succès sur TeamMove.
               </p>
 
               <div class="event-card">
@@ -1384,10 +1384,10 @@ ${this.appUrl}
             </div>
             
             <div class="footer">
-              <p><strong>Merci d'utiliser SportPool !</strong></p>
+              <p><strong>Merci d'utiliser TeamMove !</strong></p>
               <p>Votre événement contribue à rendre le sport plus accessible et plus convivial.</p>
               <p style="font-size: 12px; color: #999; margin-top: 20px;">
-                SportPool - Plateforme de covoiturage sportif<br>
+                TeamMove - Plateforme de covoiturage sportif<br>
                 <a href="${this.appUrl}" style="color: #28a745;">${this.appUrl}</a>
               </p>
             </div>
@@ -1401,7 +1401,7 @@ ${this.appUrl}
 
 Bonjour ${organizerName},
 
-Félicitations ! Votre événement "${eventName}" a été créé avec succès sur SportPool.
+Félicitations ! Votre événement "${eventName}" a été créé avec succès sur TeamMove.
 
 📝 DÉTAILS DE L'ÉVÉNEMENT :
 • Organisation : ${organizationName}
@@ -1429,8 +1429,8 @@ Besoin d'aide ?
 📧 ${this.fromEmail}
 🌐 ${this.appUrl}/support
 
-Merci d'utiliser SportPool !
-L'équipe SportPool
+Merci d'utiliser TeamMove !
+L'équipe TeamMove
 ${this.appUrl}
     `;
 
@@ -1580,10 +1580,10 @@ ${this.appUrl}
             </div>
             
             <div class="footer">
-              <p><strong>Merci d'utiliser SportPool !</strong></p>
+              <p><strong>Merci d'utiliser TeamMove !</strong></p>
               <p>Votre événement rassemble la communauté sportive.</p>
               <p style="font-size: 12px; color: #999; margin-top: 20px;">
-                SportPool - Plateforme de covoiturage sportif<br>
+                TeamMove - Plateforme de covoiturage sportif<br>
                 <a href="${this.appUrl}" style="color: #007bff;">${this.appUrl}</a>
               </p>
             </div>
@@ -1621,8 +1621,8 @@ Besoin d'aide ?
 📧 ${this.fromEmail}
 🌐 ${this.appUrl}/support
 
-Merci d'utiliser SportPool !
-L'équipe SportPool
+Merci d'utiliser TeamMove !
+L'équipe TeamMove
 ${this.appUrl}
     `;
 

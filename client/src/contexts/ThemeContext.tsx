@@ -11,7 +11,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const THEME_STORAGE_KEY = 'sportpool_theme';
+const THEME_STORAGE_KEY = 'TeamMove_theme';
 
 function getInitialTheme(): Theme {
   // Check localStorage first

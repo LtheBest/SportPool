@@ -9,12 +9,12 @@ const PRICE_CONFIG = {
   'premium-monthly': {
     price: 1299, // 12,99€ en centimes
     interval: 'month' as const,
-    product: 'SportPool Premium Monthly'
+    product: 'TeamMove Premium Monthly'
   },
   'premium-annual': {
     price: 9999, // 99,99€ en centimes
     interval: 'year' as const,
-    product: 'SportPool Premium Annual'
+    product: 'TeamMove Premium Annual'
   }
 };
 
@@ -51,7 +51,7 @@ export class StripeService {
               currency: 'eur',
               product_data: {
                 name: planConfig.product,
-                description: `Abonnement ${params.interval === 'monthly' ? 'mensuel' : 'annuel'} à SportPool Premium`,
+                description: `Abonnement ${params.interval === 'monthly' ? 'mensuel' : 'annuel'} à TeamMove Premium`,
               },
               unit_amount: planConfig.price,
               recurring: {
@@ -75,7 +75,7 @@ export class StripeService {
           enabled: true,
         },
         subscription_data: {
-          description: `SportPool Premium - ${params.interval === 'monthly' ? 'Mensuel' : 'Annuel'}`,
+          description: `TeamMove Premium - ${params.interval === 'monthly' ? 'Mensuel' : 'Annuel'}`,
           metadata: {
             organizationId: params.organizationId,
             planId: params.planId,

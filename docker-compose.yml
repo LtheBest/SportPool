@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  sportpool-app:
+  TeamMove-app:
     build: .
     ports:
       - "3000:3000"
@@ -15,7 +15,7 @@ services:
       - ./uploads:/app/uploads
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "https://sportpool.onrender.comapi/health"]
+      test: ["CMD", "curl", "-f", "https://teammove.onrender.comapi/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -26,9 +26,9 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_DB=sportpool
-      - POSTGRES_USER=sportpool
-      - POSTGRES_PASSWORD=sportpool_password
+      - POSTGRES_DB=TeamMove
+      - POSTGRES_USER=TeamMove
+      - POSTGRES_PASSWORD=TeamMove_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -36,7 +36,7 @@ services:
       - "5432:5432"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sportpool"]
+      test: ["CMD-SHELL", "pg_isready -U TeamMove"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,7 +50,7 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./ssl:/etc/nginx/ssl
     depends_on:
-      - sportpool-app
+      - TeamMove-app
     restart: unless-stopped
 
 volumes:

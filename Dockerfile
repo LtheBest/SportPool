@@ -1,4 +1,4 @@
-# Multi-stage build for SportPool application
+# Multi-stage build for TeamMove application
 
 # Stage 1: Build stage
 FROM node:18-alpine AS builder
@@ -43,20 +43,20 @@ RUN mkdir -p uploads
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S sportpool -u 1001
+    adduser -S TeamMove -u 1001
 
 # Change ownership of the app directory
-RUN chown -R sportpool:nodejs /app
+RUN chown -R TeamMove:nodejs /app
 
 # Switch to non-root user
-USER sportpool
+USER TeamMove
 
 # Expose port
 EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('https://sportpool.onrender.comapi/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+    CMD node -e "require('http').get('https://teammove.onrender.comapi/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application with PM2
 CMD ["pm2-runtime", "start", "ecosystem.config.cjs"]

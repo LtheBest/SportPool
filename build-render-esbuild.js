@@ -4,7 +4,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-console.log('🚀 Building SportPool for Render (ESBuild Mode)...');
+console.log('🚀 Building TeamMove for Render (ESBuild Mode)...');
 
 try {
   // 1. Clean previous builds
@@ -88,7 +88,7 @@ try {
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SportPool</title>
+    <title>TeamMove</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: system-ui, sans-serif; }

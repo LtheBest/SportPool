@@ -25,9 +25,9 @@ class EmailService {
   private appUrl: string;
 
   constructor() {
-    this.fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@covoitsports.com';
-    this.fromName = process.env.SENDGRID_FROM_NAME || 'CovoitSports';
-    this.appUrl = process.env.APP_URL || 'https://sportpool.onrender.com';
+    this.fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@TeamMoves.com';
+    this.fromName = process.env.SENDGRID_FROM_NAME || 'TeamMoves';
+    this.appUrl = process.env.APP_URL || 'https://teammove.onrender.com';
   }
 
   async sendEmail(data: EmailData): Promise<boolean> {

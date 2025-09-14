@@ -76,11 +76,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'http://localhost:8080',
         
         // Production Render
-        'https://sportpool.onrender.com',
+        'https://teammove.onrender.com',
         process.env.APP_URL,
         process.env.RENDER_EXTERNAL_URL,
         // Vercel fallback si nécessaire
-        // 'https://sportpool.vercel.app',
+        // 'https://TeamMove.vercel.app',
       ].filter(Boolean);
 
       console.log(`🌐 CORS check: origin=${origin}, allowed=${allowedOrigins.join(', ')}`);
@@ -1060,7 +1060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Organization not found" });
       }
 
-      const eventLink = `${process.env.APP_URL || 'https://sportpool.onrender.com'}/events/${event.id}`;
+      const eventLink = `${process.env.APP_URL || 'https://teammove.onrender.com'}/events/${event.id}`;
 
       const sent = await emailService.sendEventInvitationWithLink(
         email,
@@ -1840,7 +1840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const text = email.text || '';
         const html = email.html || '';
         
-        // Extract reply token from email address (e.g., reply+token@sportpool.com)
+        // Extract reply token from email address (e.g., reply+token@TeamMove.com)
         const replyTokenMatch = toEmail.match(/reply\+([^@]+)@/);
         if (!replyTokenMatch) {
           console.log(`No reply token found in email address: ${toEmail}`);
@@ -2259,8 +2259,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         await emailService.sendCustomEmail(
           email,
-          "Bienvenue dans la newsletter SportPool !",
-          `Merci de vous être inscrit(e) à notre newsletter !\n\nVous recevrez désormais nos dernières actualités et nouveautés concernant SportPool.\n\nÀ bientôt !`
+          "Bienvenue dans la newsletter TeamMove !",
+          `Merci de vous être inscrit(e) à notre newsletter !\n\nVous recevrez désormais nos dernières actualités et nouveautés concernant TeamMove.\n\nÀ bientôt !`
         );
       } catch (emailError) {
         console.error("Failed to send welcome email:", emailError);
@@ -2424,7 +2424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await emailService.sendCustomEmail(
             adminEmail,
             `Nouveau message de contact : ${subject}`,
-            `Nouveau message reçu via le formulaire de contact :\n\nDe : ${name} (${email})\nSujet : ${subject}\n\nMessage :\n${message}\n\n---\nEnvoyé depuis SportPool`
+            `Nouveau message reçu via le formulaire de contact :\n\nDe : ${name} (${email})\nSujet : ${subject}\n\nMessage :\n${message}\n\n---\nEnvoyé depuis TeamMove`
           );
         } catch (emailError) {
           console.error("Failed to send contact email:", emailError);
@@ -2549,7 +2549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/sitemap.xml", async (_req, res) => {
     try {
       const events = await storage.getEvents();
-      const baseUrl = process.env.APP_URL || "https://sportpool.onrender.com";
+      const baseUrl = process.env.APP_URL || "https://teammove.onrender.com";
       
       let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

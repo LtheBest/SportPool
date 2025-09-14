@@ -68,8 +68,8 @@ export async function createConversation(request: CreateConversationRequest) {
     // Envoyer un email de notification à l'admin (optionnel)
     try {
       await sendEmail({
-        to: process.env.ADMIN_EMAIL || 'admin@sportpool.app',
-        subject: `[SportPool] Nouveau message de ${org.name}`,
+        to: process.env.ADMIN_EMAIL || 'admin@TeamMove.app',
+        subject: `[TeamMove] Nouveau message de ${org.name}`,
         html: `
           <h2>Nouveau message de support</h2>
           <p><strong>Organisation :</strong> ${org.name}</p>
@@ -164,7 +164,7 @@ export async function sendMessage(request: SendMessageRequest) {
         try {
           await sendEmail({
             to: organization[0].email,
-            subject: `[SportPool] Réponse de l'administration - ${conv.subject}`,
+            subject: `[TeamMove] Réponse de l'administration - ${conv.subject}`,
             html: `
               <h2>Nouvelle réponse de l'administration</h2>
               <p>Bonjour ${organization[0].contactFirstName},</p>
@@ -173,7 +173,7 @@ export async function sendMessage(request: SendMessageRequest) {
                 ${request.message.replace(/\n/g, '<br>')}
               </div>
               <p><a href="${process.env.APP_URL}/dashboard/support/${request.conversationId}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Voir la conversation</a></p>
-              <p>Cordialement,<br>L'équipe SportPool</p>
+              <p>Cordialement,<br>L'équipe TeamMove</p>
             `,
           });
         } catch (emailError) {
@@ -184,8 +184,8 @@ export async function sendMessage(request: SendMessageRequest) {
       // Message de l'organisation vers l'admin
       try {
         await sendEmail({
-          to: process.env.ADMIN_EMAIL || 'admin@sportpool.app',
-          subject: `[SportPool] Réponse de ${senderInfo?.name || 'Organisation'} - ${conv.subject}`,
+          to: process.env.ADMIN_EMAIL || 'admin@TeamMove.app',
+          subject: `[TeamMove] Réponse de ${senderInfo?.name || 'Organisation'} - ${conv.subject}`,
           html: `
             <h2>Nouvelle réponse de ${senderInfo?.name || 'Organisation'}</h2>
             <p><strong>Conversation :</strong> ${conv.subject}</p>

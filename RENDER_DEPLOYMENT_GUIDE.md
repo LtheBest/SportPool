@@ -1,12 +1,12 @@
-# 🚀 Guide de Déploiement SportPool sur Render
+# 🚀 Guide de Déploiement TeamMove sur Render
 
 ## 🎯 Vue d'ensemble
 
-Ce guide vous accompagne pour déployer SportPool sur Render.com, une plateforme moderne et gratuite pour héberger des applications web fullstack.
+Ce guide vous accompagne pour déployer TeamMove sur Render.com, une plateforme moderne et gratuite pour héberger des applications web fullstack.
 
 ## ✅ Prérequis
 
-- Compte GitHub avec accès au repository SportPool
+- Compte GitHub avec accès au repository TeamMove
 - Compte Render.com (gratuit)
 - Base de données PostgreSQL configurée (Neon ou Render PostgreSQL)
 - Clés API configurées (SendGrid, OpenAI)
@@ -33,12 +33,12 @@ ls -la dist/
 1. **Connecter le Repository**
    - Aller sur [Render Dashboard](https://dashboard.render.com)
    - Cliquer "New +" → "Web Service"
-   - Connecter votre repository GitHub SportPool
+   - Connecter votre repository GitHub TeamMove
    - Sélectionner la branche `feature/complete-fixes-and-render-deployment`
 
 2. **Configuration du Service**
    ```
-   Name: sportpool-app
+   Name: TeamMove-app
    Region: Frankfurt (plus proche de l'Europe)
    Branch: feature/complete-fixes-and-render-deployment
    Root Directory: (laisser vide)
@@ -62,7 +62,7 @@ DATABASE_URL=postgresql://username:password@host:port/database
 # Configuration SendGrid
 SENDGRID_API_KEY=SG.your-api-key-here
 SENDGRID_FROM_EMAIL=alt.f7-3ywk4mu@yopmail.com
-SENDGRID_FROM_NAME=CovoitSport
+SENDGRID_FROM_NAME=TeamMove
 
 # Configuration OpenAI (optionnel)
 OPENAI_API_KEY=sk-proj-your-openai-key-here
@@ -70,7 +70,7 @@ OPENAI_API_KEY=sk-proj-your-openai-key-here
 # Configuration Application
 NODE_ENV=production
 SESSION_SECRET=your-super-secret-session-key-for-render-2024
-APP_URL=https://sportpool-app.onrender.com
+APP_URL=https://TeamMove-app.onrender.com
 
 # Port (géré automatiquement par Render)
 PORT=10000
@@ -82,9 +82,9 @@ PORT=10000
 
 1. **Créer la Base de Données**
    - Render Dashboard → "New +" → "PostgreSQL"
-   - Name: `sportpool-db`
-   - Database Name: `sportpool`
-   - User: `sportpool_user`
+   - Name: `TeamMove-db`
+   - Database Name: `TeamMove`
+   - User: `TeamMove_user`
    - Region: Même que votre service web
    - Plan: Free
 
@@ -125,13 +125,13 @@ git push origin feature/complete-fixes-and-render-deployment
 #### Tests Essentiels
 ```bash
 # 1. Health Check
-curl https://sportpool-app.onrender.com/api/health
+curl https://TeamMove-app.onrender.com/api/health
 
 # 2. Frontend
-curl https://sportpool-app.onrender.com/
+curl https://TeamMove-app.onrender.com/
 
 # 3. API Authentication
-curl -X POST https://sportpool-app.onrender.com/api/login \
+curl -X POST https://TeamMove-app.onrender.com/api/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"test"}'
 ```
@@ -158,7 +158,7 @@ curl -X POST https://sportpool-app.onrender.com/api/login \
 #### C. Monitoring et Logs
 ```bash
 # Accéder aux logs en temps réel
-render logs --service sportpool-app --follow
+render logs --service TeamMove-app --follow
 
 # Métriques disponibles dans le dashboard
 - CPU/Memory usage
@@ -208,7 +208,7 @@ render logs --service sportpool-app --follow
 
 ```bash
 # Accéder au shell de votre service
-render shell --service sportpool-app
+render shell --service TeamMove-app
 
 # Dans le shell, tester:
 node -e "console.log(process.env.DATABASE_URL)"
@@ -307,10 +307,10 @@ Avant de considérer le déploiement comme terminé :
 ## 🚀 URL de Production
 
 Une fois déployé, votre application sera accessible à :
-**https://sportpool-app.onrender.com**
+**https://TeamMove-app.onrender.com**
 
 Personnalisez le nom dans Render Dashboard si souhaité.
 
 ---
 
-**🎉 Félicitations ! SportPool est maintenant déployé sur Render avec toutes les fonctionnalités opérationnelles !**
+**🎉 Félicitations ! TeamMove est maintenant déployé sur Render avec toutes les fonctionnalités opérationnelles !**

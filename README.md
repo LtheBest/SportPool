@@ -1,15 +1,15 @@
-# 🏆 SportPool - Plateforme de Covoiturage Sportif
+# 🏆 TeamMove - Plateforme de Covoiturage Sportif
 
-[![Render Deployment](https://img.shields.io/badge/Render-Deployed-brightgreen)](https://sportpool.onrender.com)
-[![CI/CD Pipeline](https://github.com/LtheBest/SportPool/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/LtheBest/SportPool/actions/workflows/ci-cd.yml)
-[![Docker Hub](https://img.shields.io/docker/pulls/lthebest/sportpool)](https://hub.docker.com/r/lthebest/sportpool)
+[![Render Deployment](https://img.shields.io/badge/Render-Deployed-brightgreen)](https://teammove.onrender.com)
+[![CI/CD Pipeline](https://github.com/LtheBest/TeamMove/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/LtheBest/TeamMove/actions/workflows/ci-cd.yml)
+[![Docker Hub](https://img.shields.io/docker/pulls/lthebest/TeamMove)](https://hub.docker.com/r/lthebest/TeamMove)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-blue.svg)](https://neon.tech)
 
 Une application web moderne pour organiser et gérer le covoiturage pour les événements sportifs. Permettez à votre organisation sportive de créer facilement des événements et de faciliter le covoiturage entre les participants.
 
-🌐 **[Application en Ligne](https://sportpool.onrender.com)** | 📖 **[Guide de Déploiement Render](RENDER_DEPLOYMENT_GUIDE_V2.md)** | 🧪 **[Tests de Santé](https://sportpool.onrender.com/api/health)**
+🌐 **[Application en Ligne](https://teammove.onrender.com)** | 📖 **[Guide de Déploiement Render](RENDER_DEPLOYMENT_GUIDE_V2.md)** | 🧪 **[Tests de Santé](https://teammove.onrender.com/api/health)**
 
 ## ✨ Fonctionnalités
 
@@ -48,7 +48,7 @@ Une application web moderne pour organiser et gérer le covoiturage pour les év
 
 ## 🎬 Démo
 
-[🌐 **Démo en ligne**](https://sportpool.vercel.app) | [📱 **Version mobile**](https://sportpool.vercel.app)
+[🌐 **Démo en ligne**](https://TeamMove.vercel.app) | [📱 **Version mobile**](https://TeamMove.vercel.app)
 
 ## 🚀 Démarrage rapide
 
@@ -61,8 +61,8 @@ Une application web moderne pour organiser et gérer le covoiturage pour les év
 
 ```bash
 # Cloner le repository
-git clone https://github.com/LtheBest/SportPool.git
-cd SportPool
+git clone https://github.com/LtheBest/TeamMove.git
+cd TeamMove
 
 # Installer les dépendances
 npm install
@@ -78,7 +78,7 @@ npm run db:push
 npm run dev
 ```
 
-L'application sera accessible sur https://sportpool.onrender.com
+L'application sera accessible sur https://teammove.onrender.com
 
 ### Avec Docker
 
@@ -87,14 +87,14 @@ L'application sera accessible sur https://sportpool.onrender.com
 docker-compose up -d
 
 # Ou utilisation de l'image Docker Hub
-docker pull lthebest/sportpool:latest
-docker run -p 3000:3000 lthebest/sportpool:latest
+docker pull lthebest/TeamMove:latest
+docker run -p 3000:3000 lthebest/TeamMove:latest
 ```
 
 ## 🏗️ Architecture
 
 ```
-SportPool/
+TeamMove/
 ├── client/                 # Frontend React + TypeScript
 │   ├── src/
 │   │   ├── components/    # Composants réutilisables
@@ -141,7 +141,7 @@ SportPool/
 ### Tests Automatisés de Déploiement
 ```bash
 # Tester votre déploiement Render
-node test-render-deployment.js https://sportpool.onrender.com
+node test-render-deployment.js https://teammove.onrender.com
 
 # Tests locaux
 npm run test:all            # Tous les tests (unitaires + E2E)
@@ -150,24 +150,24 @@ npm run test:all            # Tous les tests (unitaires + E2E)
 ### Endpoints de Diagnostic
 ```bash
 # Santé générale de l'application
-curl https://sportpool.onrender.com/api/health
+curl https://teammove.onrender.com/api/health
 
 # Test de connexion base de données
-curl https://sportpool.onrender.com/api/db-test
+curl https://teammove.onrender.com/api/db-test
 
 # Test des sessions (authentification)
-curl https://sportpool.onrender.com/api/session-test
+curl https://teammove.onrender.com/api/session-test
 
 # Communication backend
-curl https://sportpool.onrender.com/api/test
+curl https://teammove.onrender.com/api/test
 
 # Debug utilisateurs (dev seulement)
-curl https://sportpool.onrender.com/api/debug/users
+curl https://teammove.onrender.com/api/debug/users
 ```
 
 ### Monitoring en Temps Réel
-- 🟢 **Status**: [https://sportpool.onrender.com/api/health](https://sportpool.onrender.com/api/health)
-- 💾 **Database**: [https://sportpool.onrender.com/api/db-test](https://sportpool.onrender.com/api/db-test)
+- 🟢 **Status**: [https://teammove.onrender.com/api/health](https://teammove.onrender.com/api/health)
+- 💾 **Database**: [https://teammove.onrender.com/api/db-test](https://teammove.onrender.com/api/db-test)
 - 📊 **Performance**: Consultez les logs Render Dashboard
 
 ## 📊 Scripts disponibles
@@ -231,7 +231,7 @@ SESSION_SECRET=votre-secret-tres-long-et-securise
 # Email (SendGrid)
 SENDGRID_API_KEY=SG.your-api-key
 SENDGRID_FROM_EMAIL=noreply@votre-domaine.com
-SENDGRID_FROM_NAME=SportPool
+SENDGRID_FROM_NAME=TeamMove
 
 # IA (Optionnel)
 OPENAI_API_KEY=sk-your-openai-key
@@ -261,9 +261,9 @@ Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de 
 ## 🆘 Support
 
 - 📖 **Documentation** : [Guide de déploiement](./DEPLOYMENT.md)
-- 🐛 **Bugs** : [Issues GitHub](https://github.com/LtheBest/SportPool/issues)
-- 💬 **Questions** : [Discussions GitHub](https://github.com/LtheBest/SportPool/discussions)
-- 📧 **Email** : support@sportpool.app
+- 🐛 **Bugs** : [Issues GitHub](https://github.com/LtheBest/TeamMove/issues)
+- 💬 **Questions** : [Discussions GitHub](https://github.com/LtheBest/TeamMove/discussions)
+- 📧 **Email** : support@TeamMove.app
 
 ## 🎯 Roadmap
 
@@ -283,18 +283,18 @@ Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de 
 
 ## 📊 Statistiques
 
-![GitHub stars](https://img.shields.io/github/stars/LtheBest/SportPool?style=social)
-![GitHub forks](https://img.shields.io/github/forks/LtheBest/SportPool?style=social)
-![GitHub issues](https://img.shields.io/github/issues/LtheBest/SportPool)
-![GitHub pull requests](https://img.shields.io/github/issues-pr/LtheBest/SportPool)
+![GitHub stars](https://img.shields.io/github/stars/LtheBest/TeamMove?style=social)
+![GitHub forks](https://img.shields.io/github/forks/LtheBest/TeamMove?style=social)
+![GitHub issues](https://img.shields.io/github/issues/LtheBest/TeamMove)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/LtheBest/TeamMove)
 
 ---
 
 <div align="center">
   <p>Fait avec ❤️ pour la communauté sportive</p>
   <p>
-    <a href="https://github.com/LtheBest/SportPool">⭐ Star ce projet</a> •
-    <a href="https://github.com/LtheBest/SportPool/fork">🍴 Fork</a> •
-    <a href="https://sportpool.onrender.com">🌐 Démo</a>
+    <a href="https://github.com/LtheBest/TeamMove">⭐ Star ce projet</a> •
+    <a href="https://github.com/LtheBest/TeamMove/fork">🍴 Fork</a> •
+    <a href="https://teammove.onrender.com">🌐 Démo</a>
   </p>
 </div>

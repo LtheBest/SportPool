@@ -54,7 +54,7 @@ let appModule = null;
 async function initializeApp() {
   if (!appInitialized) {
     try {
-      console.log('🔧 Initializing SportPool application...');
+      console.log('🔧 Initializing TeamMove application...');
       
       // Set environment variables for development that match production
       process.env.NODE_ENV = 'production';
@@ -108,7 +108,7 @@ async function initializeApp() {
       }
 
       appInitialized = true;
-      console.log('✅ SportPool application initialized');
+      console.log('✅ TeamMove application initialized');
     } catch (error) {
       console.error('❌ Failed to initialize application:', error);
       throw error;
@@ -165,7 +165,7 @@ app.get('*', (req, res) => {
   } else {
     console.error(`❌ index.html not found: ${indexPath}`);
     res.status(404).send(`
-      <h1>SportPool - Build Required</h1>
+      <h1>TeamMove - Build Required</h1>
       <p>Please run the build command:</p>
       <pre>npm run build:render</pre>
       <p>Then restart this server.</p>

@@ -155,7 +155,7 @@ export function UserPreferences() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Préférences</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Personnalisez votre expérience SportPool
+            Personnalisez votre expérience TeamMove
           </p>
         </div>
         <div className="flex gap-2">

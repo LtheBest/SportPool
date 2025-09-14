@@ -19,8 +19,8 @@ interface AuthTokens {
 
 // Gestion du stockage sécurisé des tokens
 class TokenManager {
-  private static readonly ACCESS_TOKEN_KEY = "sportpool_access_token";
-  private static readonly REFRESH_TOKEN_KEY = "sportpool_refresh_token";
+  private static readonly ACCESS_TOKEN_KEY = "TeamMove_access_token";
+  private static readonly REFRESH_TOKEN_KEY = "TeamMove_refresh_token";
 
   static getAccessToken(): string | null {
     if (typeof window === 'undefined') return null;
@@ -81,7 +81,7 @@ export class AuthService {
 
       // Update only the access token
       if (typeof window !== 'undefined') {
-        localStorage.setItem("sportpool_access_token", accessToken);
+        localStorage.setItem("TeamMove_access_token", accessToken);
       }
 
       return accessToken;

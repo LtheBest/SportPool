@@ -1,4 +1,4 @@
-Create a complete sports carpooling (CovoitSport) web application with frontend, backend, and a fully functional database. The main features and user flow must include:
+Create a complete sports carpooling (TeamMove) web application with frontend, backend, and a fully functional database. The main features and user flow must include:
 Homepage: Presents the platform overview and purpose, with a clear, user-friendly design. Include a button to watch a demo video of the dashboard.
 User Registration: Allow new users to register as either a club, association, or company. Ensure the registration process captures essential information.
 Login: Registered users can log in and are redirected to their personalized dashboard.

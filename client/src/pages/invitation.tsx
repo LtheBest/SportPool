@@ -131,7 +131,7 @@ export default function Invitation() {
             <div className="text-center mb-8">
               <div className="flex items-center justify-center space-x-2 mb-4">
                 <i className="fas fa-car text-primary text-3xl"></i>
-                <span className="text-2xl font-bold text-gray-900">CovoitSport</span>
+                <span className="text-2xl font-bold text-gray-900">TeamMove</span>
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Invitation à un événement</h1>
               <p className="text-gray-600">Vous êtes invité(e) à participer à un événement sportif</p>

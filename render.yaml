@@ -1,9 +1,9 @@
-# Render Blueprint pour SportPool - Configuration Optimisée
+# Render Blueprint pour TeamMove - Configuration Optimisée
 # Configuration pour déploiement sur Render.com avec corrections pour les sessions
 services:
   # Service Web principal (Backend Express + Frontend servi)
   - type: web
-    name: sportpool-app
+    name: TeamMove-app
     plan: starter # gratuit, peut être upgrade vers paid plans
     env: node
     region: frankfurt # ou oregon selon vos préférences
@@ -15,7 +15,7 @@ services:
       - key: Access-Control-Allow-Credentials
         value: true
       - key: Access-Control-Allow-Origin
-        value: https://sportpool.onrender.com
+        value: https://teammove.onrender.com
     envVars:
       - key: NODE_ENV
         value: production
@@ -23,7 +23,7 @@ services:
         value: 8080
       - key: DATABASE_URL
         fromDatabase:
-          name: sportpool-db
+          name: TeamMove-db
           property: connectionString
       - key: SENDGRID_API_KEY
         sync: false # sera configuré manuellement via dashboard
@@ -36,7 +36,7 @@ services:
       - key: SESSION_SECRET
         generateValue: true # Render génère automatiquement une valeur sécurisée
       - key: APP_URL
-        value: https://sportpool.onrender.com
+        value: https://teammove.onrender.com
       - key: RENDER
         value: true
       - key: VERBOSE_LOGS
@@ -54,8 +54,8 @@ services:
     
 # Base de données PostgreSQL
 databases:
-  - name: sportpool-db
-    databaseName: sportpool
-    user: sportpool_user
+  - name: TeamMove-db
+    databaseName: TeamMove
+    user: TeamMove_user
     plan: free # PostgreSQL gratuit jusqu'à 1GB
     region: frankfurt

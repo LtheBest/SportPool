@@ -158,7 +158,7 @@ export default function AdminRegistrationModal({
               type="text"
               value={formData.name}
               onChange={handleChange('name')}
-              placeholder="Administration SportPool"
+              placeholder="Administration TeamMove"
               required
               disabled={isLoading}
             />
@@ -171,7 +171,7 @@ export default function AdminRegistrationModal({
               type="email"
               value={formData.email}
               onChange={handleChange('email')}
-              placeholder="admin@sportpool.com"
+              placeholder="admin@TeamMove.com"
               required
               disabled={isLoading}
             />

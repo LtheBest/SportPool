@@ -2,7 +2,7 @@
 
 ## Overview
 
-CovoitSport is a comprehensive sports carpooling web application designed for clubs, associations, and companies to organize and manage transportation for sporting events. The platform features a React frontend with shadcn/ui components, an Express.js backend, and PostgreSQL database with Drizzle ORM. Users can register organizations, create events, invite participants via email, manage carpooling logistics (drivers/passengers), and communicate through an integrated messaging system. The application provides a complete event lifecycle from creation to participant management, with role-based access (passengers and drivers with seat availability) and responsive design for all devices.
+TeamMove is a comprehensive sports carpooling web application designed for clubs, associations, and companies to organize and manage transportation for sporting events. The platform features a React frontend with shadcn/ui components, an Express.js backend, and PostgreSQL database with Drizzle ORM. Users can register organizations, create events, invite participants via email, manage carpooling logistics (drivers/passengers), and communicate through an integrated messaging system. The application provides a complete event lifecycle from creation to participant management, with role-based access (passengers and drivers with seat availability) and responsive design for all devices.
 
 ## User Preferences
 

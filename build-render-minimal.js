@@ -3,7 +3,7 @@ import { execSync, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-console.log('🚀 Building SportPool for Render (Minimal Memory Mode)...');
+console.log('🚀 Building TeamMove for Render (Minimal Memory Mode)...');
 
 /**
  * Execute command with memory constraints and proper error handling

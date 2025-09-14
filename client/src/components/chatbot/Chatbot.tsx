@@ -120,7 +120,7 @@ export default function Chatbot() {
         {open && (
           <div className="w-80 max-w-xs bg-white rounded-xl shadow-xl flex flex-col p-0 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b bg-primary text-white rounded-t-xl">
-              <strong>Assistant SportPool</strong>
+              <strong>Assistant TeamMove</strong>
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Fermer le chat"

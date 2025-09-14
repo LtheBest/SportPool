@@ -8,7 +8,7 @@ const JWT_CONFIG = {
   REFRESH_TOKEN_SECRET: process.env.JWT_REFRESH_SECRET || "refresh-secret-key-change-in-production", 
   ACCESS_TOKEN_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN || "15m", // 15 minutes par défaut
   REFRESH_TOKEN_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "7d", // 7 jours par défaut
-  ISSUER: process.env.JWT_ISSUER || "sportpool",
+  ISSUER: process.env.JWT_ISSUER || "TeamMove",
   ALGORITHM: "HS256" as const,
 };
 

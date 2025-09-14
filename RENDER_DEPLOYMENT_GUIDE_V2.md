@@ -1,4 +1,4 @@
-# 🚀 Guide de Déploiement SportPool sur Render.com - Version 2.0
+# 🚀 Guide de Déploiement TeamMove sur Render.com - Version 2.0
 
 ## 📋 Table des Matières
 - [Prérequis](#prérequis)
@@ -14,7 +14,7 @@
 ## 🎯 Prérequis
 
 ### 1. Comptes Nécessaires
-- ✅ **Compte GitHub** avec votre repository SportPool
+- ✅ **Compte GitHub** avec votre repository TeamMove
 - ✅ **Compte Render.com** (gratuit)
 - ✅ **Compte Neon.tech** pour la base de données PostgreSQL (gratuit)
 - ✅ **Compte SendGrid** pour les emails (gratuit jusqu'à 100 emails/jour)
@@ -23,8 +23,8 @@
 ### 2. Repository Préparé
 ```bash
 # Votre repository doit contenir ces corrections récentes :
-git clone https://github.com/[VotreUsername]/SportPool.git
-cd SportPool
+git clone https://github.com/[VotreUsername]/TeamMove.git
+cd TeamMove
 git checkout fix/render-deployment-improvements
 ```
 
@@ -34,7 +34,7 @@ git checkout fix/render-deployment-improvements
 
 ### 1. Créer la Base de Données
 1. Allez sur [neon.tech](https://neon.tech)
-2. Créez un nouveau projet nommé `sportpool`
+2. Créez un nouveau projet nommé `TeamMove`
 3. Notez la **CONNECTION STRING** (format: `postgresql://...`)
 
 ### 2. Tester la Connexion Locale (Optionnel)
@@ -72,12 +72,12 @@ git push origin fix/render-deployment-improvements
 
 2. **Nouveau Web Service**
    - Cliquez "New" → "Web Service"
-   - Sélectionnez votre repository `SportPool`
+   - Sélectionnez votre repository `TeamMove`
    - **Branch**: `fix/render-deployment-improvements`
 
 3. **Configuration de Base**
    ```
-   Name: sportpool-app
+   Name: TeamMove-app
    Region: Frankfurt (EU) ou Oregon (US)
    Branch: fix/render-deployment-improvements
    Root Directory: (laisser vide)
@@ -130,7 +130,7 @@ DATABASE_URL=postgresql://neondb_owner:npg_xxx@ep-xxx.aws.neon.tech/neondb?sslmo
 ```env
 NODE_ENV=production
 PORT=8080
-APP_URL=https://sportpool.onrender.com
+APP_URL=https://teammove.onrender.com
 RENDER=true
 ```
 
@@ -144,7 +144,7 @@ SESSION_SECRET=DCp63F0HccrzmwdvZ9Xb5GnklYyWYFv6iU+iGe/K0kI=
 ```env
 SENDGRID_API_KEY=SG.xxxxx
 SENDGRID_FROM_EMAIL=votre-email@domaine.com
-SENDGRID_FROM_NAME=SportPool
+SENDGRID_FROM_NAME=TeamMove
 ```
 
 #### 5. IA OpenAI (Optionnel)
@@ -167,39 +167,39 @@ DEBUG=true
 ### 1. Test Automatique avec Script
 ```bash
 # Exécuter depuis votre machine locale
-node test-render-deployment.js https://sportpool.onrender.com
+node test-render-deployment.js https://teammove.onrender.com
 ```
 
 ### 2. Tests Manuels
 
 #### Test 1: Page d'Accueil
 ```bash
-curl -I https://sportpool.onrender.com
+curl -I https://teammove.onrender.com
 # Attendu: HTTP/2 200
 ```
 
 #### Test 2: Santé de l'Application
 ```bash
-curl https://sportpool.onrender.com/api/health | jq
+curl https://teammove.onrender.com/api/health | jq
 # Attendu: {"status": "healthy", "database": "connected"}
 ```
 
 #### Test 3: Base de Données
 ```bash
-curl https://sportpool.onrender.com/api/db-test | jq
+curl https://teammove.onrender.com/api/db-test | jq
 # Attendu: {"status": "✅ Database connection successful"}
 ```
 
 #### Test 4: Sessions
 ```bash
-curl https://sportpool.onrender.com/api/session-test | jq
+curl https://teammove.onrender.com/api/session-test | jq
 # Attendu: Informations de session
 ```
 
 ### 3. Test d'Authentification
 
 #### Via l'Interface Web
-1. Allez sur `https://sportpool.onrender.com`
+1. Allez sur `https://teammove.onrender.com`
 2. Créez un compte test
 3. Tentez de vous connecter
 4. Vérifiez que vous accédez au dashboard
@@ -207,7 +207,7 @@ curl https://sportpool.onrender.com/api/session-test | jq
 #### Via API (Advanced)
 ```bash
 # Créer un compte test
-curl -X POST https://sportpool.onrender.com/api/register \
+curl -X POST https://teammove.onrender.com/api/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test Org",
@@ -219,7 +219,7 @@ curl -X POST https://sportpool.onrender.com/api/register \
   }'
 
 # Se connecter
-curl -X POST https://sportpool.onrender.com/api/login \
+curl -X POST https://teammove.onrender.com/api/login \
   -H "Content-Type: application/json" \
   -c cookies.txt \
   -d '{
@@ -228,7 +228,7 @@ curl -X POST https://sportpool.onrender.com/api/login \
   }'
 
 # Tester l'endpoint protégé
-curl -b cookies.txt https://sportpool.onrender.com/api/me
+curl -b cookies.txt https://teammove.onrender.com/api/me
 ```
 
 ---
@@ -240,7 +240,7 @@ curl -b cookies.txt https://sportpool.onrender.com/api/me
 #### Diagnostic
 ```bash
 # Vérifier les sessions
-curl https://sportpool.onrender.com/api/session-test | jq '.session'
+curl https://teammove.onrender.com/api/session-test | jq '.session'
 
 # Vérifier les logs Render
 # Render Dashboard → Votre Service → Logs
@@ -256,7 +256,7 @@ curl https://sportpool.onrender.com/api/session-test | jq '.session'
 
 #### Diagnostic
 ```bash
-curl https://sportpool.onrender.com/api/db-test
+curl https://teammove.onrender.com/api/db-test
 ```
 
 #### Solutions
@@ -312,7 +312,7 @@ curl https://sportpool.onrender.com/api/db-test
 ```bash
 # Script de surveillance (à exécuter périodiquement)
 #!/bin/bash
-response=$(curl -s https://sportpool.onrender.com/api/health)
+response=$(curl -s https://teammove.onrender.com/api/health)
 if [[ $response == *"healthy"* ]]; then
   echo "✅ $(date): Service is healthy"
 else
@@ -432,7 +432,7 @@ node test-render-deployment.js [URL]
 
 ## 🎉 Félicitations !
 
-Si vous avez suivi ce guide, votre application SportPool devrait maintenant fonctionner parfaitement sur Render avec :
+Si vous avez suivi ce guide, votre application TeamMove devrait maintenant fonctionner parfaitement sur Render avec :
 
 ✅ **Authentification fonctionnelle** - Plus d'erreurs 401
 ✅ **Base de données connectée** - Neon PostgreSQL opérationnel  
@@ -441,8 +441,8 @@ Si vous avez suivi ce guide, votre application SportPool devrait maintenant fonc
 ✅ **Monitoring intégré** - Endpoints de diagnostic
 ✅ **Performance optimisée** - Configuration adaptée à Render
 
-**URL de votre application** : https://sportpool.onrender.com
+**URL de votre application** : https://teammove.onrender.com
 
 ---
 
-*Guide créé avec ❤️ pour résoudre les problèmes de déploiement SportPool sur Render*
+*Guide créé avec ❤️ pour résoudre les problèmes de déploiement TeamMove sur Render*

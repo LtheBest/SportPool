@@ -19,15 +19,15 @@ function question(query) {
 }
 
 async function createAdminUser() {
-  console.log('🔧 Création d\'un utilisateur administrateur SportPool\n');
+  console.log('🔧 Création d\'un utilisateur administrateur TeamMove\n');
 
   try {
     // Collect admin information
     const adminData = {
-      name: await question('Nom de l\'organisation admin: ') || 'SportPool Admin',
-      email: await question('Email administrateur: ') || 'admin@sportpool.com',
+      name: await question('Nom de l\'organisation admin: ') || 'TeamMove Admin',
+      email: await question('Email administrateur: ') || 'admin@TeamMove.com',
       contactFirstName: await question('Prénom: ') || 'Admin',
-      contactLastName: await question('Nom: ') || 'SportPool',
+      contactLastName: await question('Nom: ') || 'TeamMove',
       phone: await question('Téléphone (optionnel): ') || '',
       address: await question('Adresse (optionnel): ') || '',
     };
@@ -57,7 +57,7 @@ async function createAdminUser() {
         
         console.log('✅ Utilisateur existant mis à jour avec les droits d\'administrateur.');
         console.log(`📧 Email: ${existingAdmin.email}`);
-        console.log('🔗 Accès: https://sportpool.onrender.com/admin');
+        console.log('🔗 Accès: https://teammove.onrender.com/admin');
       }
     } else {
       // Create new admin user
@@ -78,7 +78,7 @@ async function createAdminUser() {
       console.log('\n📋 Informations de connexion:');
       console.log(`📧 Email: ${adminData.email}`);
       console.log(`🔑 Mot de passe: ${password}`);
-      console.log('🔗 URL de connexion: https://sportpool.onrender.com/admin');
+      console.log('🔗 URL de connexion: https://teammove.onrender.com/admin');
       console.log('\n⚠️  IMPORTANT:');
       console.log('- Conservez ces informations dans un endroit sécurisé');
       console.log('- Changez le mot de passe après la première connexion');

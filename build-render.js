@@ -3,7 +3,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-console.log('🚀 Building SportPool for Render deployment...');
+console.log('🚀 Building TeamMove for Render deployment...');
 
 try {
   // 1. Clean previous builds
@@ -55,7 +55,7 @@ try {
 
   // 5. Create server startup script
   const startupScript = `#!/usr/bin/env node
-// Render startup script for SportPool
+// Render startup script for TeamMove
 import './index.js';
 `;
   

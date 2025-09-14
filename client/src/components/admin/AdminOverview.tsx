@@ -69,7 +69,7 @@ export default function AdminOverview() {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Vue d'ensemble - Administration
         </h1>
-        <p className="text-gray-600">Statistiques générales de la plateforme SportPool.</p>
+        <p className="text-gray-600">Statistiques générales de la plateforme TeamMove.</p>
       </div>
 
       {/* Stats Cards */}

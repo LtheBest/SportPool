@@ -1,5 +1,5 @@
 {
-  "name": "sportpool-app",
+  "name": "TeamMove-app",
   "type": "web_service",
   "env": "node",
   "plan": "starter",
@@ -12,13 +12,13 @@
     {
       "type": "redirect",
       "source": "/*",
-      "destination": "https://sportpool-app.onrender.com$request_uri",
+      "destination": "https://TeamMove-app.onrender.com$request_uri",
       "status": 301
     }
   ],
   "envVars": {
     "NODE_ENV": "production",
-    "APP_URL": "https://sportpool-app.onrender.com"
+    "APP_URL": "https://TeamMove-app.onrender.com"
   },
   "buildSettings": {
     "buildCommand": "npm run build:render",

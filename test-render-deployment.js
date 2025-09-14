@@ -9,7 +9,7 @@ const https = require('https');
 const http = require('http');
 
 // URL de base (peut être passée en argument ou utilise la valeur par défaut)
-const BASE_URL = process.argv[2] || 'https://sportpool.onrender.com';
+const BASE_URL = process.argv[2] || 'https://teammove.onrender.com';
 
 console.log(`🧪 Testing Render deployment at: ${BASE_URL}`);
 console.log('=' .repeat(60));
@@ -23,7 +23,7 @@ function makeRequest(url, options = {}) {
     const req = client.request(url, {
       method: 'GET',
       headers: {
-        'User-Agent': 'SportPool-Test-Script/1.0',
+        'User-Agent': 'TeamMove-Test-Script/1.0',
         'Accept': 'application/json',
         ...options.headers
       },
@@ -169,7 +169,7 @@ async function runTest(test) {
  * Fonction principale
  */
 async function main() {
-  console.log(`🚀 Starting SportPool Render deployment tests`);
+  console.log(`🚀 Starting TeamMove Render deployment tests`);
   console.log(`🎯 Target: ${BASE_URL}`);
   console.log(`📅 Time: ${new Date().toISOString()}`);
   
