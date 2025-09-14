@@ -255,9 +255,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // MODERNIZED Registration with mandatory plan selection
   app.post("/api/register", async (req, res) => {
     try {
-      const data = insertOrganizationSchema.parse(req.body);
+      const { selectedPlan, ...organizationData } = req.body;
+      const data = insertOrganizationSchema.parse(organizationData);
+
+      // Validate that a plan is selected
+      if (!selectedPlan) {
+        return res.status(400).json({
+          message: "Un choix d'offre est obligatoire lors de l'inscription",
+          code: "PLAN_REQUIRED"
+        });
+      }
+
+      // Validate plan exists
+      const plan = SUBSCRIPTION_PLANS[selectedPlan];
+      if (!plan) {
+        return res.status(400).json({
+          message: "Offre sélectionnée invalide",
+          code: "INVALID_PLAN"
+        });
+      }
 
       // Validate password strength
       const passwordValidation = validatePasswordStrength(data.password);
@@ -277,10 +296,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const hashedPassword = await hashPassword(data.password);
 
-      // Create organization
+      // Create organization with initial subscription type
       const organization = await storage.createOrganization({
         ...data,
         password: hashedPassword,
+        subscriptionType: plan.type === 'decouverte' ? 'decouverte' : 'decouverte', // Start with decouverte, will be upgraded after payment
+        subscriptionStatus: 'active',
       });
 
       // Generate JWT tokens
@@ -290,7 +311,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: organization.name,
       });
 
-      // Send welcome email (async, don't wait for it)
+      // If Découverte plan selected (free), complete registration immediately
+      if (selectedPlan === 'decouverte') {
+        // Send welcome email
+        emailService.sendWelcomeEmail(
+          organization.email,
+          organization.name,
+          organization.contactFirstName,
+          organization.contactLastName,
+          organization.type as 'club' | 'association' | 'company'
+        ).catch(error => {
+          console.error('Failed to send welcome email:', error);
+        });
+
+        return res.json({
+          organization: { ...organization, password: undefined },
+          ...tokens,
+          message: "Inscription réussie avec l'offre Découverte",
+          planType: 'decouverte',
+          requiresPayment: false
+        });
+      }
+
+      // For paid plans, create Stripe checkout session
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      
+      try {
+        const checkoutSession = await SubscriptionService.createSubscription({
+          organizationId: organization.id,
+          planId: selectedPlan,
+          successUrl: `${baseUrl}/registration/success?session_id={CHECKOUT_SESSION_ID}&org_id=${organization.id}`,
+          cancelUrl: `${baseUrl}/registration/cancelled?org_id=${organization.id}`,
+        });
+
+        // Return the organization data and checkout session for frontend to redirect
+        return res.json({
+          organization: { ...organization, password: undefined },
+          ...tokens,
+          message: "Inscription créée, redirection vers le paiement",
+          planType: selectedPlan,
+          requiresPayment: true,
+          checkoutSession
+        });
+      } catch (paymentError) {
+        console.error('Payment session creation failed:', paymentError);
+        
+        // If payment setup fails, still allow registration with decouverte plan
+        await storage.updateOrganization(organization.id, {
+          subscriptionType: 'decouverte'
+        });
+
+        return res.json({
+          organization: { ...organization, password: undefined },
+          ...tokens,
+          message: "Inscription réussie avec l'offre Découverte (paiement indisponible temporairement)",
+          planType: 'decouverte',
+          requiresPayment: false,
+          paymentError: true
+        });
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(400).json({ message: error instanceof Error ? error.message : "Registration failed" });
+    }
+  });
+
+  // Handle successful registration payment
+  app.post("/api/registration/payment-success", async (req, res) => {
+    try {
+      const { sessionId, organizationId } = req.body;
+      
+      if (!sessionId || !organizationId) {
+        return res.status(400).json({ 
+          message: "Session ID and organization ID required" 
+        });
+      }
+
+      // Verify the session with Stripe
+      const session = await StripeService.getSession(sessionId);
+      
+      if (!session || session.payment_status !== 'paid') {
+        return res.status(400).json({ 
+          message: "Payment not confirmed" 
+        });
+      }
+
+      // Get organization
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Extract plan from session metadata
+      const planId = session.metadata?.planId;
+      if (!planId) {
+        return res.status(400).json({ message: "Plan information missing" });
+      }
+
+      // Activate subscription
+      await SubscriptionService.handlePaymentSuccess(sessionId, organizationId, planId);
+
+      // Send welcome email with subscription info
+      const plan = SUBSCRIPTION_PLANS[planId];
       emailService.sendWelcomeEmail(
         organization.email,
         organization.name,
@@ -299,17 +421,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         organization.type as 'club' | 'association' | 'company'
       ).catch(error => {
         console.error('Failed to send welcome email:', error);
-        // Don't fail the registration if email fails
       });
 
       res.json({
-        organization: { ...organization, password: undefined },
-        ...tokens,
-        message: "Organization registered successfully"
+        success: true,
+        message: "Paiement confirmé et abonnement activé",
+        subscription: {
+          plan: plan.name,
+          type: plan.type,
+          features: plan.features
+        }
       });
     } catch (error) {
-      console.error("Registration error:", error);
-      res.status(400).json({ message: error instanceof Error ? error.message : "Registration failed" });
+      console.error("Registration payment success error:", error);
+      res.status(500).json({ message: "Failed to process payment confirmation" });
+    }
+  });
+
+  // Handle cancelled registration payment
+  app.post("/api/registration/payment-cancelled", async (req, res) => {
+    try {
+      const { organizationId } = req.body;
+      
+      if (organizationId) {
+        // Downgrade to decouverte plan
+        await storage.updateOrganization(organizationId, {
+          subscriptionType: 'decouverte'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Paiement annulé, inscription avec l'offre Découverte"
+      });
+    } catch (error) {
+      console.error("Registration payment cancellation error:", error);
+      res.status(500).json({ message: "Failed to process payment cancellation" });
     }
   });
 
@@ -601,7 +748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const event = await storage.createEvent(data);
       
       // Incrémenter le compteur d'événements créés
-      await incrementEventCount(authReq.user.organizationId);
+      await SubscriptionService.incrementEventCount(authReq.user.organizationId);
       
       // Créer une notification de succès
       await createNotification({
@@ -683,7 +830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Incrémenter le compteur d'invitations pour les envois réussis
           if (successCount > 0) {
-            await incrementInvitationCount(authReq.user.organizationId, successCount);
+            await SubscriptionService.incrementInvitationCount(authReq.user.organizationId, successCount);
           }
           
           console.log(`📊 Invitations envoyées: ${successCount}/${inviteEmails.length}`);
@@ -1086,7 +1233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // Incrémenter le compteur d'invitations envoyées
-          await incrementInvitationCount(authReq.user.organizationId, 1);
+          await SubscriptionService.incrementInvitationCount(authReq.user.organizationId, 1);
         } catch (error) {
           console.error(`Failed to create invitation record for ${email}:`, error);
         }
@@ -2584,20 +2731,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ========== SUBSCRIPTION & BILLING ROUTES ==========
-  // Import subscription services
-  const { 
-    canCreateEvent, 
-    canSendInvitations, 
-    incrementEventCount, 
-    incrementInvitationCount,
-    createStripeSubscription,
-    upgradeSubscription,
-    cancelSubscription,
-    createStripeCustomer,
-    initializeSubscriptionPlans,
-    SUBSCRIPTION_LIMITS
-  } = await import('./stripe');
+  // ========== SUBSCRIPTION & BILLING ROUTES (MODERNIZED) ==========
+  // Import new subscription services
+  const { SubscriptionService } = await import('./subscription-service');
+  const { StripeService } = await import('./stripe-service');
+  const { EmailService } = await import('./email-service');
+  const { SchedulerService } = await import('./scheduler-service');
+  const { SUBSCRIPTION_PLANS, NEW_SUBSCRIPTION_LIMITS } = await import('./subscription-config');
+  
+  // Initialize services
+  await SubscriptionService.initialize();
+  await SchedulerService.initialize();
   
   // Import theme services
   const { 
@@ -2630,8 +2774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     getAllConversationsForAdmin
   } = await import('./admin-communication');
 
-  // Initialize subscription plans on startup
-  await initializeSubscriptionPlans();
+  // Services are already initialized above
 
   // Get subscription info for an organization
   app.get("/api/subscription/info", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -2641,20 +2784,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Organisation not found" });
       }
 
-      const limits = SUBSCRIPTION_LIMITS[organization.subscriptionType];
-      
-      res.json({
-        subscriptionType: organization.subscriptionType,
-        subscriptionStatus: organization.subscriptionStatus,
-        paymentMethod: organization.paymentMethod,
-        subscriptionStartDate: organization.subscriptionStartDate,
-        subscriptionEndDate: organization.subscriptionEndDate,
-        eventCreatedCount: organization.eventCreatedCount || 0,
-        invitationsSentCount: organization.invitationsSentCount || 0,
-        limits: limits,
-        remainingEvents: limits.maxEvents ? Math.max(0, limits.maxEvents - (organization.eventCreatedCount || 0)) : null,
-        remainingInvitations: limits.maxInvitations ? Math.max(0, limits.maxInvitations - (organization.invitationsSentCount || 0)) : null,
-      });
+      const subscriptionInfo = await SubscriptionService.getSubscriptionInfo(req.user.organizationId);
+      res.json(subscriptionInfo);
     } catch (error) {
       console.error("Subscription info error:", error);
       res.status(500).json({ message: "Failed to get subscription info" });
@@ -2765,6 +2896,158 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== NEW SUBSCRIPTION ROUTES (MODERNIZED) ==========
+  
+  // Get available subscription plans
+  app.get("/api/subscription/plans", async (req, res) => {
+    try {
+      res.json({
+        plans: SUBSCRIPTION_PLANS,
+        stripeMode: StripeService.isTestMode() ? 'test' : 'production'
+      });
+    } catch (error) {
+      console.error("Plans fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch subscription plans" });
+    }
+  });
+
+  // Create subscription (for new purchases or upgrades)
+  app.post("/api/subscription/create", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId, paymentMethodId } = req.body;
+      
+      if (!planId) {
+        return res.status(400).json({ message: "Plan ID is required" });
+      }
+
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      
+      const result = await SubscriptionService.createSubscription({
+        organizationId: req.user.organizationId,
+        planId,
+        paymentMethodId,
+        successUrl: `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${baseUrl}/pricing?payment=cancelled`,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Subscription creation error:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // Upgrade subscription (from Découverte to paid plan)
+  app.post("/api/subscription/upgrade-from-decouverte", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId } = req.body;
+      
+      if (!planId) {
+        return res.status(400).json({ message: "Plan ID is required" });
+      }
+
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      
+      const result = await SubscriptionService.upgradeSubscription({
+        organizationId: req.user.organizationId,
+        newPlanId: planId,
+        successUrl: `${baseUrl}/dashboard?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${baseUrl}/dashboard?upgrade=cancelled`,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Subscription upgrade error:", error);
+      res.status(500).json({ message: "Failed to upgrade subscription" });
+    }
+  });
+
+  // Cancel subscription (downgrade to Découverte)
+  app.post("/api/subscription/cancel-to-decouverte", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      await SubscriptionService.cancelSubscription(req.user.organizationId);
+      
+      res.json({ 
+        success: true, 
+        message: "Abonnement annulé et rétrogradation vers l'offre Découverte effectuée."
+      });
+    } catch (error) {
+      console.error("Subscription cancellation error:", error);
+      res.status(500).json({ message: "Failed to cancel subscription" });
+    }
+  });
+
+  // Webhook Stripe (MODERNIZED)
+  app.post("/api/stripe/webhook-v2", express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+      const signature = req.get('stripe-signature');
+      if (!signature) {
+        return res.status(400).send('Signature manquante');
+      }
+
+      await StripeService.handleWebhook(req.body, signature);
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('Erreur webhook Stripe:', error);
+      res.status(400).send(`Webhook Error: ${error.message}`);
+    }
+  });
+
+  // Get Stripe configuration for frontend
+  app.get("/api/stripe/config", async (req, res) => {
+    try {
+      const config = await StripeService.verifyConfiguration();
+      res.json({
+        publishableKey: StripeService.getPublishableKey(),
+        mode: config.mode,
+        valid: config.valid
+      });
+    } catch (error) {
+      console.error("Stripe config error:", error);
+      res.status(500).json({ message: "Failed to get Stripe configuration" });
+    }
+  });
+
+  // Admin: Force run scheduler tasks
+  app.post("/api/admin/scheduler/run", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Vérifier que c'est un admin
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization || organization.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { taskName } = req.body;
+      if (!taskName) {
+        return res.status(400).json({ message: "Task name required" });
+      }
+
+      await SchedulerService.runTaskNow(taskName);
+      res.json({ success: true, message: `Task ${taskName} executed successfully` });
+    } catch (error) {
+      console.error("Scheduler task error:", error);
+      res.status(500).json({ message: "Failed to run scheduler task" });
+    }
+  });
+
+  // Get scheduler status
+  app.get("/api/admin/scheduler/status", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization || organization.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const status = SchedulerService.getStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Scheduler status error:", error);
+      res.status(500).json({ message: "Failed to get scheduler status" });
+    }
+  });
+
+  // ========== THEME & PREFERENCES ROUTES ==========
+  
   // Update user preferences
   app.put("/api/preferences", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {

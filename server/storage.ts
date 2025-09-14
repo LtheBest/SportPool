@@ -596,34 +596,109 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Organisation non trouvée");
     }
 
-    // Compter les événements
-    const [eventsResult] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(events)
-      .where(eq(events.organizationId, organizationId));
+    // Import new subscription config
+    try {
+      const { NEW_SUBSCRIPTION_LIMITS, validateSubscription, getDaysUntilExpiry } = await import('./subscription-config');
+      
+      const subscriptionType = organization.subscriptionType || 'decouverte';
+      const limits = NEW_SUBSCRIPTION_LIMITS[subscriptionType];
+      const validation = validateSubscription(organization);
+      const daysUntilExpiry = getDaysUntilExpiry(organization);
 
-    const eventsCount = eventsResult?.count || 0;
+      // Compter les événements
+      const [eventsResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(events)
+        .where(eq(events.organizationId, organizationId));
 
-    // Compter toutes les invitations
-    const [invitationsResult] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(eventInvitations)
-      .innerJoin(events, eq(eventInvitations.eventId, events.id))
-      .where(eq(events.organizationId, organizationId));
+      const eventsCount = eventsResult?.count || 0;
 
-    const invitationsCount = invitationsResult?.count || 0;
+      // Compter toutes les invitations
+      const [invitationsResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(eventInvitations)
+        .innerJoin(events, eq(eventInvitations.eventId, events.id))
+        .where(eq(events.organizationId, organizationId));
 
-    if (organization.subscriptionType === 'decouverte') {
+      const invitationsCount = invitationsResult?.count || 0;
+
       return {
-        events: { current: eventsCount, limit: 1 },
-        invitations: { current: invitationsCount, limit: 20 }
+        events: { 
+          current: eventsCount, 
+          limit: limits.maxEvents,
+          remaining: organization.packageRemainingEvents || null
+        },
+        invitations: { 
+          current: invitationsCount, 
+          limit: limits.maxInvitations 
+        },
+        validation: {
+          isValid: validation.isValid,
+          reason: validation.reason,
+          needsRenewal: validation.needsRenewal,
+          daysUntilExpiry
+        }
+      };
+    } catch (error) {
+      // Fallback to old system if new config fails to load
+      const [eventsResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(events)
+        .where(eq(events.organizationId, organizationId));
+
+      const eventsCount = eventsResult?.count || 0;
+
+      const [invitationsResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(eventInvitations)
+        .innerJoin(events, eq(eventInvitations.eventId, events.id))
+        .where(eq(events.organizationId, organizationId));
+
+      const invitationsCount = invitationsResult?.count || 0;
+
+      if (organization.subscriptionType === 'decouverte') {
+        return {
+          events: { current: eventsCount, limit: 1 },
+          invitations: { current: invitationsCount, limit: 20 }
+        };
+      }
+
+      return {
+        events: { current: eventsCount, limit: undefined },
+        invitations: { current: invitationsCount, limit: undefined }
       };
     }
+  }
 
-    return {
-      events: { current: eventsCount, limit: undefined },
-      invitations: { current: invitationsCount, limit: undefined }
-    };
+  // New methods for modernized subscription system
+  async getAllOrganizations(): Promise<Organization[]> {
+    return await db.select().from(organizations).orderBy(desc(organizations.createdAt));
+  }
+
+  async cleanupExpiredTokens(cutoffDate: Date): Promise<void> {
+    // Clean up old password reset tokens
+    await db.delete(passwordResetTokens)
+      .where(sql`${passwordResetTokens.createdAt} < ${cutoffDate} OR ${passwordResetTokens.expiresAt} < ${new Date()}`);
+    
+    // Clean up old email reply tokens
+    await db.delete(emailReplyTokens)
+      .where(sql`${emailReplyTokens.createdAt} < ${cutoffDate} OR ${emailReplyTokens.expiresAt} < ${new Date()}`);
+  }
+
+  async cleanupOldNotifications(cutoffDate: Date): Promise<void> {
+    // Clean up old read notifications
+    await db.delete(notifications)
+      .where(sql`${notifications.createdAt} < ${cutoffDate} AND ${notifications.read} = true`);
+  }
+
+  async saveMonthlyStats(stats: any): Promise<void> {
+    // This is a simplified version - in production you'd save to monthly_statistics table
+    console.log('📊 Monthly stats generated:', {
+      period: stats.period,
+      totalOrganizations: stats.totalOrganizations,
+      activeSubscriptions: stats.activeSubscriptions,
+      newSubscriptions: stats.newSubscriptions
+    });
   }
 }
 
