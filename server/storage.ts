@@ -395,11 +395,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(passwordResetTokens.id, id));
   }
 
-  async cleanupExpiredTokens(): Promise<void> {
-    await db
-      .delete(passwordResetTokens)
-      .where(sql`expires_at < NOW()`);
-  }
+
 
   // Participant Change Requests
   async createParticipantChangeRequest(request: InsertParticipantChangeRequest): Promise<ParticipantChangeRequest> {
