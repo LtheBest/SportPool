@@ -104,50 +104,58 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
     try {
       const { confirmPassword, acceptTerms, ...registerData } = data;
       
-      // Si une offre payante est sélectionnée, rediriger vers le processus de paiement
-      if (data.subscriptionType !== "decouverte") {
-        const result = await register(registerData);
+      // Ajouter le plan sélectionné aux données d'inscription
+      const registrationPayload = {
+        ...registerData,
+        selectedPlan: data.subscriptionType
+      };
+      
+      // Appeler l'API d'inscription avec le plan sélectionné
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(registrationPayload),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || "Erreur d'inscription");
+      }
+      
+      // Si l'inscription nécessite un paiement
+      if (result.requiresPayment && result.checkoutSession) {
+        // Rediriger vers Stripe Checkout
+        window.location.href = result.checkoutSession.url;
+        return;
+      }
+      
+      // Si c'est une inscription découverte (gratuite)
+      if (result.planType === 'decouverte') {
+        // Invalider les requêtes pour rafraîchir les données utilisateur
+        queryClient.invalidateQueries({ queryKey: ["/api/me"] });
         
-        if (result.success) {
-          // Invalidate queries to refresh user data
-          queryClient.invalidateQueries({ queryKey: ["/api/me"] });
-          
-          // Rediriger vers la page de sélection/paiement des abonnements
-          setLocation(`/dashboard?upgrade_to=${data.subscriptionType}`);
-          onClose();
-          
-          toast({
-            title: "Compte créé",
-            description: "Votre compte a été créé. Veuillez configurer votre paiement pour activer votre offre.",
-            variant: "default",
-          });
-        } else {
-          toast({
-            title: "Erreur d'inscription",
-            description: result.error || "Une erreur est survenue lors de l'inscription.",
-            variant: "destructive",
-          });
-        }
+        // Rediriger vers le dashboard
+        setLocation("/dashboard");
+        onClose();
+        
+        toast({
+          title: "Inscription réussie",
+          description: "Votre compte découverte a été créé avec succès. Vous êtes maintenant connecté.",
+        });
       } else {
-        // Offre découverte - inscription normale
-        const result = await register(registerData);
+        // Cas d'erreur de paiement temporaire
+        queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+        setLocation("/dashboard");
+        onClose();
         
-        if (result.success) {
-          queryClient.invalidateQueries({ queryKey: ["/api/me"] });
-          setLocation("/dashboard");
-          onClose();
-          
-          toast({
-            title: "Inscription réussie",
-            description: "Votre compte découverte a été créé avec succès. Vous êtes maintenant connecté.",
-          });
-        } else {
-          toast({
-            title: "Erreur d'inscription",
-            description: result.error || "Une erreur est survenue lors de l'inscription.",
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Compte créé",
+          description: result.message || "Votre compte a été créé avec l'offre Découverte.",
+          variant: result.paymentError ? "destructive" : "default",
+        });
       }
     } catch (error: any) {
       console.error("Registration error:", error);
@@ -187,7 +195,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl lg:max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-gray-900">Créer un compte</DialogTitle>
         </DialogHeader>
@@ -251,7 +259,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                       <RadioGroup
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        className="grid lg:grid-cols-3 md:grid-cols-2 gap-6"
+                        className="grid 2xl:grid-cols-5 xl:grid-cols-3 lg:grid-cols-2 md:grid-cols-2 gap-8 lg:gap-10"
                       >
                         {/* Offre Découverte */}
                         <FormItem>
@@ -264,7 +272,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </FormControl>
                           <Label
                             htmlFor="decouverte"
-                            className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
                               selectedSubscription === "decouverte"
                                 ? 'border-green-500 bg-green-50 shadow-lg scale-[1.02] dark:bg-green-950 dark:border-green-400'
                                 : 'border-gray-200 hover:border-green-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-green-400 dark:hover:bg-gray-800'
@@ -319,7 +327,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </FormControl>
                           <Label
                             htmlFor="evenementielle"
-                            className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
                               selectedSubscription === "evenementielle"
                                 ? 'border-orange-500 bg-orange-50 shadow-lg scale-[1.02] dark:bg-orange-950 dark:border-orange-400'
                                 : 'border-gray-200 hover:border-orange-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-orange-400 dark:hover:bg-gray-800'
@@ -380,7 +388,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </FormControl>
                           <Label
                             htmlFor="pro_club"
-                            className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
                               selectedSubscription === "pro_club"
                                 ? 'border-blue-500 bg-blue-50 shadow-lg scale-[1.02] dark:bg-blue-950 dark:border-blue-400'
                                 : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-blue-400 dark:hover:bg-gray-800'
@@ -441,7 +449,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </FormControl>
                           <Label
                             htmlFor="pro_pme"
-                            className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
                               selectedSubscription === "pro_pme"
                                 ? 'border-purple-500 bg-purple-50 shadow-lg scale-[1.02] dark:bg-purple-950 dark:border-purple-400'
                                 : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-purple-400 dark:hover:bg-gray-800'
@@ -502,7 +510,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </FormControl>
                           <Label
                             htmlFor="pro_entreprise"
-                            className={`relative cursor-pointer block p-6 border-2 rounded-xl transition-all duration-200 ${
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
                               selectedSubscription === "pro_entreprise"
                                 ? 'border-yellow-500 bg-yellow-50 shadow-lg scale-[1.02] dark:bg-yellow-950 dark:border-yellow-400'
                                 : 'border-gray-200 hover:border-yellow-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-yellow-400 dark:hover:bg-gray-800'
