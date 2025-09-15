@@ -1,25 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
-import { Badge } from '../ui/badge';
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { 
   MessageSquare, 
   Plus, 
   Send, 
-  Clock, 
-  CheckCircle, 
-  XCircle,
-  AlertCircle,
+  HelpCircle,
   MessageCircle,
   User,
   Shield
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { api } from '@/lib/api';
+} from "lucide-react";
+import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
+import { fr } from "date-fns/locale";
+import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Conversation {
   id: string;
@@ -42,7 +40,8 @@ interface Message {
   createdAt: string;
 }
 
-export function AdminSupport() {
+export default function Support() {
+  const { organization } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -104,7 +103,7 @@ export function AdminSupport() {
 
   const createNewConversation = async () => {
     if (!newConversationData.subject.trim() || !newConversationData.message.trim()) {
-      toast.error('Veuillez remplir tous les champs');
+      toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
@@ -122,10 +121,10 @@ export function AdminSupport() {
       setSelectedConversation(conversation.id);
       setShowNewConversation(false);
       setNewConversationData({ subject: '', message: '', priority: 'medium' });
-      toast.success('Conversation créée avec succès');
+      toast.success('Message envoyé avec succès');
     } catch (error: any) {
       console.error('Error creating conversation:', error);
-      toast.error(error.message || 'Erreur lors de la création de la conversation');
+      toast.error(error.message || 'Erreur lors de l\'envoi du message');
     } finally {
       setSending(false);
     }
@@ -162,29 +161,6 @@ export function AdminSupport() {
     }
   };
 
-  const closeConversation = async (conversationId: string) => {
-    try {
-      const response = await api.admin.closeConversation(conversationId);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de la fermeture de la conversation');
-      }
-      
-      setConversations(prev => 
-        prev.map(conv => 
-          conv.id === conversationId 
-            ? { ...conv, status: 'closed' as const }
-            : conv
-        )
-      );
-      toast.success('Conversation fermée');
-    } catch (error: any) {
-      console.error('Error closing conversation:', error);
-      toast.error(error.message || 'Erreur lors de la fermeture de la conversation');
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'open':
@@ -215,6 +191,10 @@ export function AdminSupport() {
 
   const selectedConv = conversations.find(c => c.id === selectedConversation);
 
+  if (!organization) {
+    return null;
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
       {/* Conversations List */}
@@ -222,8 +202,8 @@ export function AdminSupport() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              Support
+              <HelpCircle className="w-5 h-5" />
+              Mes demandes
             </CardTitle>
             <Button
               size="sm"
@@ -232,6 +212,9 @@ export function AdminSupport() {
               <Plus className="w-4 h-4" />
             </Button>
           </div>
+          <CardDescription>
+            Contactez notre équipe de support pour toute question ou assistance
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
@@ -273,9 +256,10 @@ export function AdminSupport() {
               ))}
               
               {conversations.length === 0 && (
-                <div className="p-4 text-center text-gray-500">
-                  <MessageCircle className="w-8 h-8 mx-auto mb-2" />
-                  <p className="text-sm">Aucune conversation</p>
+                <div className="p-8 text-center text-gray-500">
+                  <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-sm mb-2">Aucune conversation</p>
+                  <p className="text-xs text-gray-400">Cliquez sur le bouton + pour contacter le support</p>
                 </div>
               )}
             </div>
@@ -288,11 +272,14 @@ export function AdminSupport() {
         {showNewConversation ? (
           <div>
             <CardHeader>
-              <CardTitle>Nouvelle conversation</CardTitle>
+              <CardTitle>Contacter le support</CardTitle>
+              <CardDescription>
+                Décrivez votre problème ou votre question. Notre équipe vous répondra dans les plus brefs délais.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Input
-                placeholder="Sujet de la conversation"
+                placeholder="Sujet de votre demande"
                 value={newConversationData.subject}
                 onChange={(e) => setNewConversationData(prev => ({ ...prev, subject: e.target.value }))}
               />
@@ -307,15 +294,15 @@ export function AdminSupport() {
                     priority: e.target.value as 'low' | 'medium' | 'high' | 'urgent'
                   }))}
                 >
-                  <option value="low">Basse</option>
-                  <option value="medium">Moyenne</option>
-                  <option value="high">Haute</option>
-                  <option value="urgent">Urgente</option>
+                  <option value="low">Basse - Question générale</option>
+                  <option value="medium">Moyenne - Problème technique mineur</option>
+                  <option value="high">Haute - Problème technique important</option>
+                  <option value="urgent">Urgente - Service indisponible</option>
                 </select>
               </div>
 
               <Textarea
-                placeholder="Décrivez votre demande..."
+                placeholder="Décrivez votre problème en détail..."
                 rows={6}
                 value={newConversationData.message}
                 onChange={(e) => setNewConversationData(prev => ({ ...prev, message: e.target.value }))}
@@ -324,11 +311,11 @@ export function AdminSupport() {
               <div className="flex gap-3">
                 <Button 
                   onClick={createNewConversation}
-                  disabled={sending}
+                  disabled={sending || !newConversationData.subject.trim() || !newConversationData.message.trim()}
                   className="flex-1"
                 >
                   <Send className="w-4 h-4 mr-2" />
-                  Envoyer
+                  {sending ? 'Envoi...' : 'Envoyer'}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -351,16 +338,6 @@ export function AdminSupport() {
                     {getPriorityBadge(selectedConv.priority)}
                   </div>
                 </div>
-                {selectedConv.status !== 'closed' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => closeConversation(selectedConv.id)}
-                  >
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Fermer
-                  </Button>
-                )}
               </div>
             </CardHeader>
 
@@ -391,7 +368,7 @@ export function AdminSupport() {
                             <User className="w-4 h-4" />
                           )}
                           <span className="text-xs font-medium">
-                            {message.senderType === 'admin' ? 'Administration' : 'Vous'}
+                            {message.senderType === 'admin' ? 'Support TeamMove' : 'Vous'}
                           </span>
                         </div>
                       )}
@@ -434,13 +411,30 @@ export function AdminSupport() {
                   </Button>
                 </div>
               )}
+              
+              {selectedConv.status === 'closed' && (
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-500">
+                    Cette conversation a été fermée. Si vous avez d'autres questions, 
+                    n'hésitez pas à créer une nouvelle demande.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </div>
         ) : (
           <CardContent className="flex items-center justify-center h-full text-gray-500">
             <div className="text-center">
               <MessageSquare className="w-12 h-12 mx-auto mb-4" />
-              <p>Sélectionnez une conversation ou créez-en une nouvelle</p>
+              <h3 className="font-medium mb-2">Besoin d'aide ?</h3>
+              <p className="text-sm mb-4">
+                Notre équipe de support est là pour vous aider. 
+                Sélectionnez une conversation existante ou créez-en une nouvelle.
+              </p>
+              <Button onClick={() => setShowNewConversation(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Contacter le support
+              </Button>
             </div>
           </CardContent>
         )}
