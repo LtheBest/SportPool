@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 interface SubscriptionLimits {
-  subscriptionType: 'decouverte' | 'premium';
+  subscriptionType: 'decouverte' | 'evenementielle' | 'pro_club' | 'pro_pme' | 'pro_entreprise';
   eventCreatedCount: number;
   invitationsSentCount: number;
   limits: {
@@ -51,7 +51,7 @@ export function SubscriptionLimitsBanner() {
     }
   };
 
-  if (loading || !limits || limits.subscriptionType === 'premium' || dismissed) {
+  if (loading || !limits || limits.subscriptionType !== 'decouverte' || dismissed) {
     return null;
   }
 
@@ -140,7 +140,7 @@ export function SubscriptionLimitsBanner() {
                   onClick={() => window.location.href = '/dashboard/subscription'}
                 >
                   <Crown className="w-4 h-4 mr-2" />
-                  Passer au Premium
+                  Choisir une offre
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
                 
@@ -208,7 +208,17 @@ export function UsageStats() {
     );
   }
 
-  const isPremium = limits.subscriptionType === 'premium';
+  const isDiscovery = limits.subscriptionType === 'decouverte';
+  const getSubscriptionLabel = () => {
+    switch (limits.subscriptionType) {
+      case 'decouverte': return 'Découverte';
+      case 'evenementielle': return 'Événementielle';
+      case 'pro_club': return 'Pro Club';
+      case 'pro_pme': return 'Pro PME';
+      case 'pro_entreprise': return 'Pro Entreprise';
+      default: return 'Découverte';
+    }
+  };
 
   return (
     <Card>
@@ -216,17 +226,11 @@ export function UsageStats() {
         <div className="flex items-center justify-between mb-3">
           <h4 className="font-medium text-gray-900 dark:text-white">Utilisation</h4>
           <Badge 
-            variant={isPremium ? "secondary" : "outline"}
-            className={isPremium ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white" : ""}
+            variant={isDiscovery ? "outline" : "secondary"}
+            className={!isDiscovery ? "bg-gradient-to-r from-blue-400 to-purple-600 text-white" : ""}
           >
-            {isPremium ? (
-              <>
-                <Crown className="w-3 h-3 mr-1" />
-                Premium
-              </>
-            ) : (
-              'Découverte'
-            )}
+            {!isDiscovery && <Crown className="w-3 h-3 mr-1" />}
+            {getSubscriptionLabel()}
           </Badge>
         </div>
 
@@ -271,7 +275,7 @@ export function UsageStats() {
             />
           </div>
 
-          {!isPremium && (
+          {isDiscovery && (
             <Button
               size="sm"
               variant="outline"
@@ -279,7 +283,7 @@ export function UsageStats() {
               onClick={() => window.location.href = '/dashboard/subscription'}
             >
               <Crown className="w-4 h-4 mr-2" />
-              Upgrader vers Premium
+              Choisir une offre
             </Button>
           )}
         </div>

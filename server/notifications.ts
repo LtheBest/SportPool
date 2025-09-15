@@ -317,13 +317,13 @@ export const NotificationTemplates = {
   SUBSCRIPTION_UPGRADED: (planType: string, billingInterval: string) => ({
     type: 'success' as const,
     title: 'Abonnement mis à niveau',
-    message: `Votre abonnement a été mis à niveau vers le plan ${planType} (${billingInterval}). Profitez de toutes les fonctionnalités premium !`,
+    message: `Votre abonnement a été mis à niveau vers le plan ${planType} (${billingInterval}). Profitez de toutes les fonctionnalités avancées !`,
   }),
 
   SUBSCRIPTION_CANCELLED: () => ({
     type: 'warning' as const,
     title: 'Abonnement annulé',
-    message: 'Votre abonnement premium a été annulé. Il restera actif jusqu\'à la fin de votre période de facturation.',
+    message: 'Votre abonnement payant a été annulé. Il restera actif jusqu\'à la fin de votre période de facturation.',
   }),
 
   PAYMENT_FAILED: () => ({
@@ -336,7 +336,7 @@ export const NotificationTemplates = {
   LIMIT_REACHED: (limitType: string, limit: number) => ({
     type: 'warning' as const,
     title: `Limite ${limitType} atteinte`,
-    message: `Vous avez atteint votre limite de ${limit} ${limitType} pour ce mois. Passez au plan Premium pour un accès illimité.`,
+    message: `Vous avez atteint votre limite de ${limit} ${limitType} pour ce mois. Choisissez une offre payante pour un accès élargi.`,
     actionUrl: '/dashboard/upgrade',
   }),
 
