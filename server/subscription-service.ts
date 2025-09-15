@@ -108,7 +108,7 @@ export class SubscriptionService {
       },
     });
 
-    return { sessionId: session.id, mode: 'payment' };
+    return { sessionId: session.id, url: session.url, mode: 'payment' };
   }
 
   // Créer un abonnement Pro
@@ -140,7 +140,7 @@ export class SubscriptionService {
       },
     });
 
-    return { sessionId: session.id, mode: 'subscription' };
+    return { sessionId: session.id, url: session.url, mode: 'subscription' };
   }
 
   // Gérer la confirmation de paiement

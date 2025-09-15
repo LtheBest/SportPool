@@ -71,7 +71,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   },
   // Formules Pro (abonnements mensuels)
   {
-    id: "pro-club",
+    id: "pro_club",
     name: "Clubs & Associations", 
     price: 1999, // 19,99€
     type: "subscription",
@@ -93,7 +93,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
     ]
   },
   {
-    id: "pro-pme",
+    id: "pro_pme",
     name: "PME",
     price: 4900, // 49€
     type: "subscription", 
@@ -113,7 +113,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
     ]
   },
   {
-    id: "pro-entreprise",
+    id: "pro_entreprise",
     name: "Grandes Entreprises",
     price: 9900, // 99€
     type: "subscription",
@@ -175,7 +175,13 @@ export default function PaymentSetup({ isOpen, onClose, onSuccess, targetPlan }:
         }),
       });
 
-      const { sessionId, error } = await response.json();
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Erreur de création de session');
+      }
+      
+      const { sessionId, error } = result;
       
       if (error) {
         throw new Error(error);

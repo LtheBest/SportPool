@@ -79,8 +79,8 @@ export const SUBSCRIPTION_PLANS: { [key: string]: SubscriptionPlan } = {
   },
 
   // Formules Pro
-  'pro-club': {
-    id: 'pro-club',
+  'pro_club': {
+    id: 'pro_club',
     name: 'Clubs & Associations',
     type: 'pro_club',
     price: 1999, // 19,99€
@@ -104,8 +104,8 @@ export const SUBSCRIPTION_PLANS: { [key: string]: SubscriptionPlan } = {
     description: 'Conçu pour les clubs sportifs et associations'
   },
 
-  'pro-pme': {
-    id: 'pro-pme',
+  'pro_pme': {
+    id: 'pro_pme',
     name: 'PME',
     type: 'pro_pme',
     price: 4900, // 49€
@@ -127,8 +127,8 @@ export const SUBSCRIPTION_PLANS: { [key: string]: SubscriptionPlan } = {
     description: 'Idéal pour les petites et moyennes entreprises'
   },
 
-  'pro-entreprise': {
-    id: 'pro-entreprise',
+  'pro_entreprise': {
+    id: 'pro_entreprise',
     name: 'Grandes Entreprises',
     type: 'pro_entreprise',
     price: 9900, // 99€
@@ -165,19 +165,19 @@ export const STRIPE_PRICE_CONFIG = {
     mode: 'payment', // Paiement unique
     description: 'Pack 10 Événements - 150€'
   },
-  'pro-club': {
+  'pro_club': {
     price: 1999,
     mode: 'subscription',
     interval: 'month',
     description: 'Clubs & Associations - 19,99€/mois'
   },
-  'pro-pme': {
+  'pro_pme': {
     price: 4900,
     mode: 'subscription',
     interval: 'month',
     description: 'PME - 49€/mois'
   },
-  'pro-entreprise': {
+  'pro_entreprise': {
     price: 9900,
     mode: 'subscription',
     interval: 'month',
@@ -206,21 +206,21 @@ export const NEW_SUBSCRIPTION_LIMITS = {
     maxInvitations: null,
     name: 'Clubs & Associations',
     price: 1999,
-    features: SUBSCRIPTION_PLANS['pro-club'].features
+    features: SUBSCRIPTION_PLANS['pro_club'].features
   },
   pro_pme: {
     maxEvents: null,
     maxInvitations: null,
     name: 'PME',
     price: 4900,
-    features: SUBSCRIPTION_PLANS['pro-pme'].features
+    features: SUBSCRIPTION_PLANS['pro_pme'].features
   },
   pro_entreprise: {
     maxEvents: null,
     maxInvitations: null,
     name: 'Grandes Entreprises',
     price: 9900,
-    features: SUBSCRIPTION_PLANS['pro-entreprise'].features
+    features: SUBSCRIPTION_PLANS['pro_entreprise'].features
   }
 };
 

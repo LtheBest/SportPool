@@ -84,7 +84,7 @@ export class StripeService {
 
       const session = await stripe.checkout.sessions.create(sessionConfig);
 
-      return { id: session.id };
+      return { id: session.id, url: session.url };
     } catch (error: any) {
       console.error('Erreur création session Stripe:', error);
       throw new Error(`Erreur Stripe: ${error.message}`);

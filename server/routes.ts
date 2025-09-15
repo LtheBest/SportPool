@@ -269,6 +269,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Import configurations dynamically
+      const { SUBSCRIPTION_PLANS } = await import('./subscription-config');
+      
       // Validate plan exists
       const plan = SUBSCRIPTION_PLANS[selectedPlan];
       if (!plan) {
@@ -337,6 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = process.env.APP_URL || 'http://localhost:3000';
       
       try {
+        const { SubscriptionService } = await import('./subscription-service');
         const checkoutSession = await SubscriptionService.createSubscription({
           organizationId: organization.id,
           planId: selectedPlan,

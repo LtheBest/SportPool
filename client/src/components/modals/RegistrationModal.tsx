@@ -23,7 +23,7 @@ const registrationSchema = z.object({
   type: z.enum(["club", "association", "company"], {
     required_error: "Veuillez sélectionner un type d'organisation",
   }),
-  subscriptionType: z.enum(["decouverte", "evenementielle", "pro_club", "pro_pme", "pro_entreprise"], {
+  subscriptionType: z.enum(["decouverte", "evenementielle-single", "evenementielle-pack10", "pro_club", "pro_pme", "pro_entreprise"], {
     required_error: "Veuillez choisir une offre",
   }),
   email: z.string().email("Email invalide"),
@@ -128,7 +128,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
       // Si l'inscription nécessite un paiement
       if (result.requiresPayment && result.checkoutSession) {
         // Rediriger vers Stripe Checkout
-        window.location.href = result.checkoutSession.url;
+        window.location.href = result.checkoutSession.url || result.checkoutSession;
         return;
       }
       
@@ -259,7 +259,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                       <RadioGroup
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        className="grid 2xl:grid-cols-5 xl:grid-cols-3 lg:grid-cols-2 md:grid-cols-2 gap-8 lg:gap-10"
+                        className="grid 2xl:grid-cols-6 xl:grid-cols-3 lg:grid-cols-2 md:grid-cols-2 gap-6 lg:gap-8"
                       >
                         {/* Offre Découverte */}
                         <FormItem>
@@ -316,19 +316,19 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </Label>
                         </FormItem>
 
-                        {/* Offre Événementielle */}
+                        {/* Pack Événement Unique */}
                         <FormItem>
                           <FormControl>
                             <RadioGroupItem
-                              value="evenementielle"
-                              id="evenementielle"
+                              value="evenementielle-single"
+                              id="evenementielle-single"
                               className="sr-only peer"
                             />
                           </FormControl>
                           <Label
-                            htmlFor="evenementielle"
+                            htmlFor="evenementielle-single"
                             className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedSubscription === "evenementielle"
+                              selectedSubscription === "evenementielle-single"
                                 ? 'border-orange-500 bg-orange-50 shadow-lg scale-[1.02] dark:bg-orange-950 dark:border-orange-400'
                                 : 'border-gray-200 hover:border-orange-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-orange-400 dark:hover:bg-gray-800'
                             }`}
@@ -337,27 +337,27 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                   <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                                    🎯 Événementielle
+                                    🎯 Pack Événement
                                   </CardTitle>
                                   <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100">
                                     POPULAIRE
                                   </Badge>
                                 </div>
                                 <CardDescription className="text-gray-600 dark:text-gray-300">
-                                  Idéal pour les organisateurs occasionnels
+                                  Idéal pour organiser un événement ponctuel
                                 </CardDescription>
                               </CardHeader>
                               <CardContent className="pt-0">
                                 <div className="mb-4">
                                   <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                    15€ - 150€
-                                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/pack</span>
+                                    15€
+                                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/événement</span>
                                   </div>
                                 </div>
                                 <div className="space-y-3">
                                   <div className="flex items-center text-sm">
                                     <i className="fas fa-check text-orange-500 mr-2"></i>
-                                    <span>1 événement (15€) ou 10 événements (150€)</span>
+                                    <span>1 événement complet</span>
                                   </div>
                                   <div className="flex items-center text-sm">
                                     <i className="fas fa-check text-orange-500 mr-2"></i>
@@ -369,6 +369,70 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                                   </div>
                                   <div className="flex items-center text-sm">
                                     <i className="fas fa-check text-orange-500 mr-2"></i>
+                                    <span>Support prioritaire</span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Label>
+                        </FormItem>
+
+                        {/* Pack 10 Événements */}
+                        <FormItem>
+                          <FormControl>
+                            <RadioGroupItem
+                              value="evenementielle-pack10"
+                              id="evenementielle-pack10"
+                              className="sr-only peer"
+                            />
+                          </FormControl>
+                          <Label
+                            htmlFor="evenementielle-pack10"
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
+                              selectedSubscription === "evenementielle-pack10"
+                                ? 'border-green-500 bg-green-50 shadow-lg scale-[1.02] dark:bg-green-950 dark:border-green-400'
+                                : 'border-gray-200 hover:border-green-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-green-400 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            <Card className="border-0 shadow-none bg-transparent">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                                    📦 Pack 10 Événements
+                                  </CardTitle>
+                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                                    ÉCONOMIQUE
+                                  </Badge>
+                                </div>
+                                <CardDescription className="text-gray-600 dark:text-gray-300">
+                                  Parfait pour les organisateurs réguliers
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="mb-4">
+                                  <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                    150€
+                                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/pack</span>
+                                  </div>
+                                  <div className="text-sm text-green-600 dark:text-green-400">
+                                    Soit 15€ par événement
+                                  </div>
+                                </div>
+                                <div className="space-y-3">
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-green-500 mr-2"></i>
+                                    <span>10 événements complets</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-green-500 mr-2"></i>
+                                    <span>Invitations illimitées</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-green-500 mr-2"></i>
+                                    <span>Valable 12 mois</span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <i className="fas fa-check text-green-500 mr-2"></i>
                                     <span>Support prioritaire</span>
                                   </div>
                                 </div>
