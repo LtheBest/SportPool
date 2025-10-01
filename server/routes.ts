@@ -2743,15 +2743,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== SUBSCRIPTION & BILLING ROUTES (MODERNIZED) ==========
-  // Import new subscription services
-  const { SubscriptionService } = await import('./subscription-service');
+  // Import new subscription services (SubscriptionService already imported and initialized at startup)
   const { StripeService } = await import('./stripe-service');
   const { EmailService } = await import('./email-service');
   const { SchedulerService } = await import('./scheduler-service');
   const { SUBSCRIPTION_PLANS, NEW_SUBSCRIPTION_LIMITS } = await import('./subscription-config');
   
-  // Initialize services
-  await SubscriptionService.initialize();
+  // Initialize additional services (SubscriptionService already initialized at startup)
   await SchedulerService.initialize();
   
   // Import theme services
