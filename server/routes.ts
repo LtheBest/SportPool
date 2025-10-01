@@ -23,6 +23,14 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
+import { SUBSCRIPTION_PLANS } from "./subscription-config";
+import { SubscriptionService } from "./subscription-service";
+import { createNotification, NotificationTemplates } from "./notifications";
+import { StripeService } from "./stripe-service";
+
+// Import functions for subscription checks
+const canCreateEvent = SubscriptionService.canCreateEvent.bind(SubscriptionService);
+const canSendInvitations = SubscriptionService.canSendInvitations.bind(SubscriptionService);
 
 // Utility function to clean email reply content
 function cleanEmailReply(content: string): string {
@@ -64,6 +72,9 @@ function cleanEmailReply(content: string): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize subscription service
+  await SubscriptionService.initialize();
+  
   // Configuration CORS dynamique et optimisée pour Render
   const isProduction = process.env.NODE_ENV === 'production';
   const isRenderDeploy = process.env.RENDER === 'true' || process.env.RENDER_EXTERNAL_URL || process.env.APP_URL?.includes('onrender.com');
