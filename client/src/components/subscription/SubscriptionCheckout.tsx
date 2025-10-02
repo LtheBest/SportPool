@@ -130,15 +130,17 @@ export function SubscriptionCheckout({ plans, currentPlan, onPlanSelect, loading
         throw new Error(errorData.message || 'Erreur lors de la création de la session de paiement');
       }
 
-      const { sessionId, url } = await response.json();
+      const data = await response.json();
       
-      if (url) {
-        // Rediriger vers Stripe Checkout
-        window.location.href = url;
-      } else if (sessionId) {
-        // Utiliser le checkout intégré
-        setClientSecret(sessionId);
+      if (data.url) {
+        // Rediriger vers l'URL de checkout Stripe moderne
+        window.location.href = data.url;
+      } else if (data.sessionId) {
+        // Utiliser le checkout intégré avec le sessionId
+        setClientSecret(data.sessionId);
         setCheckoutMode('payment');
+      } else {
+        throw new Error("Aucune URL de redirection ou session ID fournie");
       }
       
     } catch (error: any) {

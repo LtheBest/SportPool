@@ -3084,6 +3084,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TEST ROUTE: Serve test page
+  app.get("/test-stripe", (req, res) => {
+    res.sendFile(path.join(__dirname, '../test-stripe-integration.html'));
+  });
+
+  // TEST ROUTE: Simple checkout session creation (for testing)
+  app.post("/api/create-checkout-session-test", async (req, res) => {
+    try {
+      const YOUR_DOMAIN = process.env.APP_URL || 'http://localhost:3000';
+      
+      const session = await StripeService.createCheckoutSession({
+        mode: 'payment',
+        priceData: {
+          currency: 'eur',
+          product_data: {
+            name: 'Pack Événement TeamMove (Test)',
+            description: 'Un événement sportif avec covoiturage organisé - Mode Test',
+          },
+          unit_amount: 1500, // 15€ en centimes
+        },
+        quantity: 1,
+        successUrl: `${YOUR_DOMAIN}/test-stripe?success=true`,
+        cancelUrl: `${YOUR_DOMAIN}/test-stripe?canceled=true`,
+        metadata: {
+          organizationId: 'test-org-id',
+          planId: 'test-event-pack',
+          planType: 'evenementielle',
+        },
+      });
+
+      // Nouvelle approche : rediriger directement vers l'URL Stripe
+      if (session.url) {
+        res.redirect(303, session.url);
+      } else {
+        res.status(500).json({ error: 'No checkout URL generated' });
+      }
+    } catch (error) {
+      console.error('Test checkout session error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin: Force run scheduler tasks
   app.post("/api/admin/scheduler/run", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {

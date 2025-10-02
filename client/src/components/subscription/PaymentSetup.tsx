@@ -175,19 +175,25 @@ export default function PaymentSetup({ isOpen, onClose, onSuccess, targetPlan }:
         }),
       });
 
-      const { sessionId, error } = await response.json();
+      const data = await response.json();
       
-      if (error) {
-        throw new Error(error);
+      if (data.error) {
+        throw new Error(data.error);
       }
 
-      // Rediriger vers Stripe Checkout
-      const { error: stripeError } = await stripe.redirectToCheckout({
-        sessionId: sessionId,
-      });
-
-      if (stripeError) {
-        throw new Error(stripeError.message);
+      // Rediriger vers l'URL de checkout Stripe moderne
+      if (data.url) {
+        window.location.href = data.url;
+      } else if (data.sessionId) {
+        // Fallback: utiliser l'ancienne méthode si l'URL n'est pas disponible
+        const { error: stripeError } = await stripe.redirectToCheckout({
+          sessionId: data.sessionId,
+        });
+        if (stripeError) {
+          throw new Error(stripeError.message);
+        }
+      } else {
+        throw new Error("Aucune URL de redirection fournie");
       }
     } catch (error: any) {
       console.error('Erreur de paiement:', error);
