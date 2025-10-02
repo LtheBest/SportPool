@@ -31,7 +31,7 @@ export interface CreateCheckoutSessionParams {
 export class StripeService {
   
   // Créer une session de checkout moderne
-  static async createCheckoutSession(params: CreateCheckoutSessionParams): Promise<{ id: string }> {
+  static async createCheckoutSession(params: CreateCheckoutSessionParams): Promise<{ id: string; url: string | null }> {
     try {
       const sessionConfig: Stripe.Checkout.SessionCreateParams = {
         payment_method_types: ['card'],
@@ -86,7 +86,7 @@ export class StripeService {
 
       return { 
         id: session.id,
-        url: session.url 
+        url: session.url || null
       };
     } catch (error: any) {
       console.error('Erreur création session Stripe:', error);

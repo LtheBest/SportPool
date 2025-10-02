@@ -152,17 +152,22 @@ export default function PaymentSetup({ isOpen, onClose, onSuccess, targetPlan }:
     setIsLoading(true);
     
     try {
+      console.log('🎯 Début du processus de paiement pour le plan:', selectedPlan);
+      
       const stripe = await stripePromise;
       if (!stripe) {
-        throw new Error("Stripe n'a pas pu être initialisé");
+        throw new Error("Stripe n'a pas pu être initialisé. Vérifiez votre configuration Stripe.");
       }
 
       const plan = subscriptionPlans.find(p => p.id === selectedPlan);
       if (!plan) {
-        throw new Error("Plan non trouvé");
+        throw new Error(`Plan non trouvé: ${selectedPlan}`);
       }
 
+      console.log('📦 Plan sélectionné:', plan);
+
       // Créer la session de checkout
+      console.log('📡 Appel API /api/subscriptions/create...');
       const response = await fetch('/api/subscriptions/create', {
         method: 'POST',
         headers: {
@@ -175,31 +180,61 @@ export default function PaymentSetup({ isOpen, onClose, onSuccess, targetPlan }:
         }),
       });
 
-      const data = await response.json();
+      console.log('📡 Réponse API status:', response.status);
       
-      if (data.error) {
-        throw new Error(data.error);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur HTTP:', response.status, errorText);
+        throw new Error(`Erreur serveur (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('📡 Données reçues:', data);
+      
+      if (data.error || data.message) {
+        throw new Error(data.error || data.message);
+      }
+
+      // Vérifier la présence des données nécessaires
+      if (!data.url && !data.sessionId) {
+        console.error('❌ Données manquantes dans la réponse:', data);
+        throw new Error("Réponse serveur invalide: aucune URL de redirection fournie");
       }
 
       // Rediriger vers l'URL de checkout Stripe moderne
       if (data.url) {
+        console.log('🚀 Redirection vers Stripe Checkout:', data.url);
         window.location.href = data.url;
       } else if (data.sessionId) {
+        console.log('🚀 Redirection Stripe avec sessionId:', data.sessionId);
         // Fallback: utiliser l'ancienne méthode si l'URL n'est pas disponible
         const { error: stripeError } = await stripe.redirectToCheckout({
           sessionId: data.sessionId,
         });
         if (stripeError) {
+          console.error('❌ Erreur Stripe redirectToCheckout:', stripeError);
           throw new Error(stripeError.message);
         }
-      } else {
-        throw new Error("Aucune URL de redirection fournie");
       }
     } catch (error: any) {
-      console.error('Erreur de paiement:', error);
+      console.error('❌ Erreur complète de paiement:', error);
+      
+      let errorMessage = "Une erreur est survenue lors de la configuration du paiement.";
+      
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Messages d'erreur plus spécifiques
+      if (error.message?.includes('fetch')) {
+        errorMessage = "Impossible de contacter le serveur. Vérifiez votre connexion internet.";
+      } else if (error.message?.includes('Stripe')) {
+        errorMessage = `Erreur Stripe: ${error.message}`;
+      }
+      
       toast({
         title: "Erreur de paiement",
-        description: error.message || "Une erreur est survenue lors de la configuration du paiement.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
