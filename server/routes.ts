@@ -2923,25 +2923,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create subscription (for new purchases or upgrades) - NEW ENDPOINT
   app.post("/api/subscriptions/create", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
+      console.log('🎯 Nouvelle demande de création de session de paiement');
+      console.log('👤 OrganizationId:', req.user.organizationId);
+      console.log('📦 Body:', req.body);
+      
       const { planId, successUrl, cancelUrl } = req.body;
       
       if (!planId) {
+        console.log('❌ Plan ID manquant');
         return res.status(400).json({ message: "Plan ID is required" });
       }
 
       const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      console.log('🌐 Base URL:', baseUrl);
       
-      const result = await SubscriptionService.createSubscription({
+      const subscriptionParams = {
         organizationId: req.user.organizationId,
         planId,
         successUrl: successUrl || `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: cancelUrl || `${baseUrl}/dashboard?payment=cancelled`,
-      });
-
+      };
+      
+      console.log('📋 Paramètres de création:', subscriptionParams);
+      
+      const result = await SubscriptionService.createSubscription(subscriptionParams);
+      
+      console.log('✅ Résultat de création:', result);
       res.json(result);
     } catch (error) {
-      console.error("Subscription creation error:", error);
-      res.status(500).json({ message: "Failed to create subscription" });
+      console.error("❌ Erreur de création d'abonnement:", error);
+      
+      // Retourner des détails d'erreur plus spécifiques en développement
+      const isDev = process.env.NODE_ENV === 'development';
+      const errorResponse = {
+        message: "Failed to create subscription",
+        ...(isDev && { 
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        })
+      };
+      
+      res.status(500).json(errorResponse);
     }
   });
 

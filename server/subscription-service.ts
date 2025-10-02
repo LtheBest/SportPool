@@ -50,34 +50,42 @@ export class SubscriptionService {
   // Créer un abonnement ou paiement
   static async createSubscription(params: CreateSubscriptionParams): Promise<any> {
     try {
+      console.log('🏢 Recherche de l\'organisation:', params.organizationId);
       const organization = await storage.getOrganization(params.organizationId);
       if (!organization) {
         throw new Error('Organization not found');
       }
+      console.log('✅ Organisation trouvée:', organization.name);
 
+      console.log('📦 Recherche du plan:', params.planId);
       const plan = SUBSCRIPTION_PLANS[params.planId];
       if (!plan) {
-        throw new Error('Plan not found');
+        throw new Error(`Plan not found: ${params.planId}`);
       }
+      console.log('✅ Plan trouvé:', plan.name);
 
+      console.log('⚙️  Recherche de la configuration Stripe pour:', params.planId);
       const stripeConfig = STRIPE_PRICE_CONFIG[params.planId];
       if (!stripeConfig) {
-        throw new Error('Stripe configuration not found for this plan');
+        throw new Error(`Stripe configuration not found for plan: ${params.planId}`);
       }
+      console.log('✅ Configuration Stripe trouvée:', stripeConfig);
 
       // Pour les offres événementielles (paiement unique)
       if (plan.type === 'evenementielle') {
-        return await this.createEventPackagePayment(params, plan, stripeConfig);
+        console.log('💳 Création de paiement événementiel');
+        return await this.createEventPackagePayment(params, plan, stripeConfig, organization);
       }
 
       // Pour les formules Pro (abonnement mensuel)
       if (['pro_club', 'pro_pme', 'pro_entreprise'].includes(plan.type)) {
-        return await this.createProSubscription(params, plan, stripeConfig);
+        console.log('💳 Création d\'abonnement Pro');
+        return await this.createProSubscription(params, plan, stripeConfig, organization);
       }
 
-      throw new Error('Plan type not supported');
+      throw new Error(`Plan type not supported: ${plan.type}`);
     } catch (error) {
-      console.error('Error creating subscription:', error);
+      console.error('❌ Erreur création abonnement:', error);
       throw error;
     }
   }
@@ -86,7 +94,8 @@ export class SubscriptionService {
   private static async createEventPackagePayment(
     params: CreateSubscriptionParams, 
     plan: any, 
-    stripeConfig: any
+    stripeConfig: any,
+    organization: any
   ): Promise<any> {
     const session = await StripeService.createCheckoutSession({
       mode: 'payment',
@@ -106,6 +115,7 @@ export class SubscriptionService {
         planId: params.planId,
         planType: 'evenementielle',
       },
+      customerEmail: organization.contactEmail,
     });
 
     return { 
@@ -119,7 +129,8 @@ export class SubscriptionService {
   private static async createProSubscription(
     params: CreateSubscriptionParams, 
     plan: any, 
-    stripeConfig: any
+    stripeConfig: any,
+    organization: any
   ): Promise<any> {
     const session = await StripeService.createCheckoutSession({
       mode: 'subscription',
@@ -142,6 +153,7 @@ export class SubscriptionService {
         planId: params.planId,
         planType: plan.type,
       },
+      customerEmail: organization.contactEmail,
     });
 
     return { 
