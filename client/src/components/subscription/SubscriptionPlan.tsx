@@ -374,7 +374,7 @@ export function SubscriptionPlan() {
           <div className="pt-4 border-t space-y-3">
             {isDiscovery ? (
               <Button
-                onClick={() => window.location.href = '/dashboard/subscription'}
+                onClick={() => window.location.href = '/subscription/plans'}
                 disabled={upgrading}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
@@ -406,7 +406,7 @@ export function SubscriptionPlan() {
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = '/dashboard/subscription'}
+                    onClick={() => window.location.href = '/subscription/plans'}
                   >
                     <CreditCard className="w-4 h-4 mr-2" />
                     Changer d'offre

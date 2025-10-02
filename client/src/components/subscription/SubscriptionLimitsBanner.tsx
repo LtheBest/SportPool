@@ -137,7 +137,7 @@ export function SubscriptionLimitsBanner() {
                 <Button
                   size="sm"
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  onClick={() => window.location.href = '/dashboard/subscription'}
+                  onClick={() => window.location.href = '/subscription/plans'}
                 >
                   <Crown className="w-4 h-4 mr-2" />
                   Choisir une offre
@@ -280,7 +280,7 @@ export function UsageStats() {
               size="sm"
               variant="outline"
               className="w-full mt-3"
-              onClick={() => window.location.href = '/dashboard/subscription'}
+              onClick={() => window.location.href = '/subscription/plans'}
             >
               <Crown className="w-4 h-4 mr-2" />
               Choisir une offre

@@ -264,7 +264,7 @@ export class StripeService {
     try {
       const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
 
-      console.log(`📨 Webhook reçu: ${event.type}`);
+      console.log(`📨 Webhook reçu: ${event.type} - ID: ${event.id}`);
 
       switch (event.type) {
         case 'checkout.session.completed':
@@ -277,6 +277,14 @@ export class StripeService {
 
         case 'payment_intent.payment_failed':
           await this.handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
+          break;
+
+        case 'payment_intent.created':
+          await this.handlePaymentIntentCreated(event.data.object as Stripe.PaymentIntent);
+          break;
+
+        case 'payment_method.attached':
+          await this.handlePaymentMethodAttached(event.data.object as Stripe.PaymentMethod);
           break;
 
         case 'invoice.payment_succeeded':
@@ -297,6 +305,14 @@ export class StripeService {
 
         case 'customer.subscription.deleted':
           await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+          break;
+
+        case 'customer.created':
+          await this.handleCustomerCreated(event.data.object as Stripe.Customer);
+          break;
+
+        case 'customer.updated':
+          await this.handleCustomerUpdated(event.data.object as Stripe.Customer);
           break;
 
         default:
@@ -362,6 +378,26 @@ export class StripeService {
   private static async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
     console.log('🗑️  Subscription deleted:', subscription.id);
     // Traitement de suppression d'abonnement - rétrograder l'utilisateur
+  }
+
+  private static async handlePaymentIntentCreated(paymentIntent: Stripe.PaymentIntent): Promise<void> {
+    console.log('🆕 Payment Intent created:', paymentIntent.id);
+    // Peut être utilisé pour tracer les tentatives de paiement
+  }
+
+  private static async handlePaymentMethodAttached(paymentMethod: Stripe.PaymentMethod): Promise<void> {
+    console.log('💳 Payment method attached:', paymentMethod.id);
+    // Traitement quand une méthode de paiement est attachée à un client
+  }
+
+  private static async handleCustomerCreated(customer: Stripe.Customer): Promise<void> {
+    console.log('👤 Customer created:', customer.id);
+    // Traitement lors de la création d'un nouveau client Stripe
+  }
+
+  private static async handleCustomerUpdated(customer: Stripe.Customer): Promise<void> {
+    console.log('👤 Customer updated:', customer.id);
+    // Traitement lors de la mise à jour d'un client
   }
 
   // Mode test/production

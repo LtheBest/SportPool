@@ -3623,6 +3623,245 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== MODERN STRIPE CHECKOUT ROUTES ==========
+
+  // Create Payment Intent for Stripe Elements
+  app.post("/api/stripe/create-payment-intent", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId, amount, currency = 'eur' } = req.body;
+
+      if (!planId || !amount) {
+        return res.status(400).json({ message: "Plan ID and amount are required" });
+      }
+
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Find or create Stripe customer
+      const customer = await StripeService.findOrCreateCustomer(
+        organization.id,
+        organization.email,
+        organization.name
+      );
+
+      // Create payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: currency,
+        customer: customer.id,
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          organizationId: organization.id,
+          planId: planId,
+          planType: planId,
+        },
+        description: `TeamMove - Plan ${planId}`,
+      });
+
+      res.json({
+        client_secret: paymentIntent.client_secret,
+        customer_id: customer.id,
+      });
+    } catch (error: any) {
+      console.error("Create payment intent error:", error);
+      res.status(500).json({ message: "Failed to create payment intent" });
+    }
+  });
+
+  // Create Stripe Checkout Session (for redirect-based flow)
+  app.post("/api/stripe/create-checkout-session", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId, successUrl, cancelUrl } = req.body;
+
+      if (!planId) {
+        return res.status(400).json({ message: "Plan ID is required" });
+      }
+
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const plan = SUBSCRIPTION_PLANS[planId];
+      if (!plan) {
+        return res.status(400).json({ message: "Invalid plan ID" });
+      }
+
+      // Configuration de base pour la session
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      const sessionConfig = {
+        mode: plan.billingInterval === 'monthly' || plan.billingInterval === 'annual' ? 'subscription' : 'payment',
+        priceData: {
+          currency: plan.currency.toLowerCase(),
+          product_data: {
+            name: plan.name,
+            description: plan.description,
+          },
+          unit_amount: plan.price,
+          ...(plan.billingInterval === 'monthly' || plan.billingInterval === 'annual' ? {
+            recurring: {
+              interval: plan.billingInterval === 'monthly' ? 'month' : 'year',
+            }
+          } : {})
+        },
+        quantity: 1,
+        successUrl: successUrl || `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: cancelUrl || `${baseUrl}/dashboard/subscription?payment=cancelled`,
+        metadata: {
+          organizationId: organization.id,
+          planId: planId,
+          planType: plan.type,
+        },
+        customerEmail: organization.email,
+      };
+
+      const session = await StripeService.createCheckoutSession(sessionConfig);
+
+      res.json({
+        sessionId: session.id,
+        url: `https://checkout.stripe.com/pay/${session.id}`,
+      });
+    } catch (error: any) {
+      console.error("Create checkout session error:", error);
+      res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  // Handle successful payment (webhook alternative)
+  app.post("/api/stripe/payment-success", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "Payment Intent ID is required" });
+      }
+
+      // Récupérer le Payment Intent depuis Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: "Payment not completed" });
+      }
+
+      const organizationId = paymentIntent.metadata?.organizationId;
+      const planId = paymentIntent.metadata?.planId;
+
+      if (!organizationId || !planId || organizationId !== req.user.organizationId) {
+        return res.status(400).json({ message: "Invalid payment metadata" });
+      }
+
+      // Activer l'abonnement
+      await SubscriptionService.handlePaymentSuccess(paymentIntentId, organizationId, planId);
+
+      // Créer une notification
+      await createNotification({
+        organizationId: organizationId,
+        ...NotificationTemplates.SUBSCRIPTION_UPGRADED(SUBSCRIPTION_PLANS[planId].name),
+        sendEmail: true,
+      });
+
+      res.json({
+        success: true,
+        message: "Payment processed and subscription activated",
+      });
+    } catch (error: any) {
+      console.error("Payment success handling error:", error);
+      res.status(500).json({ message: "Failed to process payment success" });
+    }
+  });
+
+  // Get Stripe public key for frontend
+  app.get("/api/stripe/public-key", async (req, res) => {
+    try {
+      res.json({
+        publicKey: StripeService.getPublishableKey(),
+        mode: StripeService.isTestMode() ? 'test' : 'production',
+      });
+    } catch (error) {
+      console.error("Get Stripe public key error:", error);
+      res.status(500).json({ message: "Failed to get Stripe configuration" });
+    }
+  });
+
+  // Create customer portal session (for subscription management)
+  app.post("/api/stripe/customer-portal", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = await storage.getOrganization(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Trouve le customer Stripe
+      const customer = await StripeService.findOrCreateCustomer(
+        organization.id,
+        organization.email,
+        organization.name
+      );
+
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      const portalSession = await StripeService.createCustomerPortal(
+        customer.id,
+        `${baseUrl}/dashboard/subscription`
+      );
+
+      res.json({
+        url: portalSession.url,
+      });
+    } catch (error: any) {
+      console.error("Customer portal creation error:", error);
+      res.status(500).json({ message: "Failed to create customer portal session" });
+    }
+  });
+
+  // Enhanced webhook endpoint with better error handling
+  app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+      const signature = req.get('stripe-signature');
+      if (!signature) {
+        console.error('❌ Stripe webhook: Signature manquante');
+        return res.status(400).send('Signature manquante');
+      }
+
+      await StripeService.handleWebhook(req.body, signature);
+      
+      console.log('✅ Stripe webhook traité avec succès');
+      res.json({ received: true, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+      console.error('❌ Erreur webhook Stripe:', error);
+      
+      // Logging détaillé pour le debug
+      if (error.message?.includes('No signatures found')) {
+        console.error('Erreur de signature Stripe webhook - vérifier STRIPE_WEBHOOK_SECRET');
+      }
+      
+      res.status(400).send(`Webhook Error: ${error.message}`);
+    }
+  });
+
+  // Test Stripe configuration
+  app.get("/api/stripe/test", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const config = await StripeService.verifyConfiguration();
+      
+      res.json({
+        configuration: config,
+        publishableKey: StripeService.getPublishableKey(),
+        isTestMode: StripeService.isTestMode(),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("Stripe test error:", error);
+      res.status(500).json({ 
+        message: "Stripe configuration test failed",
+        error: error.message 
+      });
+    }
+  });
+
   // URL sanitization middleware for security
   app.use((req, res, next) => {
     // Prevent path traversal attacks

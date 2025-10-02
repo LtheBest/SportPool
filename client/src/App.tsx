@@ -16,6 +16,7 @@ import ResetPassword from "@/pages/reset-password";
 import EventPublic from "@/pages/event-public";
 import NotFound from "@/pages/not-found";
 import ReplyMessage from "@/pages/reply-message";
+import SubscriptionPlansPage from "@/pages/subscription-plans";
 import Cookies from "@/components/cookies/Cookies";
 import Chatbot from "./components/chatbot/Chatbot";
 import Footer from "./components/footer/Footer";
@@ -38,6 +39,9 @@ function Router() {
         : Home} />
       <Route path="/dashboard" component={isAuthenticated ? Dashboard : Home} />
       <Route path="/admin" component={isAuthenticated ? Admin : Home} />
+      <Route path="/subscription" component={isAuthenticated ? SubscriptionPlansPage : Home} />
+      <Route path="/subscription/plans" component={isAuthenticated ? SubscriptionPlansPage : Home} />
+      <Route path="/subscription/:mode" component={isAuthenticated ? SubscriptionPlansPage : Home} />
       <Route path="/invitation/:token" component={Invitation} />
       <Route path="/events/:id" component={EventPublic} />
       <Route path="/reset-password" component={ResetPassword} />
