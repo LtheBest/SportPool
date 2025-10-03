@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import TermsModal from "@/components/modals/TermsModal";
+import { buildApiUrl, defaultHeaders } from "@/lib/config";
 
 const registrationSchema = z.object({
   name: z.string().min(1, "Le nom de l'organisation est requis"),
@@ -110,13 +111,12 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
         selectedPlan: data.subscriptionType
       };
       
-      // Appeler l'API d'inscription avec le plan sélectionné
-      const response = await fetch("/api/register", {
+      // Use proper API request for registration (public endpoint)
+      const response = await fetch(buildApiUrl("/api/register"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: defaultHeaders,
         body: JSON.stringify(registrationPayload),
+        credentials: "include",
       });
       
       const result = await response.json();

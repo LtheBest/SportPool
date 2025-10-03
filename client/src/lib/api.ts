@@ -228,6 +228,62 @@ export const api = {
     closeConversation: (conversationId: string) => makeAuthenticatedRequest("PUT", `/api/admin/conversations/${conversationId}/close`),
   },
 
+  // Subscription and payment endpoints  
+  subscription: {
+    getPlans: () => makePublicRequest("GET", "/api/subscription/plans"),
+    getInfo: () => makeAuthenticatedRequest("GET", "/api/subscription/info"),
+    createPayment: (planId: string, successUrl?: string, cancelUrl?: string) => 
+      makeAuthenticatedRequest("POST", "/api/subscriptions/create", { 
+        planId, 
+        successUrl, 
+        cancelUrl 
+      }),
+    handlePaymentSuccess: (sessionId: string, organizationId: string) =>
+      makeAuthenticatedRequest("POST", "/api/registration/payment-success", {
+        sessionId,
+        organizationId
+      }),
+    handlePaymentCancellation: (organizationId?: string) =>
+      makeAuthenticatedRequest("POST", "/api/registration/payment-cancelled", {
+        organizationId
+      }),
+    upgrade: (planId: string, successUrl?: string, cancelUrl?: string) =>
+      makeAuthenticatedRequest("POST", "/api/subscription/upgrade-from-decouverte", {
+        planId,
+        successUrl,
+        cancelUrl
+      }),
+    cancel: () => makeAuthenticatedRequest("POST", "/api/subscription/cancel-to-decouverte"),
+    canCreateEvent: () => makeAuthenticatedRequest("GET", "/api/subscription/can-create-event"),
+    canSendInvitations: (count: number) => 
+      makeAuthenticatedRequest("POST", "/api/subscription/can-send-invitations", { count }),
+  },
+
+  // Stripe endpoints
+  stripe: {
+    getConfig: () => makePublicRequest("GET", "/api/stripe/config"),
+    getPublicKey: () => makePublicRequest("GET", "/api/stripe/public-key"),
+    createCheckoutSession: (planId: string, successUrl?: string, cancelUrl?: string) =>
+      makeAuthenticatedRequest("POST", "/api/stripe/create-checkout-session", {
+        planId,
+        successUrl,
+        cancelUrl
+      }),
+    createPaymentIntent: (planId: string, amount: number, currency: string = 'eur') =>
+      makeAuthenticatedRequest("POST", "/api/stripe/create-payment-intent", {
+        planId,
+        amount,
+        currency
+      }),
+    handlePaymentSuccess: (paymentIntentId: string) =>
+      makeAuthenticatedRequest("POST", "/api/stripe/payment-success", {
+        paymentIntentId
+      }),
+    createCustomerPortal: () => makeAuthenticatedRequest("POST", "/api/stripe/customer-portal"),
+    getSubscriptionInfo: () => makeAuthenticatedRequest("GET", "/api/stripe/subscription-info"),
+    cancelSubscription: () => makeAuthenticatedRequest("POST", "/api/stripe/cancel-subscription"),
+  },
+
   // Diagnostic and test endpoints
   health: () => makePublicRequest("GET", "/api/health"),
   authTest: () => makeAuthenticatedRequest("GET", "/api/auth-test"),
