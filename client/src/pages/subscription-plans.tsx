@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../hooks/useAuth';
+import { api } from '../lib/api';
 
 // Types
 interface CurrentSubscription {
@@ -60,9 +61,7 @@ export default function SubscriptionPlansPage({
   useEffect(() => {
     const fetchCurrentSubscription = async () => {
       try {
-        const response = await fetch('/api/subscription/info', {
-          credentials: 'include',
-        });
+        const response = await api.subscription.getInfo();
         
         if (response.ok) {
           const data = await response.json();
@@ -125,10 +124,7 @@ export default function SubscriptionPlansPage({
         setLoading(true);
         
         // Appel API pour changer vers le plan découverte
-        const response = await fetch('/api/subscription/cancel-to-decouverte', {
-          method: 'POST',
-          credentials: 'include',
-        });
+        const response = await api.subscription.cancel();
 
         if (response.ok) {
           toast.success('Votre abonnement a été changé vers le plan Découverte.');

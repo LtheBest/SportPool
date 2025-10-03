@@ -16,6 +16,8 @@ import { Separator } from '../ui/separator';
 import { CheckCircle, CreditCard, Lock, Shield, Crown, Star, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
+import { api } from '../../lib/api';
+import { useAuth } from '../../hooks/useAuth';
 
 // Types pour les plans d'abonnement
 interface SubscriptionPlan {
@@ -111,20 +113,12 @@ export function SubscriptionCheckout({ plans, currentPlan, onPlanSelect, loading
     setIsProcessing(true);
     
     try {
-      // Créer une session de checkout Stripe
-      const response = await fetch('/api/subscriptions/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          planId: planId,
-          successUrl: `${window.location.origin}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/dashboard/subscription?payment=cancelled`,
-        }),
-      });
-
+      // Utiliser l'API client avec authentification
+      const successUrl = `${window.location.origin}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${window.location.origin}/dashboard/subscription?payment=cancelled`;
+      
+      const response = await api.subscription.createPayment(planId, successUrl, cancelUrl);
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors de la création de la session de paiement');
@@ -383,10 +377,13 @@ export function useSubscriptionPlans() {
   useEffect(() => {
     const fetchPlans = async () => {
       try {
-        const response = await fetch('/api/subscription/plans');
+        // Utiliser l'API client 
+        const response = await api.subscription.getPlans();
+        
         if (!response.ok) {
           throw new Error('Erreur lors du chargement des plans');
         }
+        
         const data = await response.json();
         
         // Marquer certains plans comme populaires/recommandés
