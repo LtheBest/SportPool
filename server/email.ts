@@ -1,7 +1,16 @@
 import sgMail from '@sendgrid/mail';
 
-// Configuration SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
+// Configuration SendGrid - Lazy initialization
+let isConfigured = false;
+
+function configureSendGrid() {
+  if (!isConfigured && process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    isConfigured = true;
+  } else if (!process.env.SENDGRID_API_KEY) {
+    console.warn('⚠️  SENDGRID_API_KEY is not configured - email features will be disabled');
+  }
+}
 
 export interface EmailTemplate {
   subject: string;
@@ -32,6 +41,13 @@ class EmailService {
 
   async sendEmail(data: EmailData): Promise<boolean> {
     try {
+      configureSendGrid();
+      
+      if (!process.env.SENDGRID_API_KEY) {
+        console.warn('Email not sent - SENDGRID_API_KEY not configured');
+        return false;
+      }
+
       const msg = {
         to: {
           email: data.to,

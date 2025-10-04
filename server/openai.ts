@@ -1,9 +1,19 @@
 import OpenAI from 'openai';
 
-// Configuration OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Configuration OpenAI - Lazy initialization
+let openai: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured. Please set this environment variable to use AI features.');
+    }
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -44,7 +54,8 @@ class ChatbotService {
         { role: 'user', content: userMessage }
       ];
 
-      const completion = await openai.chat.completions.create({
+      const client = getOpenAIClient();
+      const completion = await client.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: messages,
         max_tokens: 500,

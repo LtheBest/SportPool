@@ -1,8 +1,18 @@
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_51S3zPW8XM0zNL8ZMOwNztkR4s6cANPeVOKZBg1Qe4zVxbE1y0y7zNx4vLUGCLPNF6iTIEYRKfssMlcJiR6SnY5V500phodazFt', {
-  apiVersion: '2024-09-30.acacia',
-});
+let stripe: Stripe | null = null;
+
+function getStripeClient(): Stripe {
+  if (!stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not configured. Please set this environment variable to use payment features.');
+    }
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-08-27.basil',
+    });
+  }
+  return stripe;
+}
 
 export interface CreateCheckoutSessionParams {
   mode: 'payment' | 'subscription';
@@ -82,7 +92,7 @@ export class StripeService {
         sessionConfig.customer_email = params.customerEmail;
       }
 
-      const session = await stripe.checkout.sessions.create(sessionConfig);
+      const session = await getStripeClient().checkout.sessions.create(sessionConfig);
 
       return { 
         id: session.id,
@@ -97,7 +107,7 @@ export class StripeService {
   // Récupérer une session de checkout
   static async getSession(sessionId: string): Promise<Stripe.Checkout.Session> {
     try {
-      return await stripe.checkout.sessions.retrieve(sessionId, {
+      return await getStripeClient().checkout.sessions.retrieve(sessionId, {
         expand: ['payment_intent', 'subscription']
       });
     } catch (error: any) {
@@ -109,7 +119,7 @@ export class StripeService {
   // Créer un customer Stripe
   static async createCustomer(organizationId: string, email: string, name?: string): Promise<Stripe.Customer> {
     try {
-      const customer = await stripe.customers.create({
+      const customer = await getStripeClient().customers.create({
         email: email,
         name: name,
         metadata: {
@@ -128,7 +138,7 @@ export class StripeService {
   static async findOrCreateCustomer(organizationId: string, email: string, name?: string): Promise<Stripe.Customer> {
     try {
       // Chercher un customer existant par email
-      const existingCustomers = await stripe.customers.list({
+      const existingCustomers = await getStripeClient().customers.list({
         email: email,
         limit: 1,
       });
@@ -138,7 +148,7 @@ export class StripeService {
         
         // Mettre à jour les métadonnées si nécessaire
         if (customer.metadata?.organizationId !== organizationId) {
-          return await stripe.customers.update(customer.id, {
+          return await getStripeClient().customers.update(customer.id, {
             metadata: {
               organizationId: organizationId,
             },
@@ -159,7 +169,7 @@ export class StripeService {
   // Récupérer les informations d'abonnement
   static async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
     try {
-      return await stripe.subscriptions.retrieve(subscriptionId, {
+      return await getStripeClient().subscriptions.retrieve(subscriptionId, {
         expand: ['default_payment_method', 'customer']
       });
     } catch (error: any) {
@@ -172,9 +182,9 @@ export class StripeService {
   static async cancelSubscription(subscriptionId: string, immediately = false): Promise<Stripe.Subscription> {
     try {
       if (immediately) {
-        return await stripe.subscriptions.cancel(subscriptionId);
+        return await getStripeClient().subscriptions.cancel(subscriptionId);
       } else {
-        return await stripe.subscriptions.update(subscriptionId, {
+        return await getStripeClient().subscriptions.update(subscriptionId, {
           cancel_at_period_end: true,
         });
       }
@@ -187,7 +197,7 @@ export class StripeService {
   // Créer un portail client pour la gestion de facturation
   static async createCustomerPortal(customerId: string, returnUrl: string): Promise<{ url: string }> {
     try {
-      const session = await stripe.billingPortal.sessions.create({
+      const session = await getStripeClient().billingPortal.sessions.create({
         customer: customerId,
         return_url: returnUrl,
       });
@@ -202,7 +212,7 @@ export class StripeService {
   // Récupérer les factures d'un client
   static async getCustomerInvoices(customerId: string, limit = 10): Promise<Stripe.Invoice[]> {
     try {
-      const invoices = await stripe.invoices.list({
+      const invoices = await getStripeClient().invoices.list({
         customer: customerId,
         limit: limit,
         expand: ['data.payment_intent']
@@ -218,7 +228,7 @@ export class StripeService {
   // Récupérer une facture spécifique
   static async getInvoice(invoiceId: string): Promise<Stripe.Invoice> {
     try {
-      return await stripe.invoices.retrieve(invoiceId, {
+      return await getStripeClient().invoices.retrieve(invoiceId, {
         expand: ['payment_intent', 'subscription', 'customer']
       });
     } catch (error: any) {
@@ -230,7 +240,7 @@ export class StripeService {
   // Générer une facture proforma pour prévisualisation
   static async createProformaInvoice(customerId: string, items: any[]): Promise<Stripe.Invoice> {
     try {
-      const invoice = await stripe.invoices.create({
+      const invoice = await getStripeClient().invoices.create({
         customer: customerId,
         auto_advance: false, // Ne pas collecter automatiquement
         collection_method: 'send_invoice',
@@ -238,7 +248,7 @@ export class StripeService {
 
       // Ajouter les éléments de facturation
       for (const item of items) {
-        await stripe.invoiceItems.create({
+        await getStripeClient().invoiceItems.create({
           customer: customerId,
           invoice: invoice.id,
           amount: item.amount,
@@ -248,7 +258,7 @@ export class StripeService {
       }
 
       // Finaliser la facture pour calcul des taxes
-      return await stripe.invoices.finalizeInvoice(invoice.id);
+      return await getStripeClient().invoices.finalizeInvoice(invoice.id);
     } catch (error: any) {
       console.error('Erreur création facture proforma:', error);
       throw error;
@@ -265,7 +275,7 @@ export class StripeService {
     }
 
     try {
-      const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+      const event = getStripeClient().webhooks.constructEvent(payload, signature, webhookSecret);
 
       console.log(`📨 Webhook reçu: ${event.type} - ID: ${event.id}`);
 
@@ -431,7 +441,7 @@ export class StripeService {
 
       // Test de connexion basique
       try {
-        await stripe.accounts.retrieve();
+        await getStripeClient().accounts.retrieve();
       } catch (error) {
         issues.push('Connexion à Stripe échouée');
       }

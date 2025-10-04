@@ -112,6 +112,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isRenderDeploy && origin.includes('onrender.com')) {
           console.log('🔄 CORS: Render detected, allowing onrender.com origin');
           callback(null, true);
+        } else if (!isProduction && origin.includes('replit.dev')) {
+          // Allow Replit domains in development
+          console.log('🔄 CORS: Replit development domain detected, allowing origin');
+          callback(null, true);
         } else {
           callback(new Error(`CORS: Origin ${origin} not allowed`));
         }
