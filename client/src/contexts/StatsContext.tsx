@@ -22,13 +22,7 @@ const StatsContext = createContext<StatsContextType | undefined>(undefined);
 
 export function StatsProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  
-  let queryClient: ReturnType<typeof useQueryClient> | null = null;
-  try {
-    queryClient = useQueryClient();
-  } catch (error) {
-    console.warn("QueryClient not available in StatsProvider:", error);
-  }
+  const queryClient = useQueryClient();
 
   // Main stats query with aggressive real-time updates
   const { 
@@ -53,24 +47,18 @@ export function StatsProvider({ children }: { children: ReactNode }) {
 
     // Listen for custom events that might trigger stats updates
     const handleStatsUpdate = () => {
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
     };
 
     const handleEventCreated = () => {
       // Immediately update stats when events are created
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/events'] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/events'] });
     };
 
     const handleParticipantUpdate = () => {
       // Immediately update stats when participants change
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
     };
 
     // Custom event listeners
@@ -80,9 +68,7 @@ export function StatsProvider({ children }: { children: ReactNode }) {
 
     // Periodic invalidation for real-time updates
     const intervalId = setInterval(() => {
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
     }, 10000); // Every 10 seconds
 
     return () => {

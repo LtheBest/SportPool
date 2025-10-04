@@ -27,13 +27,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const { isAuthenticated } = useAuth();
-  
-  let queryClient: ReturnType<typeof useQueryClient> | null = null;
-  try {
-    queryClient = useQueryClient();
-  } catch (error) {
-    console.warn("QueryClient not available in NotificationProvider:", error);
-  }
+  const queryClient = useQueryClient();
 
   // Fetch notifications from API
   const { data: apiNotifications = [] } = useQuery<Notification[]>({
@@ -64,9 +58,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     
     try {
       await fetch(`/api/notifications/${id}/read`, { method: 'PUT' });
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
@@ -77,9 +69,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     
     try {
       await fetch('/api/notifications/mark-all-read', { method: 'PUT' });
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
     }
@@ -90,9 +80,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     
     try {
       await fetch(`/api/notifications/${id}`, { method: 'DELETE' });
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
     } catch (error) {
       console.error('Failed to remove notification:', error);
     }
@@ -114,9 +102,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     const pollForUpdates = setInterval(async () => {
       try {
-        if (queryClient) {
-          queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
-        }
+        queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       } catch (error) {
         console.error('Failed to poll for notification updates:', error);
       }

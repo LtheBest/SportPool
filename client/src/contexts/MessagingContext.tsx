@@ -27,14 +27,7 @@ const MessagingContext = createContext<MessagingContextType | undefined>(undefin
 
 export function MessagingProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  
-  let queryClient: ReturnType<typeof useQueryClient> | null = null;
-  try {
-    queryClient = useQueryClient();
-  } catch (error) {
-    console.warn("QueryClient not available in MessagingProvider:", error);
-  }
-  
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -47,9 +40,7 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
       });
     },
     onSuccess: (_, { eventId }) => {
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/messages`] });
-      }
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/messages`] });
       toast({
         title: 'Message envoyé',
         description: 'Votre message a été envoyé à tous les participants.',
@@ -82,9 +73,7 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
       });
     },
     onSuccess: (_, { eventId }) => {
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/messages`] });
-      }
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/messages`] });
       toast({
         title: 'Réponse envoyée',
         description: 'Votre réponse a été envoyée.',
@@ -127,7 +116,6 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   };
 
   const getEventMessages = (eventId: string): Message[] => {
-    if (!queryClient) return [];
     const queryKey = [`/api/events/${eventId}/messages`];
     const data = queryClient.getQueryData<Message[]>(queryKey);
     return data || [];
