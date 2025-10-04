@@ -110,7 +110,7 @@ export class AuthService {
       });
 
       // Invalider les requêtes d'auth pour forcer un rechargement
-      const currentQueryClient = this.queryClient || this.getQueryClient();
+      const currentQueryClient = this.queryClient;
       if (currentQueryClient) {
         try {
           await currentQueryClient.invalidateQueries({ queryKey: ["/api/me"] });
@@ -149,7 +149,7 @@ export class AuthService {
       });
 
       // Invalider les requêtes d'auth pour forcer un rechargement
-      const currentQueryClient = this.queryClient || this.getQueryClient();
+      const currentQueryClient = this.queryClient;
       if (currentQueryClient) {
         try {
           await currentQueryClient.invalidateQueries({ queryKey: ["/api/me"] });
@@ -180,7 +180,7 @@ export class AuthService {
     
     try {
       // Invalider toutes les requêtes d'auth avant de supprimer les tokens
-      const currentQueryClient = this.queryClient || this.getQueryClient();
+      const currentQueryClient = this.queryClient;
       if (currentQueryClient) {
         await currentQueryClient.clear();
       }
@@ -227,21 +227,25 @@ export class AuthService {
 }
 
 export function useAuth() {
+  // Initialise queryClient de manière sécurisée
   let queryClient: ReturnType<typeof useQueryClient> | null = null;
   let queryError: Error | null = null;
   
   try {
     queryClient = useQueryClient();
     // Set query client for AuthService (ensure it's always set)
-    AuthService.setQueryClient(queryClient);
+    if (queryClient) {
+      AuthService.setQueryClient(queryClient);
+    }
   } catch (error) {
     console.warn("QueryClient not available in useAuth:", error);
     queryError = error as Error;
   }
 
-  // If queryClient is not available, return basic authentication state
+  // Si queryClient n'est pas disponible, retourner un état d'authentification de base
+  const hasToken = !!TokenManager.getAccessToken();
+  
   if (!queryClient || queryError) {
-    const hasToken = !!TokenManager.getAccessToken();
     const basicIsAuth = hasToken && AuthService.isAuthenticated();
     
     return {
@@ -255,20 +259,23 @@ export function useAuth() {
     };
   }
 
-  const { data: organization, isLoading, error } = useQuery({
+  // Utiliser useQuery seulement si queryClient est disponible
+  const queryResult = useQuery({
     queryKey: ["/api/me"],
     retry: false,
     staleTime: 0,
-    enabled: !!TokenManager.getAccessToken(), // Only fetch if we have a token
+    enabled: !!hasToken, // Only fetch if we have a token
     retryOnMount: false,
     refetchOnWindowFocus: false,
   });
+
+  const { data: organization, isLoading, error } = queryResult || { data: null, isLoading: false, error: null };
 
   const isAuthenticated = !!organization && !error && AuthService.isAuthenticated();
 
   return {
     organization,
-    isLoading: isLoading && !!TokenManager.getAccessToken(), // Only show loading if we have a token
+    isLoading: isLoading && hasToken, // Only show loading if we have a token
     isAuthenticated,
     login: AuthService.login,
     register: AuthService.register,

@@ -3838,7 +3838,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get Stripe public key for frontend
+  // ========== NOUVELLES ROUTES STRIPE MODERNISÉES ==========
+  
+  // Importer et utiliser les nouvelles routes Stripe
+  const { stripeRoutes } = await import('./stripe/stripe-routes');
+  app.use('/api/stripe', stripeRoutes);
+
+  // Get Stripe public key for frontend (DEPRECATED - use /api/stripe/config instead)
   app.get("/api/stripe/public-key", async (req, res) => {
     try {
       res.json({
