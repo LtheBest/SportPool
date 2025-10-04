@@ -45,7 +45,7 @@ export default function SubscriptionPlansPage({
   preselectedPlan 
 }: SubscriptionPlansPageProps) {
   const [location, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { organization: user } = useAuth();
   
   // État local
   const [currentMode, setCurrentMode] = useState<'selection' | 'upgrade' | 'payment'>(mode);
@@ -141,8 +141,63 @@ export default function SubscriptionPlansPage({
       return;
     }
 
-    // Pour les plans payants, passer au mode paiement
-    setCurrentMode('payment');
+    // Pour les plans payants, créer une Checkout Session et rediriger vers Stripe
+    try {
+      setLoading(true);
+      
+      // Utiliser l'endpoint /api/subscriptions/create pour tous les cas (découverte et autres)
+      const response = await fetch('/api/subscriptions/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          planId: planId,
+          successUrl: `${window.location.origin}/subscription/plans?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/subscription/plans?payment=cancelled`,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        // Si la création de la session Checkout échoue, basculer vers le formulaire de paiement embarqué
+        console.warn('Checkout session creation failed, falling back to embedded payment form');
+        toast.info(
+          errorData.message 
+            ? `Impossible de créer la session de paiement : ${errorData.message}. Utilisation du formulaire de paiement alternatif.`
+            : 'Utilisation du formulaire de paiement alternatif.'
+        );
+        setCurrentMode('payment');
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      
+      // Rediriger vers Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        // Si pas d'URL, basculer vers le formulaire de paiement embarqué
+        console.warn('No checkout URL returned, falling back to embedded payment form');
+        toast.info('Le système de paiement principal est indisponible. Utilisation du formulaire de paiement alternatif.');
+        setCurrentMode('payment');
+        setLoading(false);
+      }
+    } catch (error: any) {
+      console.error('Erreur lors de la création de la session de paiement:', error);
+      
+      // En cas d'erreur réseau ou autre, basculer vers le formulaire de paiement embarqué
+      toast.info(
+        error.message 
+          ? `Erreur de connexion : ${error.message}. Utilisation du formulaire de paiement alternatif.`
+          : 'Utilisation du formulaire de paiement alternatif.'
+      );
+      setCurrentMode('payment');
+      setLoading(false);
+    }
   };
 
   const handlePaymentSuccess = () => {
