@@ -1,0 +1,115 @@
+je veux que tu analyses et  corriges la liste des erreurs suivant dans mon 
+
+mon application ne se lance qu'en https donc en local lorsque j’essaie de le lancer sur plusieurs navigateur (http://localhost:8080/) j’ai une page blanche sauf sur safari ou il se lance normalement .
+
+lorsqu'un utilisateur se connecte il y’a toujours ce message  
+Erreur de connexion
+Cannot read properties of undefined (reading
+'queryClient')  
+pour pourtant la connexion a réussi et l'utilisateur est bien connecter et accès a son compte    je veux que tu refasse le dark mode de cette apps il est très moche j’en veux un plus moderne et beau je aussi avec la possibilité d’activer manuellement ce mode et le rendre auto 
+
+
+Supprime et recommence l’intégration de stripe dans cet apps   il existe déjà des plan d’abonnement payant et Découvert dans cet apps je veux que tu permettes que l’utilisateur puis souscrit a ces plan payant grace a stripe :  lorsqu'un utilisateur choisit un abonnement payant (cas 1: pendant d'inscription lorsqu'il clic sur le bouton "créer mon compte" après avoir rempli les infos requis, qu'il puisse passer au paiement c’est a dire qu’une session checkout de stripe doit être générer par stripe avec le montant de son offre pour qu’il puisse payer son abonnement et si c'est le paiement est un succès alors son compte pourra  être créer avec tout les privilèges lier a son offre 
+cas 2: l'utilisateur ayant choisit une offre "Découvert" et souhaite passer a une offre payante lorsqu'il clic sur le bouton “ choisit une offre “ puis fait le choix de son offre et clic sur le bouton "Procéder au paiement " une session checkout de stripe doit être générer par stripe avec le montant de son offre pour qu’il puisse payer son abonnement. si c'est le paiement est un succès son compte doit être mises a jour tout les privilèges lier a son offre .
+
+
+
+
+pour une intégration react et express ou node voici ce que stripe fourni comme exemple
+
+
+// This is your test secret API key.
+const stripe = require('stripe')('sk_test_51S3zPW8XM0zNL8ZMOwNztkR4s6cANPeVOKZBg1Qe4zVxbE1y0y7zNx4vLUGCLPNF6iTIEYRKfssMlcJiR6SnY5V500phodazFt');
+const express = require('express');
+const app = express();
+app.use(express.static('public'));
+
+
+const YOUR_DOMAIN = 'http://localhost:4242';
+
+
+app.post('/create-checkout-session', async (req, res) => {
+  const session = await stripe.checkout.sessions.create({
+    line_items: [
+      {
+        // Provide the exact Price ID (for example, price_1234) of the product you want to sell
+        price: '{{PRICE_ID}}',
+        quantity: 1,
+      },
+    ],
+    mode: 'payment',
+    success_url: `${YOUR_DOMAIN}?success=true`,
+    cancel_url: `${YOUR_DOMAIN}?canceled=true`,
+  });
+
+
+  res.redirect(303, session.url);
+});
+
+
+app.listen(4242, () => console.log('Running on port 4242'));
+
+
+import React, { useState, useEffect } from "react";
+import "./App.css";
+
+
+const ProductDisplay = () => (
+  <section>
+    <div className="product">
+      <img
+        src="https://i.imgur.com/EHyR2nP.png"
+        alt="The cover of Stubborn Attachments"
+      />
+      <div className="description">
+      <h3>Stubborn Attachments</h3>
+      <h5>$20.00</h5>
+      </div>
+    </div>
+    <form action="/create-checkout-session" method="POST">
+      <button type="submit">
+        Checkout
+      </button>
+    </form>
+  </section>
+);
+
+
+const Message = ({ message }) => (
+  <section>
+    <p>{message}</p>
+  </section>
+);
+
+
+export default function App() {
+  const [message, setMessage] = useState("");
+
+
+  useEffect(() => {
+    // Check to see if this is a redirect back from Checkout
+    const query = new URLSearchParams(window.location.search);
+
+
+    if (query.get("success")) {
+      setMessage("Order placed! You will receive an email confirmation.");
+    }
+
+
+    if (query.get("canceled")) {
+      setMessage(
+        "Order canceled -- continue to shop around and checkout when you're ready."
+      );
+    }
+  }, []);
+
+
+  return message ? (
+    <Message message={message} />
+  ) : (
+    <ProductDisplay />
+  );
+} 
+
+
+je veux que les nouvelles correction ou mises a jour n'impact pas les fonctionnalités déjà présent ou fonctionnelle ( par exemple l'Email de bienvenue lors de la création d'un nouvelle utilisateur, la mise a jour des infos du profile comme l'upload de l'image de profile ; la creation d'un évènement et l'envoie auto des invitations au membres inviter ; l'invitation manuelle d'un membres dans un évènement créer ;ou encore celui du contact de support qui fonctionne déjà correctement; ... )    après avoir apporter ces mises a jour fournie moi le lien pour créer la PR

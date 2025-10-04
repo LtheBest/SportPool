@@ -22,7 +22,13 @@ const StatsContext = createContext<StatsContextType | undefined>(undefined);
 
 export function StatsProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  const queryClient = useQueryClient();
+  
+  let queryClient: ReturnType<typeof useQueryClient> | null = null;
+  try {
+    queryClient = useQueryClient();
+  } catch (error) {
+    console.warn("QueryClient not available in StatsProvider:", error);
+  }
 
   // Main stats query with aggressive real-time updates
   const { 
@@ -47,18 +53,24 @@ export function StatsProvider({ children }: { children: ReactNode }) {
 
     // Listen for custom events that might trigger stats updates
     const handleStatsUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      if (queryClient) {
+        queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      }
     };
 
     const handleEventCreated = () => {
       // Immediately update stats when events are created
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/events'] });
+      if (queryClient) {
+        queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/events'] });
+      }
     };
 
     const handleParticipantUpdate = () => {
       // Immediately update stats when participants change
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      if (queryClient) {
+        queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      }
     };
 
     // Custom event listeners
@@ -68,7 +80,9 @@ export function StatsProvider({ children }: { children: ReactNode }) {
 
     // Periodic invalidation for real-time updates
     const intervalId = setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      if (queryClient) {
+        queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      }
     }, 10000); // Every 10 seconds
 
     return () => {
