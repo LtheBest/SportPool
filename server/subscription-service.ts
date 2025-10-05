@@ -5,7 +5,7 @@ import {
   validateSubscription,
   getDaysUntilExpiry 
 } from './subscription-config';
-import { StripeService } from './stripe-service';
+import { StripeServiceNewNew } from './stripe-service-new';
 import { sendSubscriptionEmail } from './email-service';
 
 // Import du storage - sera résolu à l'exécution
@@ -97,30 +97,20 @@ export class SubscriptionService {
     stripeConfig: any,
     organization: any
   ): Promise<any> {
-    const session = await StripeService.createCheckoutSession({
-      mode: 'payment',
-      priceData: {
-        currency: plan.currency.toLowerCase(),
-        product_data: {
-          name: plan.name,
-          description: plan.description,
-        },
-        unit_amount: plan.price,
-      },
-      quantity: 1,
-      successUrl: params.successUrl,
-      cancelUrl: params.cancelUrl,
-      metadata: {
-        organizationId: params.organizationId,
-        planId: params.planId,
-        planType: 'evenementielle',
-      },
-      customerEmail: organization.contactEmail,
-    });
+    const stripeService = new StripeServiceNew();
+    const result = await stripeService.createCheckoutSession(
+      params.organizationId,
+      params.planId,
+      'payment'
+    );
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create checkout session');
+    }
 
     return { 
-      sessionId: session.id, 
-      url: session.url,
+      sessionId: result.sessionId, 
+      url: result.url,
       mode: 'payment' 
     };
   }
@@ -132,33 +122,20 @@ export class SubscriptionService {
     stripeConfig: any,
     organization: any
   ): Promise<any> {
-    const session = await StripeService.createCheckoutSession({
-      mode: 'subscription',
-      priceData: {
-        currency: plan.currency.toLowerCase(),
-        product_data: {
-          name: plan.name,
-          description: plan.description,
-        },
-        unit_amount: plan.price,
-        recurring: {
-          interval: stripeConfig.interval,
-        },
-      },
-      quantity: 1,
-      successUrl: params.successUrl,
-      cancelUrl: params.cancelUrl,
-      metadata: {
-        organizationId: params.organizationId,
-        planId: params.planId,
-        planType: plan.type,
-      },
-      customerEmail: organization.contactEmail,
-    });
+    const stripeService = new StripeServiceNew();
+    const result = await stripeService.createCheckoutSession(
+      params.organizationId,
+      params.planId,
+      'subscription'
+    );
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create checkout session');
+    }
 
     return { 
-      sessionId: session.id, 
-      url: session.url,
+      sessionId: result.sessionId, 
+      url: result.url,
       mode: 'subscription' 
     };
   }
@@ -419,7 +396,11 @@ export class SubscriptionService {
 
       // Annuler l'abonnement Stripe s'il existe
       if (organization.stripeSubscriptionId) {
-        await StripeService.cancelSubscription(organization.stripeSubscriptionId);
+        const stripeService = new StripeServiceNew();
+        const result = await stripeService.cancelSubscription(organizationId);
+        if (!result.success) {
+          console.warn('Warning: Failed to cancel Stripe subscription:', result.error);
+        }
       }
 
       // Rétrograder vers l'offre Découverte

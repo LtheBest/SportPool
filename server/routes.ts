@@ -2748,7 +2748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== SUBSCRIPTION & BILLING ROUTES (MODERNIZED) ==========
   // Import new subscription services (SubscriptionService already imported and initialized at startup)
-  const { StripeService } = await import('./stripe-service');
+  const { StripeServiceNew } = await import('./stripe-service-new');
   const { EmailService } = await import('./email-service');
   const { SchedulerService } = await import('./scheduler-service');
   const { SUBSCRIPTION_PLANS, NEW_SUBSCRIPTION_LIMITS } = await import('./subscription-config');
