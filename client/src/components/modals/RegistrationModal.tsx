@@ -24,7 +24,7 @@ const registrationSchema = z.object({
   type: z.enum(["club", "association", "company"], {
     required_error: "Veuillez sélectionner un type d'organisation",
   }),
-  subscriptionType: z.enum(["decouverte", "evenementielle", "pro_club", "pro_pme", "pro_entreprise"], {
+  selectedPlan: z.enum(["decouverte", "starter", "pro", "enterprise"], {
     required_error: "Veuillez choisir une offre",
   }),
   email: z.string().email("Email invalide"),
@@ -70,7 +70,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
     defaultValues: {
       name: "",
       type: undefined,
-      subscriptionType: undefined,
+      selectedPlan: undefined,
       email: "",
       phone: "",
       address: "",
@@ -89,9 +89,9 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
     name: "type"
   });
   
-  const selectedSubscription = useWatch({
+  const selectedPlan = useWatch({
     control: form.control,
-    name: "subscriptionType"
+    name: "selectedPlan"
   });
 
   const handleTermsClick = (type: 'terms' | 'privacy') => {
