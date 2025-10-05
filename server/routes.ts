@@ -26,7 +26,7 @@ import cors from "cors";
 import { SUBSCRIPTION_PLANS } from "./subscription-config";
 import { SubscriptionService } from "./subscription-service";
 import { createNotification, NotificationTemplates } from "./notifications";
-import { StripeService } from "./stripe-service";
+import { stripeService } from "./stripe-service-new";
 
 // Import functions for subscription checks
 const canCreateEvent = SubscriptionService.canCreateEvent.bind(SubscriptionService);
@@ -280,8 +280,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Validate plan exists
-      const plan = SUBSCRIPTION_PLANS[selectedPlan];
+      // Validate plan exists (using new Stripe config)
+      const { STRIPE_PLANS } = await import("./stripe-config");
+      const plan = STRIPE_PLANS[selectedPlan];
       if (!plan) {
         return res.status(400).json({
           message: "Offre sélectionnée invalide",
@@ -311,7 +312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const organization = await storage.createOrganization({
         ...data,
         password: hashedPassword,
-        subscriptionType: plan.type === 'decouverte' ? 'decouverte' : 'decouverte', // Start with decouverte, will be upgraded after payment
+        subscriptionType: plan.id === 'decouverte' ? 'decouverte' : 'decouverte', // Start with decouverte, will be upgraded after payment
         subscriptionStatus: 'active',
       });
 
@@ -345,15 +346,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // For paid plans, create Stripe checkout session
-      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
-      
       try {
-        const checkoutSession = await SubscriptionService.createSubscription({
-          organizationId: organization.id,
-          planId: selectedPlan,
-          successUrl: `${baseUrl}/registration/success?session_id={CHECKOUT_SESSION_ID}&org_id=${organization.id}`,
-          cancelUrl: `${baseUrl}/registration/cancelled?org_id=${organization.id}`,
+        console.info('🛒 Creating checkout session for registration', { 
+          organizationId: organization.id, 
+          planId: selectedPlan 
         });
+
+        const result = await stripeService.createCheckoutSession(organization.id, selectedPlan);
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to create checkout session');
+        }
 
         // Return the organization data and checkout session for frontend to redirect
         return res.json({
@@ -362,7 +365,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Inscription créée, redirection vers le paiement",
           planType: selectedPlan,
           requiresPayment: true,
-          checkoutSession
+          checkoutUrl: result.url,
+          sessionId: result.sessionId
         });
       } catch (paymentError) {
         console.error('Payment session creation failed:', paymentError);
@@ -3927,6 +3931,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Stripe test error:", error);
       res.status(500).json({ 
         message: "Stripe configuration test failed",
+        error: error.message 
+      });
+    }
+  });
+
+  // ===============================
+  // NOUVELLES ROUTES STRIPE MODERNES
+  // ===============================
+
+  // Récupérer les informations d'abonnement de l'organisation
+  app.get("/api/subscription/info", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organizationId = req.user.organizationId;
+      const subscriptionInfo = await stripeService.getSubscriptionInfo(organizationId);
+
+      if (!subscriptionInfo) {
+        return res.status(404).json({ 
+          message: "Subscription information not found" 
+        });
+      }
+
+      res.json(subscriptionInfo);
+
+    } catch (error: any) {
+      console.error("Error fetching subscription info:", error);
+      res.status(500).json({ 
+        message: "Error fetching subscription information",
+        error: error.message 
+      });
+    }
+  });
+
+  // Créer une session de checkout Stripe pour un plan payant
+  app.post("/api/subscription/create-checkout-session", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId } = req.body;
+      const organizationId = req.user.organizationId;
+
+      if (!planId) {
+        return res.status(400).json({ 
+          message: "Plan ID is required" 
+        });
+      }
+
+      console.info('🛒 Creating checkout session', { organizationId, planId });
+
+      const result = await stripeService.createCheckoutSession(organizationId, planId);
+
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: result.error || "Failed to create checkout session" 
+        });
+      }
+
+      res.json({
+        success: true,
+        sessionId: result.sessionId,
+        url: result.url,
+      });
+
+    } catch (error: any) {
+      console.error("Error creating checkout session:", error);
+      res.status(500).json({ 
+        message: "Error creating checkout session",
+        error: error.message 
+      });
+    }
+  });
+
+  // Changer vers le plan découverte (gratuit)
+  app.post("/api/subscription/change-plan", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId } = req.body;
+      const organizationId = req.user.organizationId;
+
+      // Seulement pour le plan découverte
+      if (planId !== 'decouverte') {
+        return res.status(400).json({ 
+          message: "This endpoint only supports changing to the discovery plan" 
+        });
+      }
+
+      // Mettre à jour l'organisation
+      await storage.updateOrganization(organizationId, {
+        planType: 'decouverte',
+        subscriptionStatus: 'active',
+      });
+
+      console.info('✅ Changed to discovery plan', { organizationId });
+
+      res.json({
+        success: true,
+        message: "Successfully changed to discovery plan",
+      });
+
+    } catch (error: any) {
+      console.error("Error changing plan:", error);
+      res.status(500).json({ 
+        message: "Error changing plan",
+        error: error.message 
+      });
+    }
+  });
+
+  // Annuler l'abonnement
+  app.post("/api/subscription/cancel", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organizationId = req.user.organizationId;
+
+      console.info('❌ Cancelling subscription', { organizationId });
+
+      const result = await stripeService.cancelSubscription(organizationId);
+
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: result.error || "Failed to cancel subscription" 
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Subscription cancelled successfully",
+      });
+
+    } catch (error: any) {
+      console.error("Error cancelling subscription:", error);
+      res.status(500).json({ 
+        message: "Error cancelling subscription",
+        error: error.message 
+      });
+    }
+  });
+
+  // Webhook Stripe moderne
+  app.post("/api/stripe/webhook-new", express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+      const signature = req.get('stripe-signature');
+      
+      if (!signature) {
+        return res.status(400).json({ error: 'Missing Stripe signature' });
+      }
+
+      const result = await stripeService.handleWebhook(req.body, signature);
+
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: result.error || 'Webhook processing failed' 
+        });
+      }
+
+      res.json({ received: true });
+
+    } catch (error: any) {
+      console.error("Webhook error:", error);
+      res.status(400).json({ 
+        error: "Webhook processing failed",
+        message: error.message 
+      });
+    }
+  });
+
+  // Récupérer la liste des plans disponibles
+  app.get("/api/subscription/plans", async (req, res) => {
+    try {
+      // Importer les plans depuis la config
+      const { STRIPE_PLANS } = await import("./stripe-config");
+      
+      // Convertir l'objet en array et masquer les informations sensibles
+      const plans = Object.values(STRIPE_PLANS).map(plan => ({
+        id: plan.id,
+        name: plan.name,
+        description: plan.description,
+        price: plan.price,
+        currency: plan.currency,
+        interval: plan.interval,
+        features: plan.features,
+        maxEvents: plan.maxEvents,
+        maxInvitations: plan.maxInvitations,
+        popular: plan.popular || false,
+      }));
+
+      res.json(plans);
+
+    } catch (error: any) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ 
+        message: "Error fetching subscription plans",
         error: error.message 
       });
     }

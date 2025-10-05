@@ -1,6 +1,4 @@
 import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +6,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { StatsProvider } from "@/contexts/StatsContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { QueryClientWrapper } from "@/components/providers/QueryClientWrapper";
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import Admin from "@/pages/admin";
@@ -58,7 +57,7 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientWrapper>
       <ThemeProvider>
         <TooltipProvider>
           <NotificationProvider>
@@ -75,7 +74,7 @@ function App() {
           </NotificationProvider>
         </TooltipProvider>
       </ThemeProvider>
-    </QueryClientProvider>
+    </QueryClientWrapper>
   );
 }
 
