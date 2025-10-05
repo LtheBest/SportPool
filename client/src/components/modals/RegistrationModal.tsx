@@ -1,3 +1,4 @@
+// client/src/components/modals/RegistrationModal.tsx
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -108,7 +109,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
       // Ajouter le plan sélectionné aux données d'inscription
       const registrationPayload = {
         ...registerData,
-        selectedPlan: data.subscriptionType
+        selectedPlan: data.selectedPlan
       };
       
       // Use proper API request for registration (public endpoint)
@@ -252,7 +253,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Choisissez votre offre</h3>
               <FormField
                 control={form.control}
-                name="subscriptionType"
+                name="selectedPlan"
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
@@ -273,7 +274,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           <Label
                             htmlFor="decouverte"
                             className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedSubscription === "decouverte"
+                              selectedPlan === "decouverte"
                                 ? 'border-green-500 bg-green-50 shadow-lg scale-[1.02] dark:bg-green-950 dark:border-green-400'
                                 : 'border-gray-200 hover:border-green-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-green-400 dark:hover:bg-gray-800'
                             }`}
@@ -328,7 +329,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           <Label
                             htmlFor="evenementielle"
                             className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedSubscription === "evenementielle"
+                              selectedPlan === "evenementielle"
                                 ? 'border-orange-500 bg-orange-50 shadow-lg scale-[1.02] dark:bg-orange-950 dark:border-orange-400'
                                 : 'border-gray-200 hover:border-orange-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-orange-400 dark:hover:bg-gray-800'
                             }`}
@@ -389,7 +390,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           <Label
                             htmlFor="pro_club"
                             className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedSubscription === "pro_club"
+                              selectedPlan === "pro_club"
                                 ? 'border-blue-500 bg-blue-50 shadow-lg scale-[1.02] dark:bg-blue-950 dark:border-blue-400'
                                 : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-blue-400 dark:hover:bg-gray-800'
                             }`}
@@ -450,7 +451,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           <Label
                             htmlFor="pro_pme"
                             className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedSubscription === "pro_pme"
+                              selectedPlan === "pro_pme"
                                 ? 'border-purple-500 bg-purple-50 shadow-lg scale-[1.02] dark:bg-purple-950 dark:border-purple-400'
                                 : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-purple-400 dark:hover:bg-gray-800'
                             }`}
@@ -511,7 +512,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           <Label
                             htmlFor="pro_entreprise"
                             className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedSubscription === "pro_entreprise"
+                              selectedPlan === "pro_entreprise"
                                 ? 'border-yellow-500 bg-yellow-50 shadow-lg scale-[1.02] dark:bg-yellow-950 dark:border-yellow-400'
                                 : 'border-gray-200 hover:border-yellow-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-yellow-400 dark:hover:bg-gray-800'
                             }`}
@@ -566,7 +567,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                 )}
               />
               
-              {selectedSubscription && selectedSubscription !== "decouverte" && (
+              {selectedPlan && selectedPlan !== "decouverte" && (
                 <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-950 dark:border-blue-800">
                   <div className="flex items-start space-x-2">
                     <i className="fas fa-info-circle text-blue-500 mt-0.5"></i>
