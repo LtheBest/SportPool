@@ -49,7 +49,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-            Team Move – pilotez vos déplacements, gagnez du temps 
+            Team Move, l’application qui simplifie l’organisation des déplacements en groupe via le covoiturage. 
           </h1>
           <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
             Team Move est la plateforme numérique qui facilite et sécurise la mobilité des équipes.

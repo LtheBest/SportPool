@@ -1,3 +1,4 @@
+// client/src/hooks/useAuth.ts
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
