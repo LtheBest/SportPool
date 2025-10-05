@@ -1,6 +1,4 @@
 import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +6,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { StatsProvider } from "@/contexts/StatsContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { QueryClientWrapper } from "@/components/providers/QueryClientWrapper";
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import Admin from "@/pages/admin";
@@ -17,9 +16,12 @@ import EventPublic from "@/pages/event-public";
 import NotFound from "@/pages/not-found";
 import ReplyMessage from "@/pages/reply-message";
 import SubscriptionPlansPage from "@/pages/subscription-plans";
+import PaymentSuccess from "@/pages/payment-success";
+import PaymentCancel from "@/pages/payment-cancel";
 import Cookies from "@/components/cookies/Cookies";
 import Chatbot from "./components/chatbot/Chatbot";
 import Footer from "./components/footer/Footer";
+import { MixedContentWarning } from "@/components/warnings/MixedContentWarning";
 
 function Router() {
   const { isAuthenticated, isLoading, organization } = useAuth();
@@ -46,6 +48,8 @@ function Router() {
       <Route path="/events/:id" component={EventPublic} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/reply-message" component={ReplyMessage} />
+      <Route path="/payment/success" component={PaymentSuccess} />
+      <Route path="/payment/cancel" component={PaymentCancel} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -53,12 +57,13 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientWrapper>
       <ThemeProvider>
         <TooltipProvider>
           <NotificationProvider>
             <StatsProvider>
               <MessagingProvider>
+                <MixedContentWarning />
                 <Toaster />
                 <Router />
                 <Chatbot />
@@ -69,7 +74,7 @@ function App() {
           </NotificationProvider>
         </TooltipProvider>
       </ThemeProvider>
-    </QueryClientProvider>
+    </QueryClientWrapper>
   );
 }
 

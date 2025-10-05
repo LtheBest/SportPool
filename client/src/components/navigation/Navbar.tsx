@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Menu, X } from "lucide-react";
 import NotificationCenter from "@/components/ui/notification-center";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ModernThemeToggle } from "@/components/theme/ModernThemeToggle";
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -62,7 +62,7 @@ export default function Navbar({
             {isAuthenticated && organization ? (
               <>
                 <NotificationCenter />
-                <ThemeToggle />
+                <ModernThemeToggle />
                 <div className="flex items-center space-x-2">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={organization.logoUrl} alt={organization.name} />
@@ -84,7 +84,7 @@ export default function Navbar({
               </>
             ) : (
               <>
-                <ThemeToggle />
+                <ModernThemeToggle />
                 <Button 
                   variant="outline"
                   onClick={onShowLogin}
