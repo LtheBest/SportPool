@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { 
-  MessageSquare, 
-  Plus, 
-  Send, 
+import {
+  MessageSquare,
+  Plus,
+  Send,
   HelpCircle,
   MessageCircle,
   User,
@@ -68,12 +68,12 @@ export default function Support() {
   const fetchConversations = async () => {
     try {
       const response = await api.admin.getConversations();
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors du chargement des conversations');
       }
-      
+
       const data = await response.json();
       setConversations(data);
     } catch (error: any) {
@@ -87,12 +87,12 @@ export default function Support() {
   const fetchMessages = async (conversationId: string) => {
     try {
       const response = await api.admin.getMessages(conversationId);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors du chargement des messages');
       }
-      
+
       const data = await response.json();
       setMessages(data);
     } catch (error: any) {
@@ -115,7 +115,7 @@ export default function Support() {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors de la création de la conversation');
       }
-      
+
       const conversation = await response.json();
       setConversations(prev => [conversation, ...prev]);
       setSelectedConversation(conversation.id);
@@ -141,14 +141,14 @@ export default function Support() {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors de l\'envoi du message');
       }
-      
+
       const message = await response.json();
       setMessages(prev => [...prev, message]);
       setNewMessage('');
       // Mettre à jour la conversation dans la liste
-      setConversations(prev => 
-        prev.map(conv => 
-          conv.id === selectedConversation 
+      setConversations(prev =>
+        prev.map(conv =>
+          conv.id === selectedConversation
             ? { ...conv, lastMessageAt: new Date().toISOString() }
             : conv
         )
@@ -231,9 +231,8 @@ export default function Support() {
                 <div
                   key={conversation.id}
                   onClick={() => setSelectedConversation(conversation.id)}
-                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                    selectedConversation === conversation.id ? 'bg-blue-50 border-r-2 border-r-blue-500' : ''
-                  }`}
+                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedConversation === conversation.id ? 'bg-blue-50 border-r-2 border-r-blue-500' : ''
+                    }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
@@ -245,16 +244,16 @@ export default function Support() {
                         {getPriorityBadge(conversation.priority)}
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
-                        {formatDistanceToNow(new Date(conversation.lastMessageAt), { 
-                          addSuffix: true, 
-                          locale: fr 
-                        })}
+                        {conversation.lastMessageAt && !isNaN(new Date(conversation.lastMessageAt).getTime())
+                          ? formatDistanceToNow(new Date(conversation.lastMessageAt), { addSuffix: true, locale: fr })
+                          : "loading..."}
                       </p>
+
                     </div>
                   </div>
                 </div>
               ))}
-              
+
               {conversations.length === 0 && (
                 <div className="p-8 text-center text-gray-500">
                   <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -283,14 +282,14 @@ export default function Support() {
                 value={newConversationData.subject}
                 onChange={(e) => setNewConversationData(prev => ({ ...prev, subject: e.target.value }))}
               />
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Priorité</label>
-                <select 
+                <select
                   className="w-full p-2 border rounded-md"
                   value={newConversationData.priority}
-                  onChange={(e) => setNewConversationData(prev => ({ 
-                    ...prev, 
+                  onChange={(e) => setNewConversationData(prev => ({
+                    ...prev,
                     priority: e.target.value as 'low' | 'medium' | 'high' | 'urgent'
                   }))}
                 >
@@ -309,7 +308,7 @@ export default function Support() {
               />
 
               <div className="flex gap-3">
-                <Button 
+                <Button
                   onClick={createNewConversation}
                   disabled={sending || !newConversationData.subject.trim() || !newConversationData.message.trim()}
                   className="flex-1"
@@ -317,8 +316,8 @@ export default function Support() {
                   <Send className="w-4 h-4 mr-2" />
                   {sending ? 'Envoi...' : 'Envoyer'}
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setShowNewConversation(false)}
                   className="flex-1"
                 >
@@ -347,18 +346,16 @@ export default function Support() {
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex gap-3 ${
-                      message.senderType === 'organization' ? 'justify-end' : 'justify-start'
-                    }`}
+                    className={`flex gap-3 ${message.senderType === 'organization' ? 'justify-end' : 'justify-start'
+                      }`}
                   >
                     <div
-                      className={`max-w-[70%] rounded-lg p-3 ${
-                        message.senderType === 'organization'
+                      className={`max-w-[70%] rounded-lg p-3 ${message.senderType === 'organization'
                           ? 'bg-blue-500 text-white'
                           : message.messageType === 'system'
-                          ? 'bg-gray-100 text-gray-600 text-center italic'
-                          : 'bg-gray-100 text-gray-900'
-                      }`}
+                            ? 'bg-gray-100 text-gray-600 text-center italic'
+                            : 'bg-gray-100 text-gray-900'
+                        }`}
                     >
                       {message.messageType !== 'system' && (
                         <div className="flex items-center gap-2 mb-1">
@@ -373,12 +370,11 @@ export default function Support() {
                         </div>
                       )}
                       <p className="text-sm whitespace-pre-wrap">{message.message}</p>
-                      <p className={`text-xs mt-2 ${
-                        message.senderType === 'organization' ? 'text-blue-100' : 'text-gray-500'
-                      }`}>
-                        {formatDistanceToNow(new Date(message.createdAt), { 
-                          addSuffix: true, 
-                          locale: fr 
+                      <p className={`text-xs mt-2 ${message.senderType === 'organization' ? 'text-blue-100' : 'text-gray-500'
+                        }`}>
+                        {formatDistanceToNow(new Date(message.createdAt), {
+                          addSuffix: true,
+                          locale: fr
                         })}
                       </p>
                     </div>
@@ -411,11 +407,11 @@ export default function Support() {
                   </Button>
                 </div>
               )}
-              
+
               {selectedConv.status === 'closed' && (
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
                   <p className="text-sm text-gray-500">
-                    Cette conversation a été fermée. Si vous avez d'autres questions, 
+                    Cette conversation a été fermée. Si vous avez d'autres questions,
                     n'hésitez pas à créer une nouvelle demande.
                   </p>
                 </div>
@@ -428,7 +424,7 @@ export default function Support() {
               <MessageSquare className="w-12 h-12 mx-auto mb-4" />
               <h3 className="font-medium mb-2">Besoin d'aide ?</h3>
               <p className="text-sm mb-4">
-                Notre équipe de support est là pour vous aider. 
+                Notre équipe de support est là pour vous aider.
                 Sélectionnez une conversation existante ou créez-en une nouvelle.
               </p>
               <Button onClick={() => setShowNewConversation(true)}>
