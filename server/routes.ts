@@ -27,6 +27,8 @@ import { SUBSCRIPTION_PLANS } from "./subscription-config";
 import { SubscriptionService } from "./subscription-service";
 import { createNotification, NotificationTemplates } from "./notifications";
 import { StripeService } from "./stripe-service";
+import { StripeServiceNew } from "./stripe-service-new";
+import { registerStripeRoutes } from "./stripe-routes";
 
 // Import functions for subscription checks
 const canCreateEvent = SubscriptionService.canCreateEvent.bind(SubscriptionService);
@@ -349,14 +351,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // For paid plans, create Stripe checkout session
-      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      const baseUrl = process.env.APP_URL || 'https://teammove.onrender.com';
       
       try {
-        const checkoutSession = await SubscriptionService.createSubscription({
+        const checkoutSession = await StripeServiceNew.createCheckoutSession({
           organizationId: organization.id,
           planId: selectedPlan,
-          successUrl: `${baseUrl}/registration/success?session_id={CHECKOUT_SESSION_ID}&org_id=${organization.id}`,
-          cancelUrl: `${baseUrl}/registration/cancelled?org_id=${organization.id}`,
+          successUrl: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&org_id=${organization.id}`,
+          cancelUrl: `${baseUrl}/payment/cancelled?org_id=${organization.id}`,
+          customerEmail: organization.email,
         });
 
         // Return the organization data and checkout session for frontend to redirect
@@ -366,7 +369,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Inscription créée, redirection vers le paiement",
           planType: selectedPlan,
           requiresPayment: true,
-          checkoutSession
+          checkoutUrl: checkoutSession.url,
+          sessionId: checkoutSession.sessionId
         });
       } catch (paymentError) {
         console.error('Payment session creation failed:', paymentError);
@@ -396,38 +400,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { sessionId, organizationId } = req.body;
       
-      if (!sessionId || !organizationId) {
+      if (!sessionId) {
         return res.status(400).json({ 
-          message: "Session ID and organization ID required" 
+          message: "Session ID requis",
+          code: "MISSING_SESSION_ID"
         });
       }
 
-      // Verify the session with Stripe
-      const session = await StripeService.getSession(sessionId);
+      // Verify the session with new Stripe service
+      const paymentResult = await StripeServiceNew.handlePaymentSuccess(sessionId);
       
-      if (!session || session.payment_status !== 'paid') {
+      if (!paymentResult.success) {
         return res.status(400).json({ 
-          message: "Payment not confirmed" 
+          message: "Paiement non confirmé",
+          code: "PAYMENT_NOT_CONFIRMED"
+        });
+      }
+
+      const orgId = paymentResult.organizationId || organizationId;
+      const planId = paymentResult.planId;
+
+      if (!orgId || !planId) {
+        return res.status(400).json({
+          message: "Données de paiement incomplètes",
+          code: "INCOMPLETE_PAYMENT_DATA"
         });
       }
 
       // Get organization
-      const organization = await storage.getOrganization(organizationId);
+      const organization = await storage.getOrganization(orgId);
       if (!organization) {
         return res.status(404).json({ message: "Organization not found" });
       }
 
-      // Extract plan from session metadata
-      const planId = session.metadata?.planId;
-      if (!planId) {
+      // Validate plan exists
+      const plan = SUBSCRIPTION_PLANS[planId];
+      if (!plan) {
         return res.status(400).json({ message: "Plan information missing" });
       }
 
-      // Activate subscription
-      await SubscriptionService.handlePaymentSuccess(sessionId, organizationId, planId);
+      // Update organization subscription
+      await storage.updateOrganization(orgId, {
+        subscriptionType: planId,
+        subscriptionStatus: 'active',
+        subscriptionStartDate: new Date(),
+        paymentSessionId: sessionId,
+      });
 
       // Send welcome email with subscription info
-      const plan = SUBSCRIPTION_PLANS[planId];
       emailService.sendWelcomeEmail(
         organization.email,
         organization.name,
@@ -3929,6 +3949,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Register new Stripe routes
+  registerStripeRoutes(app);
 
   // URL sanitization middleware for security
   app.use((req, res, next) => {

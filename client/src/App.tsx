@@ -17,6 +17,8 @@ import EventPublic from "@/pages/event-public";
 import NotFound from "@/pages/not-found";
 import ReplyMessage from "@/pages/reply-message";
 import SubscriptionPlansPage from "@/pages/subscription-plans";
+import PaymentSuccessPage from "@/pages/payment-success";
+import PaymentCancelledPage from "@/pages/payment-cancelled";
 import Cookies from "@/components/cookies/Cookies";
 import Chatbot from "./components/chatbot/Chatbot";
 import Footer from "./components/footer/Footer";
@@ -46,6 +48,8 @@ function Router() {
       <Route path="/events/:id" component={EventPublic} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/reply-message" component={ReplyMessage} />
+      <Route path="/payment/success" component={PaymentSuccessPage} />
+      <Route path="/payment/cancelled" component={PaymentCancelledPage} />
       <Route component={NotFound} />
     </Switch>
   );
