@@ -89,6 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'http://localhost:8080',
         
         // Production Render
+        'https://teammove.fr/',
         'https://teammove.onrender.com',
         process.env.APP_URL,
         process.env.RENDER_EXTERNAL_URL,
