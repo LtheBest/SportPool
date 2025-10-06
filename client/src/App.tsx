@@ -1,9 +1,11 @@
+import React from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { StatsProvider } from "@/contexts/StatsContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
@@ -50,6 +52,16 @@ function Router() {
       <Route path="/reply-message" component={ReplyMessage} />
       <Route path="/payment/success" component={PaymentSuccessPage} />
       <Route path="/payment/cancelled" component={PaymentCancelledPage} />
+      <Route path="/stripe-test" component={() => {
+        const StripeTest = React.lazy(() => import('@/components/stripe/StripeTest'));
+        return (
+          <div className="min-h-screen bg-gray-50 p-4">
+            <React.Suspense fallback={<div>Chargement...</div>}>
+              <StripeTest />
+            </React.Suspense>
+          </div>
+        );
+      }} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -58,21 +70,23 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <NotificationProvider>
-            <StatsProvider>
-              <MessagingProvider>
-                <Toaster />
-                <Router />
-                <Chatbot />
-                <Footer />
-                <Cookies />
-              </MessagingProvider>
-            </StatsProvider>
-          </NotificationProvider>
-        </TooltipProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <NotificationProvider>
+              <StatsProvider>
+                <MessagingProvider>
+                  <Toaster />
+                  <Router />
+                  <Chatbot />
+                  <Footer />
+                  <Cookies />
+                </MessagingProvider>
+              </StatsProvider>
+            </NotificationProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

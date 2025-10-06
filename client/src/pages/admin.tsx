@@ -6,6 +6,8 @@ import AdminSidebar from "@/components/navigation/AdminSidebar";
 import AdminOverview from "@/components/admin/AdminOverview";
 import OrganizationsManagement from "@/components/admin/OrganizationsManagement";
 import AdminMessaging from "@/components/admin/AdminMessaging";
+import FeatureTogglesAdmin from "@/components/admin/FeatureTogglesAdmin";
+import UserManagementAdmin from "@/components/admin/UserManagementAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -61,6 +63,10 @@ export default function Admin() {
         return <AdminOverview />;
       case "organizations":
         return <OrganizationsManagement />;
+      case "users":
+        return <UserManagementAdmin />;
+      case "features":
+        return <FeatureTogglesAdmin />;
       case "support":
         return <AdminMessaging />;
       default:

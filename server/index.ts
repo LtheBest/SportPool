@@ -3,6 +3,11 @@ import { registerRoutes } from "./routes"; // Switch to JWT routes
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Special handling for Stripe webhooks (raw body needed)
+app.use("/api/stripe/webhook", express.raw({ type: 'application/json' }));
+
+// Standard middleware for other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

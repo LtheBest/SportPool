@@ -1,300 +1,254 @@
-import type { Express } from "express";
-import { StripeServiceNew } from "./stripe-service-new";
-import { requireAuth, AuthenticatedRequest } from "./auth";
-import { storage } from "./storage";
-import { SUBSCRIPTION_PLANS } from "./subscription-config";
-import { SubscriptionService } from "./subscription-service";
-import { emailServiceEnhanced as emailService } from "./email-enhanced";
+// server/stripe-routes.ts
+import { Router } from 'express';
+import { 
+  createCheckoutSession, 
+  retrieveCheckoutSession, 
+  handleWebhookEvent, 
+  stripe,
+  cancelSubscription,
+  getSubscription
+} from './stripe.js';
+import { SUBSCRIPTION_PLANS } from './subscription-config.js';
+import { getOrganizationById } from './storage.js';
 
-export function registerStripeRoutes(app: Express): void {
-  
-  // Create checkout session for registration (Case 1: New paid account)
-  app.post("/api/stripe/create-checkout-session", async (req, res) => {
-    try {
-      const { organizationId, planId, customerEmail } = req.body;
+const router = Router();
 
-      if (!organizationId || !planId) {
-        return res.status(400).json({
-          message: "Organization ID and plan ID are required",
-          code: "MISSING_PARAMS"
-        });
-      }
+// Route pour créer une session de checkout
+router.post('/create-checkout-session', async (req, res) => {
+  try {
+    const { planId } = req.body;
+    const organizationId = req.user?.id;
 
-      // Validate plan exists and is not 'decouverte'
-      const plan = SUBSCRIPTION_PLANS[planId];
-      if (!plan) {
-        return res.status(400).json({
-          message: "Plan invalide",
-          code: "INVALID_PLAN"
-        });
-      }
-
-      if (planId === 'decouverte') {
-        return res.status(400).json({
-          message: "Le plan Découverte est gratuit",
-          code: "FREE_PLAN"
-        });
-      }
-
-      // Verify organization exists
-      const organization = await storage.getOrganization(organizationId);
-      if (!organization) {
-        return res.status(404).json({
-          message: "Organisation non trouvée",
-          code: "ORG_NOT_FOUND"
-        });
-      }
-
-      const baseUrl = process.env.APP_URL || 'https://teammove.fr';
-      
-      const sessionDetails = await StripeServiceNew.createCheckoutSession({
-        organizationId,
-        planId,
-        successUrl: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&org_id=${organizationId}`,
-        cancelUrl: `${baseUrl}/payment/cancelled?org_id=${organizationId}`,
-        customerEmail: customerEmail || organization.email,
-      });
-
-      res.json({
-        success: true,
-        sessionId: sessionDetails.sessionId,
-        checkoutUrl: sessionDetails.url,
-        planId: sessionDetails.planId,
-      });
-
-    } catch (error: any) {
-      console.error('Stripe checkout session error:', error);
-      res.status(500).json({
-        message: error.message || "Erreur lors de la création de la session de paiement",
-        code: "STRIPE_ERROR"
-      });
+    if (!organizationId) {
+      return res.status(401).json({ error: 'Non authentifié' });
     }
-  });
 
-  // Create checkout session for subscription upgrade (Case 2: Upgrade from Découverte)
-  app.post("/api/stripe/upgrade-subscription", requireAuth, async (req, res) => {
-    try {
-      const authReq = req as AuthenticatedRequest;
-      const { planId } = req.body;
-
-      if (!planId) {
-        return res.status(400).json({
-          message: "Plan ID requis",
-          code: "MISSING_PLAN_ID"
-        });
-      }
-
-      // Validate plan exists and is not 'decouverte'
-      const plan = SUBSCRIPTION_PLANS[planId];
-      if (!plan) {
-        return res.status(400).json({
-          message: "Offre sélectionnée invalide",
-          code: "INVALID_PLAN"
-        });
-      }
-
-      if (planId === 'decouverte') {
-        return res.status(400).json({
-          message: "Vous êtes déjà sur le plan Découverte",
-          code: "ALREADY_ON_FREE_PLAN"
-        });
-      }
-
-      // Get organization details
-      const organization = await storage.getOrganization(authReq.user.organizationId);
-      if (!organization) {
-        return res.status(404).json({
-          message: "Organisation non trouvée",
-          code: "ORG_NOT_FOUND"
-        });
-      }
-
-      // Check if already on a paid plan
-      if (organization.subscriptionType !== 'decouverte') {
-        return res.status(400).json({
-          message: "Vous avez déjà un abonnement actif",
-          code: "ALREADY_SUBSCRIBED"
-        });
-      }
-
-      const baseUrl = process.env.APP_URL || 'https://teammove.fr';
-      
-      const sessionDetails = await StripeServiceNew.createCheckoutSession({
-        organizationId: authReq.user.organizationId,
-        planId,
-        successUrl: `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${baseUrl}/dashboard?payment=cancelled`,
-        customerEmail: organization.email,
-      });
-
-      res.json({
-        success: true,
-        sessionId: sessionDetails.sessionId,
-        checkoutUrl: sessionDetails.url,
-        planId: sessionDetails.planId,
-      });
-
-    } catch (error: any) {
-      console.error('Subscription upgrade error:', error);
-      res.status(500).json({
-        message: error.message || "Erreur lors de la mise à niveau",
-        code: "UPGRADE_ERROR"
-      });
+    if (!planId || !SUBSCRIPTION_PLANS[planId]) {
+      return res.status(400).json({ error: 'Plan invalide' });
     }
-  });
 
-  // Handle payment success callback
-  app.post("/api/stripe/payment-success", async (req, res) => {
-    try {
-      const { sessionId, organizationId } = req.body;
+    // Récupérer les informations de l'organisation
+    const organization = await getOrganizationById(organizationId);
+    if (!organization) {
+      return res.status(404).json({ error: 'Organisation non trouvée' });
+    }
 
-      if (!sessionId) {
-        return res.status(400).json({
-          message: "Session ID requis",
-          code: "MISSING_SESSION_ID"
-        });
+    // Créer la session Stripe
+    const session = await createCheckoutSession({
+      planId,
+      organizationId,
+      organizationEmail: organization.email,
+      mode: planId.includes('pro') ? 'subscription' : 'payment'
+    });
+
+    console.log('✅ Checkout session created:', session.id);
+    
+    res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url
+    });
+  } catch (error) {
+    console.error('❌ Error creating checkout session:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la création de la session de paiement',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+// Route pour récupérer le statut d'une session
+router.get('/checkout-session/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Session ID manquant' });
+    }
+
+    const session = await retrieveCheckoutSession(sessionId);
+    
+    res.json({
+      success: true,
+      session: {
+        id: session.id,
+        status: session.status,
+        payment_status: session.payment_status,
+        customer_email: session.customer_email,
+        mode: session.mode,
+        metadata: session.metadata
       }
+    });
+  } catch (error) {
+    console.error('❌ Error retrieving checkout session:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la récupération de la session',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
 
-      // Verify payment with Stripe
-      const paymentResult = await StripeServiceNew.handlePaymentSuccess(sessionId);
-      
-      if (!paymentResult.success) {
-        return res.status(400).json({
-          message: "Paiement non confirmé",
-          code: "PAYMENT_NOT_CONFIRMED"
-        });
+// Route pour annuler un abonnement
+router.post('/cancel-subscription', async (req, res) => {
+  try {
+    const organizationId = req.user?.id;
+
+    if (!organizationId) {
+      return res.status(401).json({ error: 'Non authentifié' });
+    }
+
+    // Récupérer les informations de l'organisation
+    const organization = await getOrganizationById(organizationId);
+    if (!organization || !organization.stripeSubscriptionId) {
+      return res.status(404).json({ error: 'Abonnement non trouvé' });
+    }
+
+    // Annuler l'abonnement Stripe
+    const cancelledSubscription = await cancelSubscription(organization.stripeSubscriptionId);
+    
+    console.log('✅ Subscription cancelled:', cancelledSubscription.id);
+    
+    res.json({
+      success: true,
+      message: 'Abonnement annulé avec succès',
+      subscription: {
+        id: cancelledSubscription.id,
+        status: cancelledSubscription.status,
+        cancel_at_period_end: cancelledSubscription.cancel_at_period_end
       }
+    });
+  } catch (error) {
+    console.error('❌ Error cancelling subscription:', error);
+    res.status(500).json({
+      error: 'Erreur lors de l\'annulation de l\'abonnement',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
 
-      const orgId = paymentResult.organizationId || organizationId;
-      const planId = paymentResult.planId;
+// Route pour récupérer les informations d'abonnement
+router.get('/subscription-info', async (req, res) => {
+  try {
+    const organizationId = req.user?.id;
 
-      if (!orgId || !planId) {
-        return res.status(400).json({
-          message: "Données de paiement incomplètes",
-          code: "INCOMPLETE_PAYMENT_DATA"
-        });
-      }
+    if (!organizationId) {
+      return res.status(401).json({ error: 'Non authentifié' });
+    }
 
-      // Get organization
-      const organization = await storage.getOrganization(orgId);
-      if (!organization) {
-        return res.status(404).json({
-          message: "Organisation non trouvée",
-          code: "ORG_NOT_FOUND"
-        });
-      }
+    // Récupérer les informations de l'organisation
+    const organization = await getOrganizationById(organizationId);
+    if (!organization) {
+      return res.status(404).json({ error: 'Organisation non trouvée' });
+    }
 
-      // Update organization with new subscription
-      const plan = SUBSCRIPTION_PLANS[planId];
-      await storage.updateOrganization(orgId, {
-        subscriptionType: planId,
-        subscriptionStatus: 'active',
-        subscriptionStartDate: new Date(),
-        paymentSessionId: sessionId,
-      });
-
-      // Send welcome email for successful upgrade
+    let stripeSubscription = null;
+    if (organization.stripeSubscriptionId) {
       try {
-        await emailService.sendWelcomeEmail(
-          organization.email,
-          organization.name,
-          organization.contactFirstName,
-          organization.contactLastName,
-          organization.type as 'club' | 'association' | 'company'
-        );
-      } catch (emailError) {
-        console.error('Failed to send welcome email:', emailError);
+        stripeSubscription = await getSubscription(organization.stripeSubscriptionId);
+      } catch (error) {
+        console.warn('⚠️ Could not retrieve Stripe subscription:', error);
       }
-
-      res.json({
-        success: true,
-        message: "Abonnement activé avec succès",
-        planName: plan.name,
-        organizationId: orgId,
-      });
-
-    } catch (error: any) {
-      console.error('Payment success handling error:', error);
-      res.status(500).json({
-        message: error.message || "Erreur lors du traitement du paiement",
-        code: "PAYMENT_PROCESSING_ERROR"
-      });
     }
-  });
-
-  // Get Stripe configuration info
-  app.get("/api/stripe/config", (req, res) => {
-    try {
-      const publishableKey = StripeServiceNew.getPublishableKey();
-      const isTestMode = StripeServiceNew.isTestMode();
-
-      if (!publishableKey) {
-        return res.status(500).json({
-          message: "Configuration Stripe manquante",
-          code: "STRIPE_CONFIG_MISSING"
-        });
+    
+    res.json({
+      success: true,
+      subscription: {
+        type: organization.subscriptionType,
+        status: organization.subscriptionStatus,
+        endDate: organization.subscriptionEndDate,
+        remainingEvents: organization.packageRemainingEvents,
+        packageExpiryDate: organization.packageExpiryDate,
+        stripeInfo: stripeSubscription ? {
+          id: stripeSubscription.id,
+          status: stripeSubscription.status,
+          current_period_end: stripeSubscription.current_period_end,
+          cancel_at_period_end: stripeSubscription.cancel_at_period_end
+        } : null
       }
+    });
+  } catch (error) {
+    console.error('❌ Error getting subscription info:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la récupération des informations d\'abonnement',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
 
-      res.json({
-        publishableKey,
-        testMode: isTestMode,
-      });
+// Route webhook pour Stripe (raw body needed)
+router.post('/webhook', async (req, res) => {
+  const sig = req.headers['stripe-signature'] as string;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    } catch (error: any) {
-      console.error('Stripe config error:', error);
-      res.status(500).json({
-        message: "Erreur de configuration Stripe",
-        code: "STRIPE_CONFIG_ERROR"
-      });
-    }
-  });
+  if (!webhookSecret) {
+    console.error('❌ STRIPE_WEBHOOK_SECRET not configured');
+    return res.status(500).json({ error: 'Webhook secret not configured' });
+  }
 
-  // Verify Stripe configuration (admin only)
-  app.get("/api/stripe/verify", requireAuth, async (req, res) => {
+  try {
+    // Construire l'événement Stripe avec la signature
+    const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    
+    console.log('🔔 Received Stripe webhook:', event.type);
+    
+    // Traiter l'événement de manière asynchrone
+    handleWebhookEvent(event).catch(error => {
+      console.error('❌ Error handling webhook event:', error);
+    });
+    
+    // Répondre rapidement à Stripe
+    res.json({ received: true });
+  } catch (error) {
+    console.error('❌ Webhook signature verification failed:', error);
+    res.status(400).json({ error: 'Webhook signature verification failed' });
+  }
+});
+
+// Route de test pour les paiements (mode développement uniquement)
+if (process.env.NODE_ENV === 'development') {
+  router.post('/test-payment', async (req, res) => {
     try {
-      const authReq = req as AuthenticatedRequest;
-      const organization = await storage.getOrganization(authReq.user.organizationId);
+      const { planId, status = 'succeeded' } = req.body;
       
-      if (!organization || organization.role !== 'admin') {
-        return res.status(403).json({
-          message: "Accès administrateur requis",
-          code: "ADMIN_REQUIRED"
-        });
+      // Simuler différents statuts de paiement
+      switch (status) {
+        case 'succeeded':
+          // Simuler un paiement réussi
+          res.json({
+            success: true,
+            message: 'Paiement test réussi',
+            sessionId: 'cs_test_' + Date.now(),
+            status: 'complete'
+          });
+          break;
+          
+        case 'pending':
+          // Simuler un paiement en attente
+          res.json({
+            success: true,
+            message: 'Paiement test en attente',
+            sessionId: 'cs_test_' + Date.now(),
+            status: 'open'
+          });
+          break;
+          
+        case 'failed':
+          // Simuler un paiement échoué
+          res.status(400).json({
+            error: 'Paiement test échoué',
+            code: 'card_declined',
+            decline_code: 'generic_decline'
+          });
+          break;
+          
+        default:
+          res.status(400).json({ error: 'Statut de test invalide' });
       }
-
-      const verification = await StripeServiceNew.verifyConfiguration();
-      
-      res.json(verification);
-
-    } catch (error: any) {
-      console.error('Stripe verification error:', error);
-      res.status(500).json({
-        message: "Erreur de vérification Stripe",
-        code: "STRIPE_VERIFY_ERROR"
-      });
-    }
-  });
-
-  // Handle Stripe webhooks
-  app.post("/api/stripe/webhook", async (req, res) => {
-    try {
-      const signature = req.headers['stripe-signature'] as string;
-      
-      if (!signature) {
-        return res.status(400).json({
-          message: "Missing Stripe signature",
-        });
-      }
-
-      await StripeServiceNew.handleWebhook(req.body, signature);
-      
-      res.json({ received: true });
-
-    } catch (error: any) {
-      console.error('Stripe webhook error:', error);
-      res.status(400).json({
-        message: error.message || "Webhook error",
-      });
+    } catch (error) {
+      console.error('❌ Error in test payment:', error);
+      res.status(500).json({ error: 'Erreur du test de paiement' });
     }
   });
 }
+
+export default router;

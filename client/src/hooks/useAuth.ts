@@ -227,33 +227,13 @@ export class AuthService {
   }
 }
 
-export function useAuth() {
-  let queryClient: ReturnType<typeof useQueryClient> | null = null;
-  let queryError: Error | null = null;
+export function useAuthHook() {
+  // Always attempt to get queryClient within the hook context
+  const queryClient = useQueryClient();
   
-  try {
-    queryClient = useQueryClient();
-    // Set query client for AuthService (ensure it's always set)
+  // Set query client for AuthService (ensure it's always set when available)
+  if (queryClient) {
     AuthService.setQueryClient(queryClient);
-  } catch (error) {
-    console.warn("QueryClient not available in useAuth:", error);
-    queryError = error as Error;
-  }
-
-  // If queryClient is not available, return basic authentication state
-  if (!queryClient || queryError) {
-    const hasToken = !!TokenManager.getAccessToken();
-    const basicIsAuth = hasToken && AuthService.isAuthenticated();
-    
-    return {
-      organization: null,
-      isLoading: false,
-      isAuthenticated: basicIsAuth,
-      login: AuthService.login,
-      register: AuthService.register,
-      logout: AuthService.logout,
-      refreshToken: AuthService.refreshAccessToken,
-    };
   }
 
   const { data: organization, isLoading, error } = useQuery({

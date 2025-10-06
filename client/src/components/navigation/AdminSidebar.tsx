@@ -21,6 +21,18 @@ export default function AdminSidebar({ activeSection, onSectionChange }: AdminSi
       description: "Gérer les organisations"
     },
     {
+      id: "users",
+      name: "Gestion Utilisateurs",
+      icon: "fas fa-users",
+      description: "Supprimer des comptes"
+    },
+    {
+      id: "features",
+      name: "Fonctionnalités",
+      icon: "fas fa-toggle-on",
+      description: "Activer/désactiver features"
+    },
+    {
       id: "support",
       name: "Support Client",
       icon: "fas fa-headset",

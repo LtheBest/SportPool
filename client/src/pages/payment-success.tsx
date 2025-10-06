@@ -31,21 +31,25 @@ export default function PaymentSuccessPage() {
         return;
       }
 
-      // Process payment with backend
-      const response = await apiRequest('POST', '/api/stripe/payment-success', {
-        sessionId,
-        organizationId,
-      });
+      // Get checkout session status
+      const response = await apiRequest('GET', `/api/stripe/checkout-session/${sessionId}`);
 
       const result = await response.json();
 
-      if (result.success) {
-        setPaymentStatus('success');
-        setMessage(result.message || 'Abonnement activé avec succès !');
-        setPlanName(result.planName || '');
+      if (result.success && result.session) {
+        const session = result.session;
+        
+        if (session.payment_status === 'paid' || session.status === 'complete') {
+          setPaymentStatus('success');
+          setMessage('Abonnement activé avec succès !');
+          setPlanName(session.metadata?.plan_id || '');
+        } else {
+          setPaymentStatus('error');
+          setMessage('Paiement non confirmé');
+        }
       } else {
         setPaymentStatus('error');
-        setMessage(result.message || 'Erreur lors du traitement du paiement');
+        setMessage(result.error || 'Erreur lors du traitement du paiement');
       }
 
     } catch (error: any) {

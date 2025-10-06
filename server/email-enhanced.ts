@@ -1636,6 +1636,468 @@ ${this.appUrl}
   }
 
 
+  // Email de confirmation d'abonnement Stripe
+  async sendSubscriptionConfirmationEmail(organizationId: string, planId: string): Promise<boolean> {
+    console.log('📧 Sending subscription confirmation email');
+
+    try {
+      // Importer dynamiquement pour éviter les imports circulaires
+      const { getOrganizationById } = await import('./storage.js');
+      const { SUBSCRIPTION_PLANS } = await import('./subscription-config.js');
+
+      const organization = await getOrganizationById(organizationId);
+      if (!organization) {
+        console.error('❌ Organization not found for subscription confirmation');
+        return false;
+      }
+
+      const plan = SUBSCRIPTION_PLANS[planId];
+      if (!plan) {
+        console.error('❌ Plan not found for subscription confirmation');
+        return false;
+      }
+
+      const dashboardUrl = `${this.appUrl}/dashboard`;
+      const supportUrl = `${this.appUrl}/support`;
+
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abonnement Confirmé - TeamMove</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center; color: white; margin-bottom: 30px;">
+    <h1 style="margin: 0; font-size: 28px;">🎉 Abonnement Confirmé !</h1>
+    <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Bienvenue dans ${plan.name} chez TeamMove</p>
+  </div>
+
+  <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
+    <h2 style="color: #2c3e50; margin-top: 0;">Bonjour ${organization.contactFirstName || organization.name} !</h2>
+    <p>Félicitations ! Votre abonnement <strong>${plan.name}</strong> a été activé avec succès.</p>
+  </div>
+
+  <div style="background: white; border: 2px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+    <h3 style="color: #495057; margin-top: 0;">📋 Récapitulatif de votre abonnement</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Formule :</strong></td>
+        <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${plan.name}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Prix :</strong></td>
+        <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${(plan.price / 100).toFixed(2)}€</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Facturation :</strong></td>
+        <td style="padding: 8px 0; border-bottom: 1px solid #eee;">
+          ${plan.billingInterval === 'monthly' ? 'Mensuelle' : 
+            plan.billingInterval === 'annual' ? 'Annuelle' : 
+            plan.billingInterval === 'pack_single' ? 'Paiement unique' : 
+            'Pack de 10 événements'}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="background: #e8f5e8; border-left: 4px solid #28a745; padding: 20px; margin-bottom: 25px;">
+    <h3 style="color: #155724; margin-top: 0;">✨ Vos avantages</h3>
+    <ul style="margin: 0; padding-left: 20px;">
+      ${plan.features.map(feature => `<li>${feature}</li>`).join('')}
+    </ul>
+  </div>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${dashboardUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">🚀 Accéder à mon tableau de bord</a>
+  </div>
+
+  <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; margin-top: 30px;">
+    <h4 style="margin-top: 0; color: #495057;">Besoin d'aide ?</h4>
+    <p style="margin-bottom: 0;">Notre équipe support est là pour vous accompagner :</p>
+    <p style="margin: 5px 0 0 0;">
+      📧 <a href="mailto:${this.fromEmail}" style="color: #007bff;">${this.fromEmail}</a><br>
+      🌐 <a href="${supportUrl}" style="color: #007bff;">Centre d'aide</a>
+    </p>
+  </div>
+
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #6c757d; font-size: 14px;">
+    <p>Merci de faire confiance à TeamMove !</p>
+    <p><a href="${this.appUrl}" style="color: #007bff;">TeamMove</a> - Simplifiez vos événements sportifs</p>
+  </div>
+</body>
+</html>
+      `;
+
+      const text = `
+🎉 Abonnement Confirmé !
+
+Bonjour ${organization.contactFirstName || organization.name} !
+
+Félicitations ! Votre abonnement ${plan.name} a été activé avec succès.
+
+📋 RÉCAPITULATIF :
+• Formule : ${plan.name}
+• Prix : ${(plan.price / 100).toFixed(2)}€
+• Facturation : ${plan.billingInterval === 'monthly' ? 'Mensuelle' : 
+    plan.billingInterval === 'annual' ? 'Annuelle' : 
+    plan.billingInterval === 'pack_single' ? 'Paiement unique' : 
+    'Pack de 10 événements'}
+
+✨ VOS AVANTAGES :
+${plan.features.map(feature => `• ${feature}`).join('\n')}
+
+🚀 PROCHAINES ÉTAPES :
+• Accédez à votre tableau de bord : ${dashboardUrl}
+• Commencez à créer vos événements
+• Profitez de toutes les fonctionnalités
+
+Besoin d'aide ?
+📧 ${this.fromEmail}
+🌐 ${supportUrl}
+
+Merci de faire confiance à TeamMove !
+L'équipe TeamMove
+${this.appUrl}
+      `;
+
+      return await this.sendEmail({
+        to: organization.email,
+        toName: organization.name,
+        subject: `🎉 Abonnement ${plan.name} confirmé - Bienvenue !`,
+        html,
+        text
+      });
+    } catch (error) {
+      console.error('❌ Error sending subscription confirmation email:', error);
+      return false;
+    }
+  }
+
+  // Email d'échec de paiement
+  async sendPaymentFailedEmail(organizationId: string): Promise<boolean> {
+    console.log('📧 Sending payment failed email');
+
+    try {
+      const { getOrganizationById } = await import('./storage.js');
+
+      const organization = await getOrganizationById(organizationId);
+      if (!organization) {
+        console.error('❌ Organization not found for payment failed email');
+        return false;
+      }
+
+      const dashboardUrl = `${this.appUrl}/dashboard`;
+      const supportUrl = `${this.appUrl}/support`;
+
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Problème de Paiement - TeamMove</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); padding: 30px; border-radius: 10px; text-align: center; color: white; margin-bottom: 30px;">
+    <h1 style="margin: 0; font-size: 28px;">⚠️ Problème de Paiement</h1>
+    <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Action requise pour votre abonnement</p>
+  </div>
+
+  <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+    <h2 style="color: #856404; margin-top: 0;">Bonjour ${organization.contactFirstName || organization.name},</h2>
+    <p style="color: #856404;">Nous n'avons pas pu traiter le paiement de votre abonnement TeamMove.</p>
+  </div>
+
+  <div style="background: white; border: 2px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+    <h3 style="color: #495057; margin-top: 0;">🔧 Que faire maintenant ?</h3>
+    <ol style="color: #495057;">
+      <li><strong>Vérifiez vos informations de paiement</strong> dans votre tableau de bord</li>
+      <li><strong>Assurez-vous</strong> que votre carte bancaire n'est pas expirée</li>
+      <li><strong>Contactez votre banque</strong> si nécessaire</li>
+      <li><strong>Renouvelez le paiement</strong> depuis votre tableau de bord</li>
+    </ol>
+  </div>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${dashboardUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">🔧 Mettre à jour mes informations</a>
+  </div>
+
+  <div style="background: #f8f9fa; padding: 20px; border-radius: 6px;">
+    <h4 style="margin-top: 0; color: #495057;">Besoin d'aide ?</h4>
+    <p style="margin-bottom: 0;">Notre équipe support est là pour vous aider :</p>
+    <p style="margin: 5px 0 0 0;">
+      📧 <a href="mailto:${this.fromEmail}" style="color: #007bff;">${this.fromEmail}</a><br>
+      🌐 <a href="${supportUrl}" style="color: #007bff;">Contacter le support</a>
+    </p>
+  </div>
+
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #6c757d; font-size: 14px;">
+    <p><a href="${this.appUrl}" style="color: #007bff;">TeamMove</a> - Simplifiez vos événements sportifs</p>
+  </div>
+</body>
+</html>
+      `;
+
+      const text = `
+⚠️ Problème de Paiement
+
+Bonjour ${organization.contactFirstName || organization.name},
+
+Nous n'avons pas pu traiter le paiement de votre abonnement TeamMove.
+
+🔧 QUE FAIRE MAINTENANT ?
+1. Vérifiez vos informations de paiement dans votre tableau de bord
+2. Assurez-vous que votre carte bancaire n'est pas expirée
+3. Contactez votre banque si nécessaire
+4. Renouvelez le paiement depuis votre tableau de bord
+
+🔧 Mettre à jour mes informations : ${dashboardUrl}
+
+Besoin d'aide ?
+📧 ${this.fromEmail}
+🌐 ${supportUrl}
+
+L'équipe TeamMove
+${this.appUrl}
+      `;
+
+      return await this.sendEmail({
+        to: organization.email,
+        toName: organization.name,
+        subject: '⚠️ Problème de paiement - Action requise',
+        html,
+        text
+      });
+    } catch (error) {
+      console.error('❌ Error sending payment failed email:', error);
+      return false;
+    }
+  }
+
+  // Email d'annulation d'abonnement
+  async sendSubscriptionCancelledEmail(organizationId: string): Promise<boolean> {
+    console.log('📧 Sending subscription cancelled email');
+
+    try {
+      const { getOrganizationById } = await import('./storage.js');
+
+      const organization = await getOrganizationById(organizationId);
+      if (!organization) {
+        console.error('❌ Organization not found for cancellation email');
+        return false;
+      }
+
+      const dashboardUrl = `${this.appUrl}/dashboard`;
+      const subscriptionUrl = `${this.appUrl}/subscription`;
+
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abonnement Annulé - TeamMove</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); padding: 30px; border-radius: 10px; text-align: center; color: white; margin-bottom: 30px;">
+    <h1 style="margin: 0; font-size: 28px;">📋 Abonnement Annulé</h1>
+    <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Nous sommes désolés de vous voir partir</p>
+  </div>
+
+  <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
+    <h2 style="color: #2c3e50; margin-top: 0;">Bonjour ${organization.contactFirstName || organization.name},</h2>
+    <p>Votre abonnement TeamMove a été annulé comme demandé.</p>
+    <p>Vous avez maintenant accès à l'<strong>offre Découverte</strong> qui vous permet de créer 1 événement avec jusqu'à 20 invitations.</p>
+  </div>
+
+  <div style="background: #e8f4fd; border-left: 4px solid #007bff; padding: 20px; margin-bottom: 25px;">
+    <h3 style="color: #004085; margin-top: 0;">💡 L'offre Découverte inclut :</h3>
+    <ul style="margin: 0; padding-left: 20px; color: #004085;">
+      <li>1 événement maximum</li>
+      <li>Jusqu'à 20 invitations</li>
+      <li>Gestion du covoiturage</li>
+      <li>Support par email</li>
+    </ul>
+  </div>
+
+  <div style="background: white; border: 2px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+    <h3 style="color: #495057; margin-top: 0;">🔄 Envie de revenir ?</h3>
+    <p>Vous pouvez à tout moment souscrire à nouveau à une formule payante pour retrouver tous les avantages de TeamMove.</p>
+  </div>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${subscriptionUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin-right: 10px;">🔄 Voir nos formules</a>
+    <a href="${dashboardUrl}" style="background: #6c757d; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">📊 Mon tableau de bord</a>
+  </div>
+
+  <div style="background: #f8f9fa; padding: 20px; border-radius: 6px;">
+    <h4 style="margin-top: 0; color: #495057;">Vos retours nous intéressent</h4>
+    <p style="margin-bottom: 0;">N'hésitez pas à nous faire part de vos commentaires pour nous aider à améliorer TeamMove :</p>
+    <p style="margin: 5px 0 0 0;">
+      📧 <a href="mailto:${this.fromEmail}" style="color: #007bff;">${this.fromEmail}</a>
+    </p>
+  </div>
+
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #6c757d; font-size: 14px;">
+    <p>Merci d'avoir utilisé TeamMove !</p>
+    <p><a href="${this.appUrl}" style="color: #007bff;">TeamMove</a> - Simplifiez vos événements sportifs</p>
+  </div>
+</body>
+</html>
+      `;
+
+      const text = `
+📋 Abonnement Annulé
+
+Bonjour ${organization.contactFirstName || organization.name},
+
+Votre abonnement TeamMove a été annulé comme demandé.
+
+Vous avez maintenant accès à l'offre Découverte qui vous permet de créer 1 événement avec jusqu'à 20 invitations.
+
+💡 L'OFFRE DÉCOUVERTE INCLUT :
+• 1 événement maximum
+• Jusqu'à 20 invitations  
+• Gestion du covoiturage
+• Support par email
+
+🔄 ENVIE DE REVENIR ?
+Vous pouvez à tout moment souscrire à nouveau à une formule payante pour retrouver tous les avantages de TeamMove.
+
+🔄 Voir nos formules : ${subscriptionUrl}
+📊 Mon tableau de bord : ${dashboardUrl}
+
+VOS RETOURS NOUS INTÉRESSENT :
+📧 ${this.fromEmail}
+
+Merci d'avoir utilisé TeamMove !
+L'équipe TeamMove
+${this.appUrl}
+      `;
+
+      return await this.sendEmail({
+        to: organization.email,
+        toName: organization.name,
+        subject: '📋 Confirmation d\'annulation de votre abonnement',
+        html,
+        text
+      });
+    } catch (error) {
+      console.error('❌ Error sending cancellation email:', error);
+      return false;
+    }
+  }
+
+}
+
+// Fonctions exportées pour utilisation directe
+export async function sendSubscriptionConfirmationEmail(organizationId: string, planId: string): Promise<boolean> {
+  return await emailServiceEnhanced.sendSubscriptionConfirmationEmail(organizationId, planId);
+}
+
+export async function sendPaymentFailedEmail(organizationId: string): Promise<boolean> {
+  return await emailServiceEnhanced.sendPaymentFailedEmail(organizationId);
+}
+
+export async function sendSubscriptionCancelledEmail(organizationId: string): Promise<boolean> {
+  return await emailServiceEnhanced.sendSubscriptionCancelledEmail(organizationId);
+}
+
+// Email de suppression de compte
+export async function sendAccountDeletionEmail(userEmail: string, userName: string): Promise<boolean> {
+  console.log('📧 Sending account deletion confirmation email');
+
+  const appUrl = process.env.APP_URL || 'https://teammove.fr';
+  const supportEmail = process.env.SENDGRID_FROM_EMAIL || 'support@teammove.fr';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compte Supprimé - TeamMove</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); padding: 30px; border-radius: 10px; text-align: center; color: white; margin-bottom: 30px;">
+    <h1 style="margin: 0; font-size: 28px;">👋 Au Revoir</h1>
+    <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Votre compte a été supprimé</p>
+  </div>
+
+  <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
+    <h2 style="color: #2c3e50; margin-top: 0;">Bonjour ${userName},</h2>
+    <p>Votre compte TeamMove a été définitivement supprimé comme demandé.</p>
+    <p><strong>Cette action est irréversible.</strong> Toutes vos données ont été supprimées de nos serveurs.</p>
+  </div>
+
+  <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+    <h3 style="color: #856404; margin-top: 0;">🗑️ Données supprimées :</h3>
+    <ul style="color: #856404; margin: 0; padding-left: 20px;">
+      <li>Informations du compte et organisation</li>
+      <li>Tous les événements créés</li>
+      <li>Historique des participants</li>
+      <li>Messages et communications</li>
+      <li>Données de facturation (si applicable)</li>
+    </ul>
+  </div>
+
+  <div style="background: #e8f4fd; border-left: 4px solid #007bff; padding: 20px; margin-bottom: 25px;">
+    <h3 style="color: #004085; margin-top: 0;">🔄 Vous nous manquerez !</h3>
+    <p style="color: #004085; margin-bottom: 0;">Si vous changez d'avis, vous pouvez créer un nouveau compte à tout moment sur <a href="${appUrl}" style="color: #007bff;">${appUrl}</a></p>
+  </div>
+
+  <div style="background: #f8f9fa; padding: 20px; border-radius: 6px;">
+    <h4 style="margin-top: 0; color: #495057;">Vos retours nous intéressent</h4>
+    <p style="margin-bottom: 0;">N'hésitez pas à nous faire part de vos commentaires pour nous aider à améliorer TeamMove :</p>
+    <p style="margin: 5px 0 0 0;">
+      📧 <a href="mailto:${supportEmail}" style="color: #007bff;">${supportEmail}</a>
+    </p>
+  </div>
+
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #6c757d; font-size: 14px;">
+    <p>Merci d'avoir utilisé TeamMove !</p>
+    <p><a href="${appUrl}" style="color: #007bff;">TeamMove</a> - Simplifiez vos événements sportifs</p>
+  </div>
+</body>
+</html>
+  `;
+
+  const text = `
+👋 Au Revoir
+
+Bonjour ${userName},
+
+Votre compte TeamMove a été définitivement supprimé comme demandé.
+
+Cette action est irréversible. Toutes vos données ont été supprimées de nos serveurs.
+
+🗑️ DONNÉES SUPPRIMÉES :
+• Informations du compte et organisation
+• Tous les événements créés
+• Historique des participants
+• Messages et communications
+• Données de facturation (si applicable)
+
+🔄 VOUS NOUS MANQUEREZ !
+Si vous changez d'avis, vous pouvez créer un nouveau compte à tout moment sur ${appUrl}
+
+VOS RETOURS NOUS INTÉRESSENT :
+📧 ${supportEmail}
+
+Merci d'avoir utilisé TeamMove !
+L'équipe TeamMove
+${appUrl}
+  `;
+
+  return await emailServiceEnhanced.sendEmail({
+    to: userEmail,
+    toName: userName,
+    subject: '👋 Confirmation de suppression de votre compte TeamMove',
+    html,
+    text
+  });
 }
 
 export const emailServiceEnhanced = new EmailServiceEnhanced();

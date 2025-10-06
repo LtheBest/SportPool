@@ -26,9 +26,7 @@ import cors from "cors";
 import { SUBSCRIPTION_PLANS } from "./subscription-config";
 import { SubscriptionService } from "./subscription-service";
 import { createNotification, NotificationTemplates } from "./notifications";
-import { StripeService } from "./stripe-service";
-import { StripeServiceNew } from "./stripe-service-new";
-import { registerStripeRoutes } from "./stripe-routes";
+import stripeRouter from "./stripe-routes";
 
 // Import functions for subscription checks
 const canCreateEvent = SubscriptionService.canCreateEvent.bind(SubscriptionService);
@@ -76,6 +74,14 @@ function cleanEmailReply(content: string): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize subscription service
   await SubscriptionService.initialize();
+  
+  // Initialize feature toggles
+  try {
+    const { FeatureToggleService } = await import('./feature-toggles');
+    await FeatureToggleService.initialize();
+  } catch (error) {
+    console.error('⚠️ Feature toggles initialization failed:', error);
+  }
   
   // Configuration CORS dynamique et optimisée pour Render
   const isProduction = process.env.NODE_ENV === 'production';
@@ -3952,7 +3958,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Register new Stripe routes
-  registerStripeRoutes(app);
+  app.use("/api/stripe", stripeRouter);
+
+  // ========== FEATURE TOGGLES ROUTES (ADMIN ONLY) ==========
+  const { FeatureToggleService, requireFeature } = await import('./feature-toggles');
+
+  // Get all feature toggles (admin only)
+  app.get("/api/admin/features", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Vérifier que l'utilisateur est admin
+      const organization = await getOrganizationById(req.user.id);
+      if (!organization || organization.role !== 'admin') {
+        return res.status(403).json({ error: "Accès refusé. Droits administrateur requis." });
+      }
+
+      const features = await FeatureToggleService.getAllFeatures();
+      const categories = await FeatureToggleService.getCategories();
+
+      res.json({
+        success: true,
+        features,
+        categories
+      });
+    } catch (error: any) {
+      console.error("❌ Error getting features:", error);
+      res.status(500).json({
+        error: "Erreur lors de la récupération des features",
+        details: error.message
+      });
+    }
+  });
+
+  // Update a feature toggle (admin only)
+  app.patch("/api/admin/features/:featureKey", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Vérifier que l'utilisateur est admin
+      const organization = await getOrganizationById(req.user.id);
+      if (!organization || organization.role !== 'admin') {
+        return res.status(403).json({ error: "Accès refusé. Droits administrateur requis." });
+      }
+
+      const { featureKey } = req.params;
+      const { isEnabled } = req.body;
+
+      if (typeof isEnabled !== 'boolean') {
+        return res.status(400).json({ error: "isEnabled must be a boolean" });
+      }
+
+      await FeatureToggleService.updateFeature(featureKey, isEnabled);
+
+      res.json({
+        success: true,
+        message: `Feature ${featureKey} ${isEnabled ? 'activée' : 'désactivée'}`
+      });
+    } catch (error: any) {
+      console.error("❌ Error updating feature:", error);
+      res.status(500).json({
+        error: "Erreur lors de la mise à jour de la feature",
+        details: error.message
+      });
+    }
+  });
+
+  // Get features for current user (public endpoint with caching)
+  app.get("/api/features", async (req, res) => {
+    try {
+      const features = await FeatureToggleService.getAllFeatures();
+      
+      // Return only the enabled status for each feature
+      const publicFeatures = features.reduce((acc, feature) => {
+        acc[feature.featureKey] = feature.isEnabled;
+        return acc;
+      }, {} as Record<string, boolean>);
+
+      res.json({
+        success: true,
+        features: publicFeatures
+      });
+    } catch (error: any) {
+      console.error("❌ Error getting public features:", error);
+      res.status(500).json({
+        error: "Erreur lors de la récupération des features",
+        details: error.message
+      });
+    }
+  });
+
+  // Refresh feature cache (admin only)
+  app.post("/api/admin/features/refresh", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Vérifier que l'utilisateur est admin
+      const organization = await getOrganizationById(req.user.id);
+      if (!organization || organization.role !== 'admin') {
+        return res.status(403).json({ error: "Accès refusé. Droits administrateur requis." });
+      }
+
+      await FeatureToggleService.refreshCache();
+
+      res.json({
+        success: true,
+        message: "Cache des features rafraîchi avec succès"
+      });
+    } catch (error: any) {
+      console.error("❌ Error refreshing feature cache:", error);
+      res.status(500).json({
+        error: "Erreur lors du rafraîchissement du cache",
+        details: error.message
+      });
+    }
+  });
+
+  // ========== ADMIN USER MANAGEMENT ROUTES ==========
+
+  // Get all organizations (admin only)
+  app.get("/api/admin/organizations", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Vérifier que l'utilisateur est admin
+      const currentOrg = await getOrganizationById(req.user.id);
+      if (!currentOrg || currentOrg.role !== 'admin') {
+        return res.status(403).json({ error: "Accès refusé. Droits administrateur requis." });
+      }
+
+      const organizations = await storage.getAllOrganizations();
+      
+      // Masquer les informations sensibles
+      const safeOrganizations = organizations.map(org => ({
+        id: org.id,
+        name: org.name,
+        email: org.email,
+        contactFirstName: org.contactFirstName,
+        contactLastName: org.contactLastName,
+        subscriptionType: org.subscriptionType,
+        subscriptionStatus: org.subscriptionStatus,
+        createdAt: org.createdAt,
+        role: org.role || 'organization',
+        isActive: org.isActive !== false
+      }));
+
+      res.json({
+        success: true,
+        organizations: safeOrganizations,
+        total: safeOrganizations.length
+      });
+    } catch (error: any) {
+      console.error("❌ Error getting organizations:", error);
+      res.status(500).json({
+        error: "Erreur lors de la récupération des organisations",
+        details: error.message
+      });
+    }
+  });
+
+  // Delete an organization (admin only)
+  app.delete("/api/admin/organizations/:organizationId", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Vérifier que l'utilisateur est admin
+      const currentOrg = await getOrganizationById(req.user.id);
+      if (!currentOrg || currentOrg.role !== 'admin') {
+        return res.status(403).json({ error: "Accès refusé. Droits administrateur requis." });
+      }
+
+      const { organizationId } = req.params;
+
+      // Empêcher l'admin de se supprimer lui-même
+      if (organizationId === req.user.id) {
+        return res.status(400).json({ error: "Vous ne pouvez pas supprimer votre propre compte" });
+      }
+
+      // Récupérer les informations de l'organisation avant suppression
+      const orgToDelete = await getOrganizationById(organizationId);
+      if (!orgToDelete) {
+        return res.status(404).json({ error: "Organisation non trouvée" });
+      }
+
+      // Envoyer l'email de confirmation avant suppression
+      const { sendAccountDeletionEmail } = await import('./email-enhanced');
+      await sendAccountDeletionEmail(
+        orgToDelete.email, 
+        orgToDelete.contactFirstName || orgToDelete.name
+      );
+
+      // Supprimer l'organisation et toutes ses données associées
+      await storage.deleteOrganization(organizationId);
+
+      res.json({
+        success: true,
+        message: `Organisation ${orgToDelete.name} supprimée avec succès`,
+        deletedOrganization: {
+          id: orgToDelete.id,
+          name: orgToDelete.name,
+          email: orgToDelete.email
+        }
+      });
+    } catch (error: any) {
+      console.error("❌ Error deleting organization:", error);
+      res.status(500).json({
+        error: "Erreur lors de la suppression de l'organisation",
+        details: error.message
+      });
+    }
+  });
 
   // URL sanitization middleware for security
   app.use((req, res, next) => {
