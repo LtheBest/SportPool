@@ -1,6 +1,6 @@
 # 🏆 TeamMove - Plateforme de Covoiturage Sportif
 
-[![Render Deployment](https://img.shields.io/badge/Render-Deployed-brightgreen)](https://teammove.onrender.com)
+[![Render Deployment](https://img.shields.io/badge/Render-Deployed-brightgreen)](https://teammove.fr)
 [![CI/CD Pipeline](https://github.com/LtheBest/TeamMove/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/LtheBest/TeamMove/actions/workflows/ci-cd.yml)
 [![Docker Hub](https://img.shields.io/docker/pulls/lthebest/TeamMove)](https://hub.docker.com/r/lthebest/TeamMove)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,7 +9,7 @@
 
 Une application web moderne pour organiser et gérer le covoiturage pour les événements sportifs. Permettez à votre organisation sportive de créer facilement des événements et de faciliter le covoiturage entre les participants.
 
-🌐 **[Application en Ligne](https://teammove.onrender.com)** | 📖 **[Guide de Déploiement Render](RENDER_DEPLOYMENT_GUIDE_V2.md)** | 🧪 **[Tests de Santé](https://teammove.onrender.com/api/health)**
+🌐 **[Application en Ligne](https://teammove.fr)** | 📖 **[Guide de Déploiement Render](RENDER_DEPLOYMENT_GUIDE_V2.md)** | 🧪 **[Tests de Santé](https://teammove.fr/api/health)**
 
 ## ✨ Fonctionnalités
 
@@ -78,7 +78,7 @@ npm run db:push
 npm run dev
 ```
 
-L'application sera accessible sur https://teammove.onrender.com
+L'application sera accessible sur https://teammove.fr
 
 ### Avec Docker
 
@@ -141,7 +141,7 @@ TeamMove/
 ### Tests Automatisés de Déploiement
 ```bash
 # Tester votre déploiement Render
-node test-render-deployment.js https://teammove.onrender.com
+node test-render-deployment.js https://teammove.fr
 
 # Tests locaux
 npm run test:all            # Tous les tests (unitaires + E2E)
@@ -150,24 +150,24 @@ npm run test:all            # Tous les tests (unitaires + E2E)
 ### Endpoints de Diagnostic
 ```bash
 # Santé générale de l'application
-curl https://teammove.onrender.com/api/health
+curl https://teammove.fr/api/health
 
 # Test de connexion base de données
-curl https://teammove.onrender.com/api/db-test
+curl https://teammove.fr/api/db-test
 
 # Test des sessions (authentification)
-curl https://teammove.onrender.com/api/session-test
+curl https://teammove.fr/api/session-test
 
 # Communication backend
-curl https://teammove.onrender.com/api/test
+curl https://teammove.fr/api/test
 
 # Debug utilisateurs (dev seulement)
-curl https://teammove.onrender.com/api/debug/users
+curl https://teammove.fr/api/debug/users
 ```
 
 ### Monitoring en Temps Réel
-- 🟢 **Status**: [https://teammove.onrender.com/api/health](https://teammove.onrender.com/api/health)
-- 💾 **Database**: [https://teammove.onrender.com/api/db-test](https://teammove.onrender.com/api/db-test)
+- 🟢 **Status**: [https://teammove.fr/api/health](https://teammove.fr/api/health)
+- 💾 **Database**: [https://teammove.fr/api/db-test](https://teammove.fr/api/db-test)
 - 📊 **Performance**: Consultez les logs Render Dashboard
 
 ## 📊 Scripts disponibles
@@ -295,6 +295,6 @@ Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de 
   <p>
     <a href="https://github.com/LtheBest/TeamMove">⭐ Star ce projet</a> •
     <a href="https://github.com/LtheBest/TeamMove/fork">🍴 Fork</a> •
-    <a href="https://teammove.onrender.com">🌐 Démo</a>
+    <a href="https://teammove.fr">🌐 Démo</a>
   </p>
 </div>

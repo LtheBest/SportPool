@@ -15,7 +15,7 @@ services:
       - key: Access-Control-Allow-Credentials
         value: true
       - key: Access-Control-Allow-Origin
-        value: https://teammove.onrender.com
+        value: https://teammove.fr
     envVars:
       - key: NODE_ENV
         value: production
@@ -36,7 +36,7 @@ services:
       - key: SESSION_SECRET
         generateValue: true # Render génère automatiquement une valeur sécurisée
       - key: APP_URL
-        value: https://teammove.onrender.com
+        value: https://teammove.fr
       - key: RENDER
         value: true
       - key: VERBOSE_LOGS

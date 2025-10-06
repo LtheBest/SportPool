@@ -57,7 +57,7 @@ async function createAdminUser() {
         
         console.log('✅ Utilisateur existant mis à jour avec les droits d\'administrateur.');
         console.log(`📧 Email: ${existingAdmin.email}`);
-        console.log('🔗 Accès: https://teammove.onrender.com/admin');
+        console.log('🔗 Accès: https://teammove.fr/admin');
       }
     } else {
       // Create new admin user
@@ -78,7 +78,7 @@ async function createAdminUser() {
       console.log('\n📋 Informations de connexion:');
       console.log(`📧 Email: ${adminData.email}`);
       console.log(`🔑 Mot de passe: ${password}`);
-      console.log('🔗 URL de connexion: https://teammove.onrender.com/admin');
+      console.log('🔗 URL de connexion: https://teammove.fr/admin');
       console.log('\n⚠️  IMPORTANT:');
       console.log('- Conservez ces informations dans un endroit sécurisé');
       console.log('- Changez le mot de passe après la première connexion');

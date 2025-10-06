@@ -9,7 +9,7 @@ const https = require('https');
 const http = require('http');
 
 // URL de base (peut être passée en argument ou utilise la valeur par défaut)
-const BASE_URL = process.argv[2] || 'https://teammove.onrender.com';
+const BASE_URL = process.argv[2] || 'https://teammove.fr';
 
 console.log(`🧪 Testing Render deployment at: ${BASE_URL}`);
 console.log('=' .repeat(60));

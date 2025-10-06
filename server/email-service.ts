@@ -174,7 +174,7 @@ export class EmailService {
                 <p><strong>TeamMove</strong> - Simplifiez l'organisation de vos événements sportifs</p>
                 <div class="contact-info">
                     <p>📧 Support: support@teammove.fr</p>
-                    <p>🌐 Site web: <a href="${process.env.APP_URL || 'https://teammove.onrender.com'}" style="color: #667eea;">teammove.fr</a></p>
+                    <p>🌐 Site web: <a href="${process.env.APP_URL || 'https://teammove.fr'}" style="color: #667eea;">teammove.fr</a></p>
                 </div>
                 <div class="social-links">
                     <p>Suivez-nous sur nos réseaux sociaux pour ne rien manquer !</p>

@@ -9,7 +9,7 @@ Disallow: /reset-password
 Disallow: /uploads/
 
 # Sitemap
-Sitemap: https://teammove.onrender.com/sitemap.xml
+Sitemap: https://teammove.fr/sitemap.xml
 
 # Crawl-delay
 Crawl-delay: 1

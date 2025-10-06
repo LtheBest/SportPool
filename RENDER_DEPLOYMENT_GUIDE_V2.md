@@ -130,7 +130,7 @@ DATABASE_URL=postgresql://neondb_owner:npg_xxx@ep-xxx.aws.neon.tech/neondb?sslmo
 ```env
 NODE_ENV=production
 PORT=8080
-APP_URL=https://teammove.onrender.com
+APP_URL=https://teammove.fr
 RENDER=true
 ```
 
@@ -167,39 +167,39 @@ DEBUG=true
 ### 1. Test Automatique avec Script
 ```bash
 # Exécuter depuis votre machine locale
-node test-render-deployment.js https://teammove.onrender.com
+node test-render-deployment.js https://teammove.fr
 ```
 
 ### 2. Tests Manuels
 
 #### Test 1: Page d'Accueil
 ```bash
-curl -I https://teammove.onrender.com
+curl -I https://teammove.fr
 # Attendu: HTTP/2 200
 ```
 
 #### Test 2: Santé de l'Application
 ```bash
-curl https://teammove.onrender.com/api/health | jq
+curl https://teammove.fr/api/health | jq
 # Attendu: {"status": "healthy", "database": "connected"}
 ```
 
 #### Test 3: Base de Données
 ```bash
-curl https://teammove.onrender.com/api/db-test | jq
+curl https://teammove.fr/api/db-test | jq
 # Attendu: {"status": "✅ Database connection successful"}
 ```
 
 #### Test 4: Sessions
 ```bash
-curl https://teammove.onrender.com/api/session-test | jq
+curl https://teammove.fr/api/session-test | jq
 # Attendu: Informations de session
 ```
 
 ### 3. Test d'Authentification
 
 #### Via l'Interface Web
-1. Allez sur `https://teammove.onrender.com`
+1. Allez sur `https://teammove.fr`
 2. Créez un compte test
 3. Tentez de vous connecter
 4. Vérifiez que vous accédez au dashboard
@@ -207,7 +207,7 @@ curl https://teammove.onrender.com/api/session-test | jq
 #### Via API (Advanced)
 ```bash
 # Créer un compte test
-curl -X POST https://teammove.onrender.com/api/register \
+curl -X POST https://teammove.fr/api/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test Org",
@@ -219,7 +219,7 @@ curl -X POST https://teammove.onrender.com/api/register \
   }'
 
 # Se connecter
-curl -X POST https://teammove.onrender.com/api/login \
+curl -X POST https://teammove.fr/api/login \
   -H "Content-Type: application/json" \
   -c cookies.txt \
   -d '{
@@ -228,7 +228,7 @@ curl -X POST https://teammove.onrender.com/api/login \
   }'
 
 # Tester l'endpoint protégé
-curl -b cookies.txt https://teammove.onrender.com/api/me
+curl -b cookies.txt https://teammove.fr/api/me
 ```
 
 ---
@@ -240,7 +240,7 @@ curl -b cookies.txt https://teammove.onrender.com/api/me
 #### Diagnostic
 ```bash
 # Vérifier les sessions
-curl https://teammove.onrender.com/api/session-test | jq '.session'
+curl https://teammove.fr/api/session-test | jq '.session'
 
 # Vérifier les logs Render
 # Render Dashboard → Votre Service → Logs
@@ -256,7 +256,7 @@ curl https://teammove.onrender.com/api/session-test | jq '.session'
 
 #### Diagnostic
 ```bash
-curl https://teammove.onrender.com/api/db-test
+curl https://teammove.fr/api/db-test
 ```
 
 #### Solutions
@@ -312,7 +312,7 @@ curl https://teammove.onrender.com/api/db-test
 ```bash
 # Script de surveillance (à exécuter périodiquement)
 #!/bin/bash
-response=$(curl -s https://teammove.onrender.com/api/health)
+response=$(curl -s https://teammove.fr/api/health)
 if [[ $response == *"healthy"* ]]; then
   echo "✅ $(date): Service is healthy"
 else
@@ -441,7 +441,7 @@ Si vous avez suivi ce guide, votre application TeamMove devrait maintenant fonct
 ✅ **Monitoring intégré** - Endpoints de diagnostic
 ✅ **Performance optimisée** - Configuration adaptée à Render
 
-**URL de votre application** : https://teammove.onrender.com
+**URL de votre application** : https://teammove.fr
 
 ---
 

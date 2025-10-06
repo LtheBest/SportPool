@@ -6,7 +6,7 @@ export const config = {
     if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
       // Check if we want to use local backend (useful for development)
       const useLocalBackend = localStorage.getItem('useLocalBackend') === 'true';
-      return useLocalBackend ? 'http://localhost:8080' : 'https://teammove.onrender.com';
+      return useLocalBackend ? 'http://localhost:8080' : 'https://teammove.fr';
     }
     
     // En production ou preview, utiliser l'URL courante (même domaine)
@@ -15,7 +15,7 @@ export const config = {
     }
     
     // Fallback pour SSR ou environnements sans window
-    return 'https://teammove.onrender.com';
+    return 'https://teammove.fr';
   })(),
 
   // Configuration pour différents environnements
@@ -26,7 +26,7 @@ export const config = {
   environments: {
     development: {
       apiUrl: 'http://localhost:8080',
-      renderApiUrl: 'https://teammove.onrender.com',
+      renderApiUrl: 'https://teammove.fr',
       wsUrl: 'ws://localhost:8080'
     },
     production: {

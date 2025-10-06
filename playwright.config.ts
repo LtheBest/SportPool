@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'https://teammove.onrender.com',
+    baseURL: 'https://teammove.fr',
     trace: 'on-first-retry',
   },
 
@@ -31,7 +31,7 @@ export default defineConfig({
 
   webServer: {
     command: 'npm run dev',
-    url: 'https://teammove.onrender.com',
+    url: 'https://teammove.fr',
     reuseExistingServer: !process.env.CI,
   },
 });

@@ -89,8 +89,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'http://localhost:8080',
         
         // Production Render
-        'https://teammove.fr/',
-        'https://teammove.onrender.com',
+        'https://teammove.fr',
+        'https://teammove.fr',
         process.env.APP_URL,
         process.env.RENDER_EXTERNAL_URL,
         // Vercel fallback si nécessaire
@@ -352,7 +352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // For paid plans, create Stripe checkout session
-      const baseUrl = process.env.APP_URL || 'https://teammove.onrender.com';
+      const baseUrl = process.env.APP_URL || 'https://teammove.fr';
       
       try {
         const checkoutSession = await StripeServiceNew.createCheckoutSession({
@@ -1243,7 +1243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Organization not found" });
       }
 
-      const eventLink = `${process.env.APP_URL || 'https://teammove.onrender.com'}/events/${event.id}`;
+      const eventLink = `${process.env.APP_URL || 'https://teammove.fr'}/events/${event.id}`;
 
       const sent = await emailService.sendEventInvitationWithLink(
         email,
@@ -2732,7 +2732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/sitemap.xml", async (_req, res) => {
     try {
       const events = await storage.getEvents();
-      const baseUrl = process.env.APP_URL || "https://teammove.onrender.com";
+      const baseUrl = process.env.APP_URL || "https://teammove.fr";
       
       let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

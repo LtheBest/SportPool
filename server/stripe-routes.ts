@@ -45,7 +45,7 @@ export function registerStripeRoutes(app: Express): void {
         });
       }
 
-      const baseUrl = process.env.APP_URL || 'https://teammove.onrender.com';
+      const baseUrl = process.env.APP_URL || 'https://teammove.fr';
       
       const sessionDetails = await StripeServiceNew.createCheckoutSession({
         organizationId,
@@ -117,7 +117,7 @@ export function registerStripeRoutes(app: Express): void {
         });
       }
 
-      const baseUrl = process.env.APP_URL || 'https://teammove.onrender.com';
+      const baseUrl = process.env.APP_URL || 'https://teammove.fr';
       
       const sessionDetails = await StripeServiceNew.createCheckoutSession({
         organizationId: authReq.user.organizationId,
