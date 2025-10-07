@@ -98,6 +98,12 @@ export interface IStorage {
   getEmailReplyToken(token: string): Promise<EmailReplyToken | undefined>;
   deactivateEmailReplyToken(token: string): Promise<void>;
   getReplyTokenData(token: string): Promise<any>;
+
+  // Admin user management
+  getAllUsers(): Promise<Organization[]>;
+  getEventsCountByOrganization(organizationId: string): Promise<number>;
+  deleteUserCompletely(userId: string): Promise<void>;
+  getOrganizationById(id: string): Promise<Organization | undefined>;
   markReplyTokenAsUsed(token: string): Promise<void>;
 
   // Subscription limits
@@ -695,6 +701,93 @@ export class DatabaseStorage implements IStorage {
       activeSubscriptions: stats.activeSubscriptions,
       newSubscriptions: stats.newSubscriptions
     });
+  }
+}
+
+  // ========================================
+  // NOUVELLES MÉTHODES POUR L'ADMIN
+  // ========================================
+
+  async getAllUsers(): Promise<Organization[]> {
+    return await db
+      .select()
+      .from(organizations)
+      .orderBy(desc(organizations.createdAt));
+  }
+
+  async getEventsCountByOrganization(organizationId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql`COUNT(*)` })
+      .from(events)
+      .where(eq(events.organizationId, organizationId));
+    
+    return Number(result[0]?.count || 0);
+  }
+
+  async deleteUserCompletely(userId: string): Promise<void> {
+    try {
+      // Commencer une transaction
+      await db.transaction(async (tx) => {
+        // 1. Supprimer tous les messages liés aux événements de l'utilisateur
+        const userEvents = await tx
+          .select({ id: events.id })
+          .from(events)
+          .where(eq(events.organizationId, userId));
+        
+        const eventIds = userEvents.map(event => event.id);
+        
+        if (eventIds.length > 0) {
+          // Supprimer les messages des événements
+          await tx.delete(messages)
+            .where(sql`${messages.eventId} IN (${eventIds.join(',')})`);
+          
+          // Supprimer les participants des événements
+          await tx.delete(eventParticipants)
+            .where(sql`${eventParticipants.eventId} IN (${eventIds.join(',')})`);
+          
+          // Supprimer les invitations des événements
+          await tx.delete(eventInvitations)
+            .where(sql`${eventInvitations.eventId} IN (${eventIds.join(',')})`);
+          
+          // Supprimer les demandes de changement de participant
+          await tx.delete(participantChangeRequests)
+            .where(sql`${participantChangeRequests.eventId} IN (${eventIds.join(',')})`);
+        }
+        
+        // 2. Supprimer tous les événements de l'utilisateur
+        await tx.delete(events)
+          .where(eq(events.organizationId, userId));
+        
+        // 3. Supprimer les participations de l'utilisateur à d'autres événements
+        await tx.delete(eventParticipants)
+          .where(eq(eventParticipants.organizationId, userId));
+        
+        // 4. Supprimer les notifications de l'utilisateur
+        await tx.delete(notifications)
+          .where(eq(notifications.organizationId, userId));
+        
+        // 5. Supprimer les tokens de réinitialisation de mot de passe
+        await tx.delete(passwordResetTokens)
+          .where(eq(passwordResetTokens.organizationId, userId));
+        
+        // 6. Supprimer les tokens de réponse par email
+        await tx.delete(emailReplyTokens)
+          .where(eq(emailReplyTokens.organizationId, userId));
+        
+        // 7. Enfin, supprimer l'utilisateur/organisation
+        await tx.delete(organizations)
+          .where(eq(organizations.id, userId));
+      });
+      
+      console.log(`✅ Utilisateur ${userId} et toutes ses données supprimés avec succès`);
+    } catch (error) {
+      console.error(`❌ Erreur lors de la suppression complète de l'utilisateur ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  async getOrganizationById(id: string): Promise<Organization | undefined> {
+    return this.getOrganization(id);
   }
 }
 

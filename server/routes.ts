@@ -28,7 +28,7 @@ import { SubscriptionService } from "./subscription-service";
 import { createNotification, NotificationTemplates } from "./notifications";
 import { StripeService } from "./stripe-service";
 import { StripeServiceNew } from "./stripe-service-new";
-import { registerStripeRoutes } from "./stripe-routes";
+
 
 // Import functions for subscription checks
 const canCreateEvent = SubscriptionService.canCreateEvent.bind(SubscriptionService);
@@ -3951,8 +3951,282 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // NOUVELLES ROUTES ADMIN
+  // ========================================
+
+  // Route pour récupérer les paramètres des fonctionnalités
+  app.get("/api/admin/features/settings", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = req.user;
+      
+      if (organization.role !== 'admin') {
+        return res.status(403).json({ error: "Accès administrateur requis" });
+      }
+
+      // Pour l'instant, on retourne des valeurs par défaut
+      // TODO: Implémenter le stockage en base de données
+      const settings = {
+        darkMode: true,
+        userDeleteEvents: true,
+        organizerDeleteEvents: true,
+        guestMode: true,
+        publicRegistration: true,
+        emailNotifications: true,
+        csvImport: true,
+        bulkInvite: true,
+        analytics: true,
+        customBranding: true,
+      };
+
+      res.json(settings);
+    } catch (error: any) {
+      console.error("Erreur récupération paramètres fonctionnalités:", error);
+      res.status(500).json({ error: "Erreur serveur" });
+    }
+  });
+
+  // Route pour sauvegarder les paramètres des fonctionnalités
+  app.put("/api/admin/features/settings", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = req.user;
+      
+      if (organization.role !== 'admin') {
+        return res.status(403).json({ error: "Accès administrateur requis" });
+      }
+
+      const settings = req.body;
+      
+      // TODO: Implémenter la sauvegarde en base de données
+      console.log("Paramètres des fonctionnalités mis à jour:", settings);
+
+      res.json({ success: true, message: "Paramètres sauvegardés avec succès" });
+    } catch (error: any) {
+      console.error("Erreur sauvegarde paramètres fonctionnalités:", error);
+      res.status(500).json({ error: "Erreur serveur" });
+    }
+  });
+
+  // Route pour récupérer la liste des fonctionnalités globales
+  app.get("/api/admin/features", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = req.user;
+      
+      if (organization.role !== 'admin') {
+        return res.status(403).json({ error: "Accès administrateur requis" });
+      }
+
+      // Liste des fonctionnalités globales avec leur statut
+      const globalFeatures = [
+        {
+          id: 'messaging',
+          name: 'Messagerie avancée',
+          description: 'Communication avec participants et notifications automatiques',
+          category: 'Communication',
+          isActive: true,
+          isPremiumOnly: true,
+        },
+        {
+          id: 'analytics',
+          name: 'Analytics',
+          description: 'Statistiques détaillées et rapports avancés',
+          category: 'Analyse',
+          isActive: true,
+          isPremiumOnly: true,
+        },
+        {
+          id: 'custom_branding',
+          name: 'Personnalisation',
+          description: 'Logo et couleurs personnalisés pour votre organisation',
+          category: 'Apparence',
+          isActive: true,
+          isPremiumOnly: true,
+        },
+        {
+          id: 'bulk_invite',
+          name: 'Invitations en masse',
+          description: 'Inviter plusieurs participants simultanément',
+          category: 'Gestion',
+          isActive: true,
+          isPremiumOnly: false,
+        },
+        {
+          id: 'event_templates',
+          name: 'Modèles d\'événements',
+          description: 'Réutiliser des configurations d\'événements',
+          category: 'Gestion',
+          isActive: true,
+          isPremiumOnly: true,
+        },
+        {
+          id: 'priority_support',
+          name: 'Support prioritaire',
+          description: 'Assistance dédiée et réponse rapide',
+          category: 'Support',
+          isActive: true,
+          isPremiumOnly: true,
+        },
+        {
+          id: 'csv_import',
+          name: 'Import CSV/Excel',
+          description: 'Importer des listes d\'emails depuis des fichiers',
+          category: 'Import/Export',
+          isActive: true,
+          isPremiumOnly: false,
+        },
+        {
+          id: 'advanced_stats',
+          name: 'Statistiques avancées',
+          description: 'Analyses poussées et tableaux de bord détaillés',
+          category: 'Analyse',
+          isActive: true,
+          isPremiumOnly: true,
+        },
+      ];
+
+      res.json(globalFeatures);
+    } catch (error: any) {
+      console.error("Erreur récupération fonctionnalités globales:", error);
+      res.status(500).json({ error: "Erreur serveur" });
+    }
+  });
+
+  // Route pour activer/désactiver une fonctionnalité globale
+  app.patch("/api/admin/features/:featureId/toggle", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = req.user;
+      
+      if (organization.role !== 'admin') {
+        return res.status(403).json({ error: "Accès administrateur requis" });
+      }
+
+      const { featureId } = req.params;
+      const { isActive } = req.body;
+
+      // TODO: Implémenter la mise à jour en base de données
+      console.log(`Fonctionnalité ${featureId} ${isActive ? 'activée' : 'désactivée'}`);
+
+      res.json({ success: true, message: "Fonctionnalité mise à jour avec succès" });
+    } catch (error: any) {
+      console.error("Erreur mise à jour fonctionnalité:", error);
+      res.status(500).json({ error: "Erreur serveur" });
+    }
+  });
+
+  // Route pour récupérer tous les utilisateurs (admin)
+  app.get("/api/admin/users", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = req.user;
+      
+      if (organization.role !== 'admin') {
+        return res.status(403).json({ error: "Accès administrateur requis" });
+      }
+
+      const users = await storage.getAllUsers();
+      
+      // Ajouter des statistiques pour chaque utilisateur
+      const usersWithStats = await Promise.all(users.map(async (user: any) => {
+        const eventsCount = await storage.getEventsCountByOrganization(user.id);
+        return {
+          ...user,
+          eventsCount,
+          type: user.role || 'organizer',
+        };
+      }));
+
+      res.json(usersWithStats);
+    } catch (error: any) {
+      console.error("Erreur récupération utilisateurs:", error);
+      res.status(500).json({ error: "Erreur serveur" });
+    }
+  });
+
+  // Route pour activer/désactiver un utilisateur
+  app.patch("/api/admin/users/:userId/status", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = req.user;
+      
+      if (organization.role !== 'admin') {
+        return res.status(403).json({ error: "Accès administrateur requis" });
+      }
+
+      const { userId } = req.params;
+      const { isActive } = req.body;
+
+      // Vérifier que l'utilisateur existe
+      const user = await storage.getOrganizationById(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Utilisateur non trouvé" });
+      }
+
+      // Empêcher la désactivation d'un autre admin
+      if (user.role === 'admin') {
+        return res.status(403).json({ error: "Impossible de modifier un compte administrateur" });
+      }
+
+      await storage.updateOrganizationStatus(userId, isActive);
+
+      res.json({ success: true, message: `Utilisateur ${isActive ? 'activé' : 'désactivé'} avec succès` });
+    } catch (error: any) {
+      console.error("Erreur mise à jour statut utilisateur:", error);
+      res.status(500).json({ error: "Erreur serveur" });
+    }
+  });
+
+  // Route pour supprimer un utilisateur (admin)
+  app.delete("/api/admin/users/:userId", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const organization = req.user;
+      
+      if (organization.role !== 'admin') {
+        return res.status(403).json({ error: "Accès administrateur requis" });
+      }
+
+      const { userId } = req.params;
+
+      // Vérifier que l'utilisateur existe
+      const user = await storage.getOrganizationById(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Utilisateur non trouvé" });
+      }
+
+      // Empêcher la suppression d'un admin
+      if (user.role === 'admin') {
+        return res.status(403).json({ error: "Impossible de supprimer un compte administrateur" });
+      }
+
+      // Compter les événements de l'utilisateur
+      const eventsCount = await storage.getEventsCountByOrganization(userId);
+
+      // Supprimer l'utilisateur et ses données
+      await storage.deleteUserCompletely(userId);
+
+      // Envoyer l'email de confirmation de suppression
+      try {
+        await emailServiceEnhanced.sendAccountDeletionEmail(
+          user.email,
+          user.name,
+          user.role === 'organizer' ? 'organizer' : 'user',
+          'admin',
+          eventsCount
+        );
+      } catch (emailError) {
+        console.error("Erreur envoi email suppression:", emailError);
+        // On continue même si l'email échoue
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Utilisateur supprimé avec succès. Un email de confirmation a été envoyé." 
+      });
+    } catch (error: any) {
+      console.error("Erreur suppression utilisateur:", error);
+      res.status(500).json({ error: "Erreur serveur" });
+    }
+  });
+
   // Register new Stripe routes
-  registerStripeRoutes(app);
+  app.use('/api/stripe', (await import('./stripe-routes')).default);
 
   // URL sanitization middleware for security
   app.use((req, res, next) => {

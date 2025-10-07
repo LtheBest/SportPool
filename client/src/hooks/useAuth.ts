@@ -65,6 +65,10 @@ export class AuthService {
   }
 
   static getQueryClient() {
+    if (!this.queryClient) {
+      console.warn('QueryClient not available in AuthService');
+      return null;
+    }
     return this.queryClient;
   }
 
@@ -111,7 +115,7 @@ export class AuthService {
       });
 
       // Invalider les requêtes d'auth pour forcer un rechargement
-      const currentQueryClient = this.queryClient || this.getQueryClient();
+      const currentQueryClient = this.getQueryClient();
       if (currentQueryClient) {
         try {
           await currentQueryClient.invalidateQueries({ queryKey: ["/api/me"] });
@@ -150,7 +154,7 @@ export class AuthService {
       });
 
       // Invalider les requêtes d'auth pour forcer un rechargement
-      const currentQueryClient = this.queryClient || this.getQueryClient();
+      const currentQueryClient = this.getQueryClient();
       if (currentQueryClient) {
         try {
           await currentQueryClient.invalidateQueries({ queryKey: ["/api/me"] });
@@ -181,7 +185,7 @@ export class AuthService {
     
     try {
       // Invalider toutes les requêtes d'auth avant de supprimer les tokens
-      const currentQueryClient = this.queryClient || this.getQueryClient();
+      const currentQueryClient = this.getQueryClient();
       if (currentQueryClient) {
         await currentQueryClient.clear();
       }
@@ -234,7 +238,9 @@ export function useAuth() {
   try {
     queryClient = useQueryClient();
     // Set query client for AuthService (ensure it's always set)
-    AuthService.setQueryClient(queryClient);
+    if (queryClient) {
+      AuthService.setQueryClient(queryClient);
+    }
   } catch (error) {
     console.warn("QueryClient not available in useAuth:", error);
     queryError = error as Error;

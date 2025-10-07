@@ -25,6 +25,8 @@
     "test:all": "npm run test && npm run test:e2e",
     "test:render": "node server-render-dev.js",
     "playwright:install": "playwright install",
+    "stripe:setup-prices": "tsx scripts/setup-stripe-prices.ts",
+    "stripe:test": "curl -H \"Authorization: Bearer $STRIPE_SECRET_KEY\" https://api.stripe.com/v1/customers",
     "prepare": "if [ \"$NODE_ENV\" != \"production\" ]; then husky install; fi"
   },
   "dependencies": {

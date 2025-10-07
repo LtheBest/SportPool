@@ -5,12 +5,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { 
-  SubscriptionCheckout, 
-  useSubscriptionPlans 
-} from '../components/subscription/SubscriptionCheckout';
-import { StripePaymentForm } from '../components/subscription/StripePaymentForm';
-import { SubscriptionPlan } from '../components/subscription/SubscriptionPlan';
+import SubscriptionPlans from '../components/subscription/SubscriptionPlans';
 import { 
   ArrowLeft, 
   CheckCircle, 

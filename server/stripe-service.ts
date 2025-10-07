@@ -1,464 +1,368 @@
 import Stripe from 'stripe';
+import { Request, Response } from 'express';
 
-let stripe: Stripe | null = null;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-06-20',
+});
 
-function getStripeClient(): Stripe {
-  if (!stripe) {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error('STRIPE_SECRET_KEY is not configured. Please set this environment variable to use payment features.');
+// Plans d'abonnement disponibles
+export const SUBSCRIPTION_PLANS = {
+  DISCOVERY: {
+    id: 'discovery',
+    name: 'Découverte',
+    price: 0,
+    priceId: null, // Plan gratuit
+    features: [
+      'Création d\'événements limitée (3/mois)',
+      'Jusqu\'à 20 participants par événement',
+      'Support par email',
+      'Fonctionnalités de base'
+    ],
+    limits: {
+      eventsPerMonth: 3,
+      participantsPerEvent: 20,
+      storageGB: 1
     }
-    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-08-27.basil',
-    });
+  },
+  STARTER: {
+    id: 'starter',
+    name: 'Starter',
+    price: 1999, // 19.99€ en centimes
+    priceId: 'price_starter_monthly', // À créer dans Stripe
+    features: [
+      'Création d\'événements illimitée',
+      'Jusqu\'à 100 participants par événement',
+      'Messagerie avancée',
+      'Import CSV',
+      'Statistiques de base',
+      'Support prioritaire'
+    ],
+    limits: {
+      eventsPerMonth: -1, // Illimité
+      participantsPerEvent: 100,
+      storageGB: 10
+    }
+  },
+  PROFESSIONAL: {
+    id: 'professional',
+    name: 'Professionnel',
+    price: 4999, // 49.99€ en centimes
+    priceId: 'price_professional_monthly', // À créer dans Stripe
+    features: [
+      'Tout du plan Starter',
+      'Participants illimités',
+      'Personnalisation avancée',
+      'Branding personnalisé',
+      'Analytics avancées',
+      'Support téléphonique',
+      'API Access'
+    ],
+    limits: {
+      eventsPerMonth: -1, // Illimité
+      participantsPerEvent: -1, // Illimité
+      storageGB: 100
+    }
+  },
+  ENTERPRISE: {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 9999, // 99.99€ en centimes
+    priceId: 'price_enterprise_monthly', // À créer dans Stripe
+    features: [
+      'Tout du plan Professionnel',
+      'Multi-organisation',
+      'Intégrations personnalisées',
+      'Support dédié 24/7',
+      'Formation personnalisée',
+      'SLA garanti'
+    ],
+    limits: {
+      eventsPerMonth: -1, // Illimité
+      participantsPerEvent: -1, // Illimité
+      storageGB: -1 // Illimité
+    }
   }
-  return stripe;
-}
-
-export interface CreateCheckoutSessionParams {
-  mode: 'payment' | 'subscription';
-  priceData: {
-    currency: string;
-    product_data: {
-      name: string;
-      description: string;
-    };
-    unit_amount: number;
-    recurring?: {
-      interval: 'day' | 'week' | 'month' | 'year';
-    };
-  };
-  quantity: number;
-  successUrl: string;
-  cancelUrl: string;
-  metadata: {
-    organizationId: string;
-    planId: string;
-    planType: string;
-  };
-  customerEmail?: string;
-}
+};
 
 export class StripeService {
   
-  // Créer une session de checkout moderne
-  static async createCheckoutSession(params: CreateCheckoutSessionParams): Promise<{ id: string; url: string | null }> {
-    try {
-      const sessionConfig: Stripe.Checkout.SessionCreateParams = {
-        payment_method_types: ['card'],
-        mode: params.mode,
-        success_url: params.successUrl,
-        cancel_url: params.cancelUrl,
-        metadata: params.metadata,
-        allow_promotion_codes: true,
-        billing_address_collection: 'auto',
-        automatic_tax: {
-          enabled: true,
-        },
-        customer_creation: 'if_required',
-      };
-
-      // Configuration des line items selon le mode
-      if (params.mode === 'payment') {
-        // Paiement unique pour les packs événementiels
-        sessionConfig.line_items = [{
-          price_data: params.priceData,
-          quantity: params.quantity,
-        }];
-
-        sessionConfig.payment_intent_data = {
-          description: `${params.priceData.product_data.name} - TeamMove`,
-          metadata: params.metadata,
-        };
-      } else {
-        // Abonnement pour les formules Pro
-        if (!params.priceData.recurring) {
-          throw new Error('Recurring configuration required for subscription mode');
-        }
-
-        sessionConfig.line_items = [{
-          price_data: params.priceData,
-          quantity: params.quantity,
-        }];
-
-        sessionConfig.subscription_data = {
-          description: `${params.priceData.product_data.name} - TeamMove`,
-          metadata: params.metadata,
-          trial_period_days: 0, // Pas d'essai gratuit pour le moment
-        };
-      }
-
-      // Ajouter l'email du client s'il est fourni
-      if (params.customerEmail) {
-        sessionConfig.customer_email = params.customerEmail;
-      }
-
-      const session = await getStripeClient().checkout.sessions.create(sessionConfig);
-
-      return { 
-        id: session.id,
-        url: session.url || null
-      };
-    } catch (error: any) {
-      console.error('Erreur création session Stripe:', error);
-      throw new Error(`Erreur Stripe: ${error.message}`);
-    }
-  }
-
-  // Récupérer une session de checkout
-  static async getSession(sessionId: string): Promise<Stripe.Checkout.Session> {
-    try {
-      return await getStripeClient().checkout.sessions.retrieve(sessionId, {
-        expand: ['payment_intent', 'subscription']
-      });
-    } catch (error: any) {
-      console.error('Erreur récupération session:', error);
-      throw new Error(`Erreur récupération session: ${error.message}`);
-    }
-  }
-
-  // Créer un customer Stripe
-  static async createCustomer(organizationId: string, email: string, name?: string): Promise<Stripe.Customer> {
-    try {
-      const customer = await getStripeClient().customers.create({
-        email: email,
-        name: name,
-        metadata: {
-          organizationId: organizationId,
-        },
-      });
-
-      return customer;
-    } catch (error: any) {
-      console.error('Erreur création customer:', error);
-      throw new Error(`Erreur customer: ${error.message}`);
-    }
-  }
-
-  // Rechercher ou créer un customer
-  static async findOrCreateCustomer(organizationId: string, email: string, name?: string): Promise<Stripe.Customer> {
-    try {
-      // Chercher un customer existant par email
-      const existingCustomers = await getStripeClient().customers.list({
-        email: email,
-        limit: 1,
-      });
-
-      if (existingCustomers.data.length > 0) {
-        const customer = existingCustomers.data[0];
-        
-        // Mettre à jour les métadonnées si nécessaire
-        if (customer.metadata?.organizationId !== organizationId) {
-          return await getStripeClient().customers.update(customer.id, {
-            metadata: {
-              organizationId: organizationId,
-            },
-          }) as Stripe.Customer;
-        }
-        
-        return customer;
-      }
-
-      // Créer un nouveau customer
-      return await this.createCustomer(organizationId, email, name);
-    } catch (error: any) {
-      console.error('Erreur recherche/création customer:', error);
-      throw error;
-    }
-  }
-
-  // Récupérer les informations d'abonnement
-  static async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
-    try {
-      return await getStripeClient().subscriptions.retrieve(subscriptionId, {
-        expand: ['default_payment_method', 'customer']
-      });
-    } catch (error: any) {
-      console.error('Erreur récupération abonnement:', error);
-      throw error;
-    }
-  }
-
-  // Annuler un abonnement
-  static async cancelSubscription(subscriptionId: string, immediately = false): Promise<Stripe.Subscription> {
-    try {
-      if (immediately) {
-        return await getStripeClient().subscriptions.cancel(subscriptionId);
-      } else {
-        return await getStripeClient().subscriptions.update(subscriptionId, {
-          cancel_at_period_end: true,
-        });
-      }
-    } catch (error: any) {
-      console.error('Erreur annulation abonnement:', error);
-      throw error;
-    }
-  }
-
-  // Créer un portail client pour la gestion de facturation
-  static async createCustomerPortal(customerId: string, returnUrl: string): Promise<{ url: string }> {
-    try {
-      const session = await getStripeClient().billingPortal.sessions.create({
-        customer: customerId,
-        return_url: returnUrl,
-      });
-
-      return { url: session.url };
-    } catch (error: any) {
-      console.error('Erreur création portail client:', error);
-      throw error;
-    }
-  }
-
-  // Récupérer les factures d'un client
-  static async getCustomerInvoices(customerId: string, limit = 10): Promise<Stripe.Invoice[]> {
-    try {
-      const invoices = await getStripeClient().invoices.list({
-        customer: customerId,
-        limit: limit,
-        expand: ['data.payment_intent']
-      });
-
-      return invoices.data;
-    } catch (error: any) {
-      console.error('Erreur récupération factures:', error);
-      throw error;
-    }
-  }
-
-  // Récupérer une facture spécifique
-  static async getInvoice(invoiceId: string): Promise<Stripe.Invoice> {
-    try {
-      return await getStripeClient().invoices.retrieve(invoiceId, {
-        expand: ['payment_intent', 'subscription', 'customer']
-      });
-    } catch (error: any) {
-      console.error('Erreur récupération facture:', error);
-      throw error;
-    }
-  }
-
-  // Générer une facture proforma pour prévisualisation
-  static async createProformaInvoice(customerId: string, items: any[]): Promise<Stripe.Invoice> {
-    try {
-      const invoice = await getStripeClient().invoices.create({
-        customer: customerId,
-        auto_advance: false, // Ne pas collecter automatiquement
-        collection_method: 'send_invoice',
-      });
-
-      // Ajouter les éléments de facturation
-      for (const item of items) {
-        await getStripeClient().invoiceItems.create({
-          customer: customerId,
-          invoice: invoice.id,
-          amount: item.amount,
-          currency: item.currency || 'eur',
-          description: item.description,
-        });
-      }
-
-      // Finaliser la facture pour calcul des taxes
-      return await getStripeClient().invoices.finalizeInvoice(invoice.id);
-    } catch (error: any) {
-      console.error('Erreur création facture proforma:', error);
-      throw error;
-    }
-  }
-
-  // Gérer les webhooks Stripe
-  static async handleWebhook(payload: string | Buffer, signature: string): Promise<void> {
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  /**
+   * Créer une session de checkout Stripe
+   */
+  static async createCheckoutSession(
+    planId: keyof typeof SUBSCRIPTION_PLANS,
+    customerId?: string,
+    successUrl?: string,
+    cancelUrl?: string
+  ): Promise<Stripe.Checkout.Session> {
+    const plan = SUBSCRIPTION_PLANS[planId];
     
-    if (!webhookSecret) {
-      console.warn('⚠️  STRIPE_WEBHOOK_SECRET non configuré - webhook ignoré');
+    if (!plan || !plan.priceId) {
+      throw new Error('Plan invalide ou indisponible pour le paiement');
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      customer: customerId,
+      line_items: [
+        {
+          price: plan.priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: successUrl || `${process.env.APP_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${process.env.APP_URL}/payment/cancelled`,
+      automatic_tax: { enabled: true },
+      tax_id_collection: { enabled: true },
+      customer_update: {
+        address: 'auto',
+        name: 'auto',
+      },
+      metadata: {
+        planId: plan.id,
+        planName: plan.name,
+      },
+    });
+
+    return session;
+  }
+
+  /**
+   * Créer un client Stripe
+   */
+  static async createCustomer(
+    email: string,
+    name?: string,
+    organizationId?: string
+  ): Promise<Stripe.Customer> {
+    const customer = await stripe.customers.create({
+      email,
+      name,
+      metadata: {
+        organizationId: organizationId || '',
+      },
+    });
+
+    return customer;
+  }
+
+  /**
+   * Récupérer les détails d'une session de checkout
+   */
+  static async getCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session> {
+    return await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['customer', 'subscription'],
+    });
+  }
+
+  /**
+   * Récupérer une souscription
+   */
+  static async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    return await stripe.subscriptions.retrieve(subscriptionId);
+  }
+
+  /**
+   * Annuler une souscription
+   */
+  static async cancelSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    return await stripe.subscriptions.cancel(subscriptionId);
+  }
+
+  /**
+   * Créer un portail de facturation
+   */
+  static async createBillingPortal(
+    customerId: string,
+    returnUrl?: string
+  ): Promise<Stripe.BillingPortal.Session> {
+    return await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl || process.env.APP_URL,
+    });
+  }
+
+  /**
+   * Webhook handler pour les événements Stripe
+   */
+  static async handleWebhook(req: Request, res: Response): Promise<void> {
+    const sig = req.headers['stripe-signature'] as string;
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+    let event: Stripe.Event;
+
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } catch (err: any) {
+      console.error('Webhook signature verification failed:', err.message);
+      res.status(400).send(`Webhook Error: ${err.message}`);
       return;
     }
 
     try {
-      const event = getStripeClient().webhooks.constructEvent(payload, signature, webhookSecret);
-
-      console.log(`📨 Webhook reçu: ${event.type} - ID: ${event.id}`);
-
       switch (event.type) {
         case 'checkout.session.completed':
-          await this.handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+          await StripeService.handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
           break;
-
-        case 'payment_intent.succeeded':
-          await this.handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
-          break;
-
-        case 'payment_intent.payment_failed':
-          await this.handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
-          break;
-
-        case 'payment_intent.created':
-          await this.handlePaymentIntentCreated(event.data.object as Stripe.PaymentIntent);
-          break;
-
-        case 'payment_method.attached':
-          await this.handlePaymentMethodAttached(event.data.object as Stripe.PaymentMethod);
-          break;
-
+        
         case 'invoice.payment_succeeded':
-          await this.handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
+          await StripeService.handlePaymentSucceeded(event.data.object as Stripe.Invoice);
           break;
-
+        
         case 'invoice.payment_failed':
-          await this.handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
+          await StripeService.handlePaymentFailed(event.data.object as Stripe.Invoice);
           break;
-
-        case 'customer.subscription.created':
-          await this.handleSubscriptionCreated(event.data.object as Stripe.Subscription);
-          break;
-
-        case 'customer.subscription.updated':
-          await this.handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
-          break;
-
+        
         case 'customer.subscription.deleted':
-          await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+          await StripeService.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
           break;
-
-        case 'customer.created':
-          await this.handleCustomerCreated(event.data.object as Stripe.Customer);
+        
+        case 'customer.subscription.updated':
+          await StripeService.handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
           break;
-
-        case 'customer.updated':
-          await this.handleCustomerUpdated(event.data.object as Stripe.Customer);
-          break;
-
+        
         default:
-          console.log(`ℹ️  Événement webhook non géré: ${event.type}`);
+          console.log(`Unhandled event type: ${event.type}`);
       }
-    } catch (error: any) {
-      console.error('❌ Erreur webhook Stripe:', error);
-      throw new Error(`Erreur webhook: ${error.message}`);
-    }
-  }
 
-  // Gestion des événements webhook
-  private static async handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
-    console.log('✅ Checkout session completed:', session.id);
-    
-    const organizationId = session.metadata?.organizationId;
-    const planId = session.metadata?.planId;
-    
-    if (!organizationId || !planId) {
-      console.error('❌ Métadonnées manquantes dans la session checkout');
-      return;
-    }
-
-    // Importer et utiliser le service d'abonnement pour traiter le paiement
-    try {
-      const { SubscriptionService } = await import('./subscription-service');
-      await SubscriptionService.handlePaymentSuccess(session.id, organizationId, planId);
+      res.json({ received: true });
     } catch (error) {
-      console.error('❌ Erreur traitement paiement réussi:', error);
+      console.error('Error handling webhook:', error);
+      res.status(500).json({ error: 'Webhook handler error' });
     }
   }
 
-  private static async handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent): Promise<void> {
-    console.log('💳 Payment succeeded:', paymentIntent.id);
-    // Logique additionnelle si nécessaire
+  /**
+   * Gérer la completion d'un checkout
+   */
+  private static async handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
+    console.log('Checkout completed:', session.id);
+    
+    // Ici, vous devrez implémenter la logique pour :
+    // 1. Récupérer l'organisation depuis la DB
+    // 2. Mettre à jour le plan de l'organisation
+    // 3. Activer les fonctionnalités correspondantes
+    // 4. Envoyer un email de confirmation
+    
+    const { planId } = session.metadata!;
+    const customerId = session.customer as string;
+    const subscriptionId = session.subscription as string;
+    
+    // TODO: Implémenter la mise à jour de la base de données
+    console.log(`Plan ${planId} activé pour le client ${customerId}, subscription: ${subscriptionId}`);
   }
 
-  private static async handlePaymentFailed(paymentIntent: Stripe.PaymentIntent): Promise<void> {
-    console.log('❌ Payment failed:', paymentIntent.id);
-    // Notifier l'utilisateur du paiement échoué
+  /**
+   * Gérer le succès d'un paiement
+   */
+  private static async handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+    console.log('Payment succeeded:', invoice.id);
+    
+    // TODO: Implémenter la logique de renouvellement d'abonnement
+    const customerId = invoice.customer as string;
+    const subscriptionId = invoice.subscription as string;
+    
+    console.log(`Paiement réussi pour le client ${customerId}, subscription: ${subscriptionId}`);
   }
 
-  private static async handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
-    console.log('📄 Invoice payment succeeded:', invoice.id);
-    // Traitement des paiements d'abonnement réussis
+  /**
+   * Gérer l'échec d'un paiement
+   */
+  private static async handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+    console.log('Payment failed:', invoice.id);
+    
+    // TODO: Implémenter la logique d'échec de paiement
+    // 1. Marquer l'organisation comme en défaut de paiement
+    // 2. Envoyer un email de notification
+    // 3. Désactiver certaines fonctionnalités si nécessaire
+    
+    const customerId = invoice.customer as string;
+    const subscriptionId = invoice.subscription as string;
+    
+    console.log(`Paiement échoué pour le client ${customerId}, subscription: ${subscriptionId}`);
   }
 
-  private static async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-    console.log('❌ Invoice payment failed:', invoice.id);
-    // Traitement des paiements d'abonnement échoués
-  }
-
-  private static async handleSubscriptionCreated(subscription: Stripe.Subscription): Promise<void> {
-    console.log('🆕 Subscription created:', subscription.id);
-    // Traitement de création d'abonnement
-  }
-
-  private static async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
-    console.log('🔄 Subscription updated:', subscription.id);
-    // Traitement de mise à jour d'abonnement
-  }
-
+  /**
+   * Gérer la suppression d'un abonnement
+   */
   private static async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
-    console.log('🗑️  Subscription deleted:', subscription.id);
-    // Traitement de suppression d'abonnement - rétrograder l'utilisateur
+    console.log('Subscription deleted:', subscription.id);
+    
+    // TODO: Implémenter la logique d'annulation
+    // 1. Rétrograder l'organisation au plan gratuit
+    // 2. Désactiver les fonctionnalités premium
+    // 3. Envoyer un email de confirmation
+    
+    const customerId = subscription.customer as string;
+    
+    console.log(`Abonnement annulé pour le client ${customerId}`);
   }
 
-  private static async handlePaymentIntentCreated(paymentIntent: Stripe.PaymentIntent): Promise<void> {
-    console.log('🆕 Payment Intent created:', paymentIntent.id);
-    // Peut être utilisé pour tracer les tentatives de paiement
+  /**
+   * Gérer la mise à jour d'un abonnement
+   */
+  private static async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
+    console.log('Subscription updated:', subscription.id);
+    
+    // TODO: Implémenter la logique de mise à jour
+    // 1. Mettre à jour le plan dans la DB
+    // 2. Ajuster les fonctionnalités disponibles
+    
+    const customerId = subscription.customer as string;
+    
+    console.log(`Abonnement mis à jour pour le client ${customerId}`);
   }
 
-  private static async handlePaymentMethodAttached(paymentMethod: Stripe.PaymentMethod): Promise<void> {
-    console.log('💳 Payment method attached:', paymentMethod.id);
-    // Traitement quand une méthode de paiement est attachée à un client
-  }
-
-  private static async handleCustomerCreated(customer: Stripe.Customer): Promise<void> {
-    console.log('👤 Customer created:', customer.id);
-    // Traitement lors de la création d'un nouveau client Stripe
-  }
-
-  private static async handleCustomerUpdated(customer: Stripe.Customer): Promise<void> {
-    console.log('👤 Customer updated:', customer.id);
-    // Traitement lors de la mise à jour d'un client
-  }
-
-  // Mode test/production
-  static isTestMode(): boolean {
-    const apiKey = process.env.STRIPE_SECRET_KEY || '';
-    return apiKey.includes('_test_') || apiKey.startsWith('sk_test_');
-  }
-
-  // Obtenir les clés publiques selon le mode
-  static getPublishableKey(): string {
-    if (this.isTestMode()) {
-      return process.env.STRIPE_PUBLISHABLE_TEST_KEY || 'pk_test_...';
-    }
-    return process.env.STRIPE_PUBLISHABLE_KEY || '';
-  }
-
-  // Vérifier la configuration Stripe
-  static async verifyConfiguration(): Promise<{ valid: boolean; mode: string; issues?: string[] }> {
+  /**
+   * Créer les prix dans Stripe (à exécuter une seule fois)
+   */
+  static async createPrices(): Promise<void> {
     try {
-      const issues: string[] = [];
-      
-      // Vérifier les clés d'API
-      if (!process.env.STRIPE_SECRET_KEY) {
-        issues.push('STRIPE_SECRET_KEY manquante');
-      }
+      // Prix pour le plan Starter
+      const starterPrice = await stripe.prices.create({
+        unit_amount: SUBSCRIPTION_PLANS.STARTER.price,
+        currency: 'eur',
+        recurring: { interval: 'month' },
+        product_data: {
+          name: SUBSCRIPTION_PLANS.STARTER.name,
+          description: 'Plan Starter - Fonctionnalités avancées pour les organisations',
+        },
+      });
+      console.log('Starter price created:', starterPrice.id);
 
-      const mode = this.isTestMode() ? 'test' : 'production';
+      // Prix pour le plan Professional
+      const professionalPrice = await stripe.prices.create({
+        unit_amount: SUBSCRIPTION_PLANS.PROFESSIONAL.price,
+        currency: 'eur',
+        recurring: { interval: 'month' },
+        product_data: {
+          name: SUBSCRIPTION_PLANS.PROFESSIONAL.name,
+          description: 'Plan Professionnel - Toutes les fonctionnalités avancées',
+        },
+      });
+      console.log('Professional price created:', professionalPrice.id);
 
-      // Test de connexion basique
-      try {
-        await getStripeClient().accounts.retrieve();
-      } catch (error) {
-        issues.push('Connexion à Stripe échouée');
-      }
+      // Prix pour le plan Enterprise
+      const enterprisePrice = await stripe.prices.create({
+        unit_amount: SUBSCRIPTION_PLANS.ENTERPRISE.price,
+        currency: 'eur',
+        recurring: { interval: 'month' },
+        product_data: {
+          name: SUBSCRIPTION_PLANS.ENTERPRISE.name,
+          description: 'Plan Enterprise - Solution complète pour grandes organisations',
+        },
+      });
+      console.log('Enterprise price created:', enterprisePrice.id);
 
-      return {
-        valid: issues.length === 0,
-        mode,
-        issues: issues.length > 0 ? issues : undefined
-      };
-    } catch (error: any) {
-      return {
-        valid: false,
-        mode: 'unknown',
-        issues: [error.message]
-      };
+      console.log('\n=== MISE À JOUR NÉCESSAIRE ===');
+      console.log('Veuillez mettre à jour les priceId dans SUBSCRIPTION_PLANS:');
+      console.log(`STARTER.priceId: "${starterPrice.id}"`);
+      console.log(`PROFESSIONAL.priceId: "${professionalPrice.id}"`);
+      console.log(`ENTERPRISE.priceId: "${enterprisePrice.id}"`);
+    } catch (error) {
+      console.error('Error creating prices:', error);
     }
   }
 }
 
-export { stripe };
+export default StripeService;

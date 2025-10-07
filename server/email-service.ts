@@ -442,6 +442,157 @@ export class EmailService {
     }
   }
 
+  // Envoyer email de confirmation de suppression de compte
+  static async sendAccountDeletionEmail(
+    userEmail: string,
+    userName: string,
+    userType: 'user' | 'organizer',
+    deletedBy: 'admin' | 'self',
+    eventsCount?: number
+  ): Promise<void> {
+    try {
+      const template = this.getAccountDeletionEmailTemplate(userName, userType, deletedBy, eventsCount);
+      
+      const msg = {
+        to: userEmail,
+        from: {
+          email: FROM_EMAIL,
+          name: FROM_NAME
+        },
+        subject: template.subject,
+        html: this.createEmailTemplate(template.html),
+        text: template.text,
+      };
+
+      await sgMail.send(msg);
+      console.log(`✅ Email de suppression de compte envoyé à: ${userEmail}`);
+    } catch (error) {
+      console.error('❌ Erreur envoi email suppression compte:', error);
+      throw error;
+    }
+  }
+
+  // Générer le template d'email de suppression de compte
+  private static getAccountDeletionEmailTemplate(
+    userName: string,
+    userType: 'user' | 'organizer',
+    deletedBy: 'admin' | 'self',
+    eventsCount?: number
+  ): EmailTemplate {
+    const userTypeText = userType === 'organizer' ? 'organisateur' : 'utilisateur';
+    const deletedByText = deletedBy === 'admin' ? 'par un administrateur' : 'à votre demande';
+    
+    const subject = `Confirmation de suppression de votre compte TeamMove`;
+    
+    const html = `
+      <div style="text-align: center; padding: 20px 0;">
+        <div style="font-size: 64px; margin-bottom: 20px;">👋</div>
+        <h2 style="color: #dc2626;">Votre compte TeamMove a été supprimé</h2>
+      </div>
+
+      <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0; border-radius: 8px;">
+        <h3 style="color: #dc2626; margin-top: 0;">⚠️ Suppression confirmée</h3>
+        <p><strong>Bonjour ${userName},</strong></p>
+        <p>Nous vous confirmons que votre compte ${userTypeText} TeamMove a été supprimé ${deletedByText} le ${format(new Date(), 'dd MMMM yyyy à HH:mm', { locale: fr })}.</p>
+      </div>
+
+      <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="color: #374151; margin-top: 0;">📋 Récapitulatif des données supprimées :</h3>
+        <ul style="color: #6b7280; margin: 0; padding-left: 20px;">
+          <li>Informations personnelles et de contact</li>
+          <li>Paramètres et préférences de compte</li>
+          ${eventsCount && eventsCount > 0 ? `<li>${eventsCount} événement(s) créé(s) et leurs données associées</li>` : ''}
+          <li>Historique des participations aux événements</li>
+          <li>Messages et communications</li>
+          <li>Données de connexion et d'authentification</li>
+        </ul>
+      </div>
+
+      ${deletedBy === 'admin' ? `
+        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 8px;">
+          <h3 style="color: #92400e; margin-top: 0;">ℹ️ Suppression administrative</h3>
+          <p style="color: #92400e;">
+            Votre compte a été supprimé par un administrateur TeamMove. Si vous pensez qu'il s'agit d'une erreur 
+            ou si vous souhaitez plus d'informations sur les raisons de cette suppression, 
+            vous pouvez contacter notre équipe support.
+          </p>
+        </div>
+      ` : `
+        <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 8px;">
+          <h3 style="color: #065f46; margin-top: 0;">✅ Suppression à votre demande</h3>
+          <p style="color: #065f46;">
+            Votre demande de suppression de compte a été traitée conformément à vos souhaits.
+          </p>
+        </div>
+      `}
+
+      <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 30px 0;">
+        <h3 style="color: #475569; margin-top: 0;">🔒 Confidentialité et sécurité</h3>
+        <p style="color: #64748b; margin-bottom: 15px;">
+          Conformément au RGPD et à nos engagements de confidentialité :
+        </p>
+        <ul style="color: #64748b; margin: 0; padding-left: 20px;">
+          <li>Toutes vos données personnelles ont été définitivement supprimées</li>
+          <li>Les sauvegardes contenant vos données seront automatiquement purgées</li>
+          <li>Votre adresse email a été ajoutée à notre liste d'exclusion</li>
+          <li>Aucune réactivation automatique n'est possible</li>
+        </ul>
+      </div>
+
+      <div style="background-color: #e0f2fe; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: center;">
+        <h3 style="color: #0277bd; margin-top: 0;">💙 Nous vous remercions</h3>
+        <p style="color: #01579b;">
+          Merci d'avoir fait confiance à TeamMove pour l'organisation de vos événements sportifs. 
+          Nous espérons avoir contribué positivement à vos activités.
+        </p>
+        ${deletedBy === 'self' ? `
+          <p style="color: #01579b;">
+            Si vous changez d'avis à l'avenir, vous êtes toujours le bienvenu pour créer un nouveau compte.
+          </p>
+        ` : ''}
+      </div>
+
+      <div style="text-align: center; padding: 20px 0; border-top: 1px solid #e5e7eb; margin-top: 30px;">
+        <p style="color: #6b7280; margin-bottom: 15px;">
+          <strong>Besoin d'aide ou de renseignements ?</strong>
+        </p>
+        <p style="color: #6b7280;">
+          📧 support@teammove.fr<br>
+          🌐 <a href="${process.env.APP_URL || 'https://teammove.fr'}" style="color: #667eea;">teammove.fr</a>
+        </p>
+      </div>
+    `;
+
+    const text = `
+Votre compte TeamMove a été supprimé
+
+Bonjour ${userName},
+
+Nous vous confirmons que votre compte ${userTypeText} TeamMove a été supprimé ${deletedByText} le ${format(new Date(), 'dd MMMM yyyy à HH:mm', { locale: fr })}.
+
+Données supprimées :
+- Informations personnelles et de contact
+- Paramètres et préférences de compte
+${eventsCount && eventsCount > 0 ? `- ${eventsCount} événement(s) créé(s) et leurs données associées\n` : ''}- Historique des participations aux événements
+- Messages et communications
+- Données de connexion et d'authentification
+
+${deletedBy === 'admin' ? 
+  'Votre compte a été supprimé par un administrateur TeamMove. Pour plus d\'informations, contactez support@teammove.fr' :
+  'Votre demande de suppression de compte a été traitée conformément à vos souhaits.'
+}
+
+Conformément au RGPD, toutes vos données personnelles ont été définitivement supprimées.
+
+Merci d'avoir fait confiance à TeamMove.
+
+Support: support@teammove.fr
+Site: ${process.env.APP_URL || 'https://teammove.fr'}
+    `;
+
+    return { subject, html, text };
+  }
+
 
 
   // Méthodes utilitaires pour les emails d'abonnement
