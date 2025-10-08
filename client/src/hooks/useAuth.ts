@@ -228,33 +228,10 @@ export class AuthService {
 }
 
 export function useAuth() {
-  let queryClient: ReturnType<typeof useQueryClient> | null = null;
-  let queryError: Error | null = null;
+  const queryClient = useQueryClient();
   
-  try {
-    queryClient = useQueryClient();
-    // Set query client for AuthService (ensure it's always set)
-    AuthService.setQueryClient(queryClient);
-  } catch (error) {
-    console.warn("QueryClient not available in useAuth:", error);
-    queryError = error as Error;
-  }
-
-  // If queryClient is not available, return basic authentication state
-  if (!queryClient || queryError) {
-    const hasToken = !!TokenManager.getAccessToken();
-    const basicIsAuth = hasToken && AuthService.isAuthenticated();
-    
-    return {
-      organization: null,
-      isLoading: false,
-      isAuthenticated: basicIsAuth,
-      login: AuthService.login,
-      register: AuthService.register,
-      logout: AuthService.logout,
-      refreshToken: AuthService.refreshAccessToken,
-    };
-  }
+  // Set query client for AuthService (ensure it's always set)
+  AuthService.setQueryClient(queryClient);
 
   const { data: organization, isLoading, error } = useQuery({
     queryKey: ["/api/me"],

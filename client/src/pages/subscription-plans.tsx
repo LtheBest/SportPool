@@ -10,7 +10,6 @@ import {
   useSubscriptionPlans 
 } from '../components/subscription/SubscriptionCheckout';
 import { StripePaymentForm } from '../components/subscription/StripePaymentForm';
-import { SubscriptionPlan } from '../components/subscription/SubscriptionPlan';
 import { 
   ArrowLeft, 
   CheckCircle, 
@@ -24,7 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../hooks/useAuth';
-import { api } from '../lib/api';
+// Removed api import as we're using direct fetch calls now
 
 // Types
 interface CurrentSubscription {
@@ -61,7 +60,9 @@ export default function SubscriptionPlansPage({
   useEffect(() => {
     const fetchCurrentSubscription = async () => {
       try {
-        const response = await api.subscription.getInfo();
+        const response = await fetch('/api/subscriptions/info', {
+          credentials: 'include'
+        });
         
         if (response.ok) {
           const data = await response.json();
@@ -124,7 +125,10 @@ export default function SubscriptionPlansPage({
         setLoading(true);
         
         // Appel API pour changer vers le plan découverte
-        const response = await api.subscription.cancel();
+        const response = await fetch('/api/subscriptions/cancel', {
+          method: 'POST',
+          credentials: 'include'
+        });
 
         if (response.ok) {
           toast.success('Votre abonnement a été changé vers le plan Découverte.');
