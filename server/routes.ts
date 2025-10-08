@@ -29,10 +29,21 @@ import { createNotification, NotificationTemplates } from "./notifications";
 import { StripeService } from "./stripe-service";
 import { StripeServiceNew } from "./stripe-service-new";
 import { registerStripeRoutes } from "./stripe-routes";
+import { stripeRoutes } from "./stripe-routes";
+import { featureRoutes } from "./feature-routes";
+import { accountRoutes } from "./account-routes";
+import { FeatureFlagService } from "./feature-flags";
+import { AccountManagementService } from "./account-management";
+import "./db-extensions"; // Charger les extensions de base de données
 
 // Import functions for subscription checks
 const canCreateEvent = SubscriptionService.canCreateEvent.bind(SubscriptionService);
 const canSendInvitations = SubscriptionService.canSendInvitations.bind(SubscriptionService);
+
+// Middleware pour vérifier les fonctionnalités
+function requireFeature(featureId: string) {
+  return FeatureFlagService.checkFeature(featureId);
+}
 
 // Utility function to clean email reply content
 function cleanEmailReply(content: string): string {
@@ -3953,6 +3964,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register new Stripe routes
   registerStripeRoutes(app);
+  
+  // Register new API routes
+  app.use('/api', stripeRoutes);
+  app.use('/api', featureRoutes);
+  app.use('/api', accountRoutes);
+
+  // Initialize feature flags on startup
+  FeatureFlagService.initializeDefaultFeatures();
 
   // URL sanitization middleware for security
   app.use((req, res, next) => {

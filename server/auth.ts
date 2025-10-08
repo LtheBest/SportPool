@@ -26,9 +26,11 @@ export interface JWTPayload {
 // Interface pour l'utilisateur authentifié dans la requête
 export interface AuthenticatedRequest extends Request {
   user: {
+    id: string;
     organizationId: string;
     email: string;
     name: string;
+    role?: string;
   };
 }
 
@@ -156,9 +158,11 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 
     // Ajouter les informations utilisateur à la requête
     (req as AuthenticatedRequest).user = {
+      id: decoded.organizationId,
       organizationId: decoded.organizationId,
       email: decoded.email,
       name: decoded.name,
+      role: decoded.email === (process.env.ADMIN_EMAIL || 'admin@teammove.app') ? 'admin' : 'user'
     };
 
     console.log(`✅ JWT Auth success for organization: ${decoded.organizationId}`);
@@ -275,4 +279,32 @@ export function validatePasswordStrength(password: string): { isValid: boolean; 
     isValid: errors.length === 0,
     errors,
   };
+}
+
+/**
+ * Middleware pour vérifier les droits d'admin
+ */
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const authReq = req as AuthenticatedRequest;
+  
+  // Vérifier si l'utilisateur est connecté
+  if (!authReq.user) {
+    return res.status(401).json({ 
+      success: false,
+      message: "Authentication required" 
+    });
+  }
+
+  // Vérifier si l'utilisateur a le rôle admin
+  // Pour cette démo, nous vérifions si l'email correspond à l'admin configuré
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@teammove.app';
+  
+  if (authReq.user.email !== adminEmail) {
+    return res.status(403).json({ 
+      success: false,
+      message: "Admin access required" 
+    });
+  }
+
+  next();
 }

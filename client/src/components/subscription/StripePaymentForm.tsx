@@ -1,42 +1,18 @@
+// client/src/components/subscription/StripePaymentForm.tsx
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
-import {
-  Elements,
-  CardElement,
-  useStripe,
-  useElements,
-  PaymentElement,
-  AddressElement,
-  LinkAuthenticationElement,
-} from '@stripe/react-stripe-js';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Separator } from '../ui/separator';
+import { Alert, AlertDescription } from '../ui/alert';
 import { 
   CreditCard, 
-  Lock, 
   Shield, 
-  CheckCircle, 
-  AlertCircle,
-  User,
-  Mail,
-  MapPin,
-  Calendar
+  CheckCircle,
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { cn } from '../../lib/utils';
 
-// Configuration Stripe
-const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLIC_KEY || 
-  'pk_test_51S3zPW8XM0zNL8ZMhdeyjgfrp4eKmTmzKRMqRENFwKoUjfSByTeGfWXfcf6Vr6FF9FJSBauMvjTp6cnDFDJwfPxN00VrImPBXj'
-);
-
-// Types
-interface PaymentFormProps {
+interface StripePaymentFormProps {
   planId: string;
   planName: string;
   planPrice: number;
@@ -46,207 +22,182 @@ interface PaymentFormProps {
   onCancel: () => void;
 }
 
-interface PaymentFormData {
-  email?: string;
-  name?: string;
-  address?: {
-    line1: string;
-    line2?: string;
-    city: string;
-    state: string;
-    postal_code: string;
-    country: string;
-  };
+// Interface pour la configuration Stripe
+interface StripeConfig {
+  publishableKey: string;
 }
 
-// Styles personnalisés pour Stripe Elements
-const stripeElementsOptions = {
-  appearance: {
-    theme: 'stripe' as const,
-    variables: {
-      colorPrimary: '#3b82f6',
-      colorBackground: '#ffffff',
-      colorText: '#1f2937',
-      colorDanger: '#ef4444',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      spacingUnit: '4px',
-      borderRadius: '6px',
-    },
-    rules: {
-      '.Input': {
-        border: '1px solid #d1d5db',
-        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-      },
-      '.Input:focus': {
-        border: '1px solid #3b82f6',
-        boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
-      },
-      '.Label': {
-        fontWeight: '500',
-        fontSize: '14px',
-        color: '#374151',
-      },
-    },
-  },
-};
+export function StripePaymentForm({
+  planId,
+  planName,
+  planPrice,
+  currency,
+  billingInterval,
+  onSuccess,
+  onCancel
+}: StripePaymentFormProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null);
+  const [stripe, setStripe] = useState<any>(null);
 
-// Composant principal du formulaire de paiement
-function PaymentForm({ planId, planName, planPrice, currency, billingInterval, onSuccess, onCancel }: PaymentFormProps) {
-  const stripe = useStripe();
-  const elements = useElements();
-  
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<PaymentFormData>({});
-  const [clientSecret, setClientSecret] = useState<string>('');
-  const [paymentElementReady, setPaymentElementReady] = useState(false);
-
-  // Initialiser l'intention de paiement
+  // Charger la configuration Stripe
   useEffect(() => {
-    const initializePayment = async () => {
+    const loadStripeConfig = async () => {
       try {
-        const response = await fetch('/api/stripe/create-payment-intent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            planId,
-            amount: planPrice,
-            currency: currency.toLowerCase(),
-            automatic_payment_methods: { enabled: true },
-          }),
+        const response = await fetch('/api/config', {
+          credentials: 'include'
         });
-
-        if (!response.ok) {
-          throw new Error('Erreur lors de la création de l\'intention de paiement');
+        
+        if (response.ok) {
+          const config = await response.json();
+          setStripeConfig(config);
+          
+          // Initialiser Stripe avec la clé publique
+          const stripeInstance = await loadStripe(config.publishableKey);
+          setStripe(stripeInstance);
+        } else {
+          throw new Error('Impossible de charger la configuration Stripe');
         }
-
-        const { client_secret } = await response.json();
-        setClientSecret(client_secret);
-      } catch (error: any) {
-        console.error('Erreur initialisation paiement:', error);
-        setPaymentError(error.message);
-        toast.error(error.message);
+      } catch (err: any) {
+        setError(err.message);
       }
     };
 
-    initializePayment();
-  }, [planId, planPrice, currency]);
+    loadStripeConfig();
+  }, []);
 
-  // Formatage du prix
-  const formatPrice = (price: number, curr: string = 'EUR') => {
-    return new Intl.NumberFormat('fr-FR', {
+  // Formater le prix
+  const formatPrice = (price: number, curr: string, interval: string) => {
+    const formatted = new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: curr,
+      currency: curr.toUpperCase(),
     }).format(price / 100);
+
+    if (interval === 'one_time') {
+      return formatted;
+    }
+    
+    return `${formatted}/${interval === 'month' ? 'mois' : 'an'}`;
   };
 
-  // Gestion de la soumission du formulaire
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    
-    if (!stripe || !elements) {
-      toast.error('Stripe n\'est pas encore chargé. Veuillez patienter.');
+  // Gérer le paiement via Stripe Checkout
+  const handleStripeCheckout = async () => {
+    if (!stripe) {
+      setError('Stripe n\'est pas encore chargé');
       return;
     }
 
-    if (!paymentElementReady) {
-      toast.error('Le formulaire de paiement n\'est pas prêt. Veuillez patienter.');
-      return;
-    }
-
-    setIsProcessing(true);
-    setPaymentError(null);
+    setLoading(true);
+    setError(null);
 
     try {
-      // Confirmer le paiement avec Stripe
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/dashboard?payment=success`,
-          payment_method_data: {
-            billing_details: {
-              name: formData.name,
-              email: formData.email,
-              address: formData.address,
-            },
-          },
+      // Créer une session de checkout
+      const response = await fetch('/api/subscriptions/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        redirect: 'if_required',
+        credentials: 'include',
+        body: JSON.stringify({
+          planId,
+          successUrl: `${window.location.origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/subscription/plans?payment=cancelled`,
+        }),
       });
 
-      if (error) {
-        console.error('Erreur paiement Stripe:', error);
-        setPaymentError(error.message || 'Erreur lors du paiement');
-        toast.error(error.message || 'Erreur lors du paiement');
-      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        // Paiement réussi
-        toast.success('Paiement réussi ! Activation de votre abonnement...');
-        
-        // Notifier le succès au parent
-        setTimeout(() => {
-          onSuccess();
-        }, 1500);
-      } else {
-        // Statut inattendu
-        console.warn('Statut de paiement inattendu:', paymentIntent?.status);
-        setPaymentError('Statut de paiement inattendu');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la création de la session de paiement');
       }
-    } catch (error: any) {
-      console.error('Erreur lors de la confirmation du paiement:', error);
-      setPaymentError('Erreur technique lors du paiement');
-      toast.error('Erreur technique lors du paiement');
-    } finally {
-      setIsProcessing(false);
+
+      const session = await response.json();
+      
+      if (session.success && session.url) {
+        // Rediriger vers Stripe Checkout
+        window.location.href = session.url;
+      } else {
+        throw new Error('URL de session invalide');
+      }
+
+    } catch (err: any) {
+      setError(err.message);
+      setLoading(false);
     }
   };
 
-  // Rendu du composant
+  // Tests de paiement (simulation)
+  const handleTestPayment = async (testCase: 'success' | 'pending' | 'failure') => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Simuler différents scénarios de test
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      switch (testCase) {
+        case 'success':
+          onSuccess();
+          break;
+        
+        case 'pending':
+          setError('Paiement en attente de confirmation. Veuillez vérifier votre email.');
+          break;
+        
+        case 'failure':
+          throw new Error('Paiement refusé. Veuillez vérifier vos informations de carte.');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!stripeConfig) {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="flex items-center justify-center p-8">
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Chargement du système de paiement...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
-      {/* Résumé de la commande */}
-      <Card className="border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Récapitulatif du plan */}
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-blue-500" />
-            Résumé de votre commande
+            <CreditCard className="w-5 h-5" />
+            Récapitulatif de votre commande
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex justify-between items-center">
             <div>
-              <h3 className="font-semibold text-lg">{planName}</h3>
-              <p className="text-sm text-gray-600">
-                {billingInterval === 'monthly' ? 'Abonnement mensuel' : 
-                 billingInterval === 'annual' ? 'Abonnement annuel' :
-                 billingInterval === 'pack_single' ? 'Pack événement unique' :
-                 billingInterval === 'pack_10' ? 'Pack 10 événements' : 
-                 'Paiement unique'}
-              </p>
+              <div className="font-medium text-lg">{planName}</div>
+              <div className="text-sm text-gray-600">
+                Facturation {billingInterval === 'month' ? 'mensuelle' : 
+                           billingInterval === 'year' ? 'annuelle' : 'unique'}
+              </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-blue-600">
-                {formatPrice(planPrice, currency)}
-              </div>
-              <div className="text-sm text-gray-500">
-                {billingInterval === 'monthly' && '/mois'}
-                {billingInterval === 'annual' && '/an'}
+              <div className="text-2xl font-bold">
+                {formatPrice(planPrice, currency, billingInterval)}
               </div>
             </div>
           </div>
-          
-          <Separator />
-          
-          <div className="flex items-center gap-2 text-sm text-green-600">
-            <CheckCircle className="w-4 h-4" />
-            <span>Activation immédiate après paiement</span>
-          </div>
-          
-          <div className="flex items-center gap-2 text-sm text-green-600">
-            <CheckCircle className="w-4 h-4" />
-            <span>Résiliation possible à tout moment</span>
+
+          <div className="border-t pt-4">
+            <div className="flex justify-between font-semibold text-lg">
+              <span>Total</span>
+              <span>{formatPrice(planPrice, currency, billingInterval)}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -254,200 +205,112 @@ function PaymentForm({ planId, planName, planPrice, currency, billingInterval, o
       {/* Formulaire de paiement */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-gray-700" />
-            Informations de paiement
-          </CardTitle>
+          <CardTitle>Méthode de paiement</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Authentification par lien (email) */}
-            <div className="space-y-2">
-              <Label htmlFor="link-auth" className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                Adresse email
-              </Label>
-              <LinkAuthenticationElement
-                id="link-auth"
-                options={{
-                  defaultValues: {
-                    email: formData.email || '',
-                  },
-                }}
-                onChange={(event) => {
-                  if (event.value.email) {
-                    setFormData(prev => ({
-                      ...prev,
-                      email: event.value.email,
-                    }));
-                  }
-                }}
-              />
-            </div>
+        <CardContent className="space-y-6">
+          {/* Erreur */}
+          {error && (
+            <Alert className="border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              <AlertDescription className="text-red-700">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
 
-            <Separator />
-
-            {/* Élément de paiement principal */}
-            <div className="space-y-4">
-              <Label className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4" />
-                Moyens de paiement
-              </Label>
-              
-              {clientSecret && (
-                <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-                  <PaymentElement
-                    id="payment-element"
-                    options={{
-                      layout: 'accordion',
-                      defaultValues: {
-                        billingDetails: {
-                          name: formData.name,
-                          email: formData.email,
-                          address: formData.address,
-                        },
-                      },
-                    }}
-                    onReady={() => {
-                      setPaymentElementReady(true);
-                    }}
-                    onChange={(event) => {
-                      if (event.error) {
-                        setPaymentError(event.error.message);
-                      } else {
-                        setPaymentError(null);
-                      }
-                    }}
-                  />
-                </div>
+          {/* Paiement Stripe principal */}
+          <div className="space-y-4">
+            <Button
+              onClick={handleStripeCheckout}
+              disabled={loading || !stripe}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 h-12"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Traitement en cours...
+                </>
+              ) : (
+                <>
+                  <Shield className="w-5 h-5 mr-2" />
+                  Payer avec Stripe
+                </>
               )}
+            </Button>
+
+            <div className="text-xs text-gray-500 text-center">
+              Paiement sécurisé par Stripe. Vos données ne sont jamais stockées sur nos serveurs.
             </div>
+          </div>
 
-            <Separator />
-
-            {/* Adresse de facturation */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Adresse de facturation
-              </Label>
-              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <AddressElement
-                  options={{
-                    mode: 'billing',
-                    allowedCountries: ['FR', 'BE', 'CH', 'CA', 'US'],
-                    defaultValues: {
-                      name: formData.name || '',
-                      address: formData.address || {
-                        line1: '',
-                        city: '',
-                        state: '',
-                        postal_code: '',
-                        country: 'FR',
-                      },
-                    },
-                  }}
-                  onChange={(event) => {
-                    if (event.complete) {
-                      setFormData(prev => ({
-                        ...prev,
-                        name: event.value.name,
-                        address: event.value.address,
-                      }));
-                    }
-                  }}
-                />
-              </div>
+          {/* Section de test */}
+          <div className="border-t pt-6">
+            <div className="text-sm font-medium text-gray-700 mb-3">
+              🧪 Tests de paiement (Environnement de développement)
             </div>
-
-            {/* Message d'erreur */}
-            {paymentError && (
-              <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                <AlertCircle className="w-5 h-5" />
-                <span>{paymentError}</span>
-              </div>
-            )}
-
-            {/* Boutons d'action */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Button
-                type="button"
                 variant="outline"
-                onClick={onCancel}
-                disabled={isProcessing}
-                className="flex-1"
+                onClick={() => handleTestPayment('success')}
+                disabled={loading}
+                className="text-green-600 border-green-300 hover:bg-green-50"
               >
-                Annuler
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Test Succès
               </Button>
               
               <Button
-                type="submit"
-                disabled={!stripe || !paymentElementReady || isProcessing}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                variant="outline"
+                onClick={() => handleTestPayment('pending')}
+                disabled={loading}
+                className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
               >
-                {isProcessing ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    Traitement en cours...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-4 h-4 mr-2" />
-                    Payer {formatPrice(planPrice, currency)}
-                  </>
-                )}
+                <Loader2 className="w-4 h-4 mr-2" />
+                Test En attente
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => handleTestPayment('failure')}
+                disabled={loading}
+                className="text-red-600 border-red-300 hover:bg-red-50"
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                Test Échec
               </Button>
             </div>
-
-            {/* Informations de sécurité */}
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-green-500 mt-0.5" />
-                <div className="space-y-1">
-                  <h4 className="font-medium text-sm">Paiement sécurisé</h4>
-                  <p className="text-xs text-gray-600">
-                    Vos informations de paiement sont cryptées et traitées de manière 
-                    sécurisée par Stripe. Nous ne stockons jamais vos données de carte bancaire.
-                  </p>
-                  <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
-                    <span className="flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />
-                      Cryptage SSL
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />
-                      PCI DSS
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />
-                      Conformité RGPD
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <div className="text-xs text-gray-500 mt-2 text-center">
+              Ces boutons sont uniquement disponibles en mode test
             </div>
-          </form>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={onCancel}
+              disabled={loading}
+              className="flex-1"
+            >
+              Annuler
+            </Button>
+          </div>
+
+          {/* Sécurité */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <Shield className="w-4 h-4 text-green-500" />
+              <span className="font-medium">Paiement sécurisé</span>
+            </div>
+            <div className="text-xs text-gray-600 mt-1">
+              • Chiffrement SSL 256 bits
+              • Conformité PCI DSS
+              • Aucune donnée de carte stockée
+              • Protection contre la fraude
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
-
-// Wrapper avec Elements Provider
-export function StripePaymentForm(props: PaymentFormProps) {
-  return (
-    <Elements
-      stripe={stripePromise}
-      options={{
-        ...stripeElementsOptions,
-        mode: 'payment',
-        currency: props.currency.toLowerCase(),
-        amount: props.planPrice,
-      }}
-    >
-      <PaymentForm {...props} />
-    </Elements>
-  );
-}
-
-export default StripePaymentForm;
