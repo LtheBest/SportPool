@@ -3954,6 +3954,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register new Stripe routes
   registerStripeRoutes(app);
 
+  // Register modern Stripe routes
+  try {
+    const { registerModernStripeRoutes } = await import('./routes-stripe-modern');
+    registerModernStripeRoutes(app);
+    console.log('✅ Modern Stripe routes registered');
+  } catch (error) {
+    console.warn('⚠️  Modern Stripe routes not available:', error);
+  }
+
+  // Register advanced admin routes
+  try {
+    const { registerAdvancedAdminRoutes } = await import('./admin-advanced');
+    registerAdvancedAdminRoutes(app);
+    console.log('✅ Advanced admin routes registered');
+  } catch (error) {
+    console.warn('⚠️  Advanced admin routes not available:', error);
+  }
+
   // URL sanitization middleware for security
   app.use((req, res, next) => {
     // Prevent path traversal attacks

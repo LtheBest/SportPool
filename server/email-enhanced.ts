@@ -1635,6 +1635,861 @@ ${this.appUrl}
     });
   }
 
+  // Email de confirmation de suppression de compte
+  async sendAccountDeletionConfirmation(
+    email: string,
+    userName: string,
+    userType: string,
+    reason: string,
+    deletionSteps: string[]
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Confirmation de suppression de compte - ${userName}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+            .container { max-width: 650px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 40px 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+            .content { padding: 40px 30px; }
+            .deletion-info { background: #f8d7da; border: 1px solid #f5c6cb; padding: 25px; border-radius: 10px; margin: 25px 0; }
+            .deletion-info h3 { color: #721c24; margin: 0 0 15px; }
+            .steps-list { background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .step-item { margin: 10px 0; padding: 8px 0; border-bottom: 1px solid #ffeaa7; }
+            .step-item:last-child { border-bottom: none; }
+            .reason-section { background: #e2e3e5; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .contact-section { background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center; }
+            .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666; border-top: 1px solid #e9ecef; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🗑️ Suppression de compte confirmée</h1>
+              <p>Votre compte a été supprimé de TeamMove</p>
+            </div>
+            
+            <div class="content">
+              <p style="font-size: 18px; text-align: center; margin-bottom: 30px;">
+                Bonjour <strong>${userName}</strong>,
+              </p>
+              
+              <p style="font-size: 16px; margin-bottom: 25px;">
+                Nous vous confirmons que votre compte <strong>${userType}</strong> a été définitivement supprimé 
+                de la plateforme TeamMove à la date d'aujourd'hui.
+              </p>
+
+              <div class="deletion-info">
+                <h3>📋 Informations sur la suppression</h3>
+                <p><strong>Compte :</strong> ${userName}</p>
+                <p><strong>Type :</strong> ${userType}</p>
+                <p><strong>Date de suppression :</strong> ${new Date().toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}</p>
+                <p><strong>Email :</strong> ${email}</p>
+              </div>
+
+              ${reason && reason !== 'Non spécifiée' ? `
+              <div class="reason-section">
+                <h4 style="margin: 0 0 10px; color: #495057;">📝 Motif de la suppression :</h4>
+                <p style="margin: 0; font-style: italic; color: #6c757d;">${reason}</p>
+              </div>
+              ` : ''}
+
+              ${deletionSteps && deletionSteps.length > 0 ? `
+              <div class="steps-list">
+                <h4 style="color: #856404; margin: 0 0 15px;">✅ Actions effectuées lors de la suppression :</h4>
+                ${deletionSteps.map(step => `
+                  <div class="step-item">• ${step}</div>
+                `).join('')}
+              </div>
+              ` : ''}
+
+              <div style="background: #fff5f5; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h4 style="color: #b91c1c; margin: 0 0 15px;">⚠️ Important à retenir :</h4>
+                <ul style="color: #b91c1c; margin: 0; padding-left: 20px;">
+                  <li>Cette suppression est <strong>définitive et irréversible</strong></li>
+                  <li>Toutes vos données personnelles ont été effacées</li>
+                  <li>Vous ne recevrez plus d'emails de notre part</li>
+                  <li>Vos événements et messages associés ont été supprimés</li>
+                </ul>
+              </div>
+
+              <div class="contact-section">
+                <h4 style="color: #0c5460; margin: 0 0 15px;">💬 Besoin de nous contacter ?</h4>
+                <p style="margin: 0; color: #0c5460;">
+                  Si vous avez des questions concernant cette suppression ou si vous souhaitez créer un nouveau compte, 
+                  notre équipe reste à votre disposition.
+                </p>
+                <p style="margin: 15px 0 0; color: #0c5460;">
+                  📧 <a href="mailto:${this.fromEmail}" style="color: #007bff;">${this.fromEmail}</a>
+                </p>
+              </div>
+
+              <p style="text-align: center; margin: 30px 0; color: #666; font-size: 16px;">
+                Nous vous remercions d'avoir fait confiance à TeamMove.<br>
+                Nous espérons vous revoir bientôt dans notre communauté !
+              </p>
+            </div>
+            
+            <div class="footer">
+              <p><strong>Équipe TeamMove</strong></p>
+              <p>Plateforme de covoiturage sportif</p>
+              <p style="font-size: 12px; color: #999; margin-top: 20px;">
+                <a href="${this.appUrl}" style="color: #007bff;">${this.appUrl}</a>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const text = `
+🗑️ Suppression de compte confirmée
+
+Bonjour ${userName},
+
+Nous vous confirmons que votre compte ${userType} a été définitivement supprimé de la plateforme TeamMove.
+
+📋 INFORMATIONS :
+• Compte : ${userName}
+• Type : ${userType}
+• Date de suppression : ${new Date().toLocaleDateString('fr-FR')}
+• Email : ${email}
+
+${reason && reason !== 'Non spécifiée' ? `📝 MOTIF : ${reason}` : ''}
+
+${deletionSteps && deletionSteps.length > 0 ? `
+✅ ACTIONS EFFECTUÉES :
+${deletionSteps.map(step => `• ${step}`).join('\n')}
+` : ''}
+
+⚠️ IMPORTANT :
+• Cette suppression est définitive et irréversible
+• Toutes vos données personnelles ont été effacées
+• Vous ne recevrez plus d'emails de notre part
+• Vos événements et messages associés ont été supprimés
+
+💬 CONTACT :
+Si vous avez des questions : ${this.fromEmail}
+
+Merci d'avoir fait confiance à TeamMove.
+L'équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      toName: userName,
+      subject: `🗑️ Confirmation de suppression de compte - ${userName}`,
+      html,
+      text
+    });
+  }
+
+  // Email de notification de désactivation de compte
+  async sendAccountDeactivationNotification(
+    email: string,
+    userName: string,
+    reason: string
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Compte temporairement désactivé - ${userName}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #333; padding: 40px 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+            .content { padding: 40px 30px; }
+            .warning-box { background: #fff3cd; border: 1px solid #ffeaa7; padding: 25px; border-radius: 10px; margin: 25px 0; }
+            .contact-section { background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center; }
+            .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666; border-top: 1px solid #e9ecef; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>⏸️ Compte temporairement désactivé</h1>
+              <p>Votre accès à TeamMove a été suspendu</p>
+            </div>
+            
+            <div class="content">
+              <p style="font-size: 18px; text-align: center; margin-bottom: 30px;">
+                Bonjour <strong>${userName}</strong>,
+              </p>
+              
+              <p style="font-size: 16px; margin-bottom: 25px;">
+                Nous vous informons que votre compte TeamMove a été temporairement désactivé.
+                Vous ne pourrez plus accéder à la plateforme jusqu'à la réactivation de votre compte.
+              </p>
+
+              <div class="warning-box">
+                <h3 style="color: #856404; margin: 0 0 15px;">📋 Informations sur la désactivation</h3>
+                <p><strong>Compte :</strong> ${userName}</p>
+                <p><strong>Email :</strong> ${email}</p>
+                <p><strong>Date :</strong> ${new Date().toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}</p>
+                <p><strong>Motif :</strong> ${reason}</p>
+              </div>
+
+              <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h4 style="color: #721c24; margin: 0 0 15px;">🚫 Conséquences de la désactivation :</h4>
+                <ul style="color: #721c24; margin: 0; padding-left: 20px;">
+                  <li>Impossibilité de se connecter à votre compte</li>
+                  <li>Vos événements ne sont plus visibles publiquement</li>
+                  <li>Vous ne pouvez plus créer ou gérer d'événements</li>
+                  <li>Vos participants ne peuvent plus accéder à vos événements</li>
+                </ul>
+              </div>
+
+              <div class="contact-section">
+                <h4 style="color: #0c5460; margin: 0 0 15px;">💬 Comment faire réactiver votre compte ?</h4>
+                <p style="margin: 0 0 15px; color: #0c5460;">
+                  Si vous pensez que cette désactivation est injustifiée ou si vous souhaitez discuter 
+                  de la réactivation de votre compte, contactez notre équipe :
+                </p>
+                <p style="margin: 0; color: #0c5460;">
+                  📧 <a href="mailto:${this.fromEmail}" style="color: #007bff;">${this.fromEmail}</a>
+                </p>
+              </div>
+
+              <p style="text-align: center; margin: 30px 0; color: #666; font-size: 16px;">
+                Nous restons à votre disposition pour tout éclaircissement.
+              </p>
+            </div>
+            
+            <div class="footer">
+              <p><strong>Équipe TeamMove</strong></p>
+              <p>Plateforme de covoiturage sportif</p>
+              <p style="font-size: 12px; color: #999; margin-top: 20px;">
+                <a href="${this.appUrl}" style="color: #007bff;">${this.appUrl}</a>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const text = `
+⏸️ Compte temporairement désactivé
+
+Bonjour ${userName},
+
+Nous vous informons que votre compte TeamMove a été temporairement désactivé.
+
+📋 INFORMATIONS :
+• Compte : ${userName}
+• Email : ${email}
+• Date : ${new Date().toLocaleDateString('fr-FR')}
+• Motif : ${reason}
+
+🚫 CONSÉQUENCES :
+• Impossibilité de se connecter à votre compte
+• Vos événements ne sont plus visibles publiquement
+• Vous ne pouvez plus créer ou gérer d'événements
+• Vos participants ne peuvent plus accéder à vos événements
+
+💬 RÉACTIVATION :
+Pour discuter de la réactivation de votre compte, contactez-nous : ${this.fromEmail}
+
+Équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      toName: userName,
+      subject: `⏸️ Compte désactivé - ${userName}`,
+      html,
+      text
+    });
+  }
+
+  // Email de notification de réactivation de compte
+  async sendAccountReactivationNotification(
+    email: string,
+    userName: string
+  ): Promise<boolean> {
+    const loginUrl = `${this.appUrl}/login`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Compte réactivé - ${userName}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+            .content { padding: 40px 30px; }
+            .success-box { background: #d4edda; border: 1px solid #c3e6cb; padding: 25px; border-radius: 10px; margin: 25px 0; text-align: center; }
+            .cta-button { display: inline-block; background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; margin: 20px 0; transition: transform 0.3s ease; }
+            .cta-button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+            .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666; border-top: 1px solid #e9ecef; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎉 Compte réactivé !</h1>
+              <p>Bienvenue de retour sur TeamMove</p>
+            </div>
+            
+            <div class="content">
+              <p style="font-size: 18px; text-align: center; margin-bottom: 30px;">
+                Bonjour <strong>${userName}</strong>,
+              </p>
+              
+              <div class="success-box">
+                <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
+                <h2 style="margin: 0; color: #155724;">Votre compte est de nouveau actif !</h2>
+                <p style="margin: 15px 0 0; color: #155724;">
+                  Vous pouvez maintenant accéder à toutes les fonctionnalités de TeamMove
+                </p>
+              </div>
+              
+              <p style="font-size: 16px; margin-bottom: 25px; text-align: center;">
+                Excellente nouvelle ! Votre compte TeamMove a été réactivé avec succès. 
+                Vous pouvez dès maintenant vous reconnecter et reprendre l'organisation de vos événements sportifs.
+              </p>
+
+              <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h4 style="color: #155724; margin: 0 0 15px;">🚀 Ce que vous pouvez faire maintenant :</h4>
+                <ul style="color: #155724; margin: 0; padding-left: 20px;">
+                  <li>Vous connecter à votre tableau de bord</li>
+                  <li>Créer et gérer de nouveaux événements</li>
+                  <li>Accéder à l'historique de vos événements passés</li>
+                  <li>Communiquer avec vos participants</li>
+                  <li>Utiliser toutes les fonctionnalités de covoiturage</li>
+                </ul>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${loginUrl}" class="cta-button">
+                  🔑 Se connecter maintenant
+                </a>
+              </div>
+
+              <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
+                <h4 style="color: #0c5460; margin: 0 0 15px;">💡 Conseil</h4>
+                <p style="margin: 0; color: #0c5460;">
+                  Profitez de cette réactivation pour mettre à jour vos informations de profil 
+                  et découvrir les nouvelles fonctionnalités qui ont pu être ajoutées !
+                </p>
+              </div>
+
+              <p style="text-align: center; margin: 30px 0; color: #666; font-size: 16px;">
+                Merci de faire confiance à TeamMove.<br>
+                Nous sommes ravis de vous revoir dans notre communauté !
+              </p>
+            </div>
+            
+            <div class="footer">
+              <p><strong>Équipe TeamMove</strong></p>
+              <p>Ensemble, rendons le sport plus accessible !</p>
+              <p style="font-size: 12px; color: #999; margin-top: 20px;">
+                <a href="${this.appUrl}" style="color: #28a745;">${this.appUrl}</a>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const text = `
+🎉 Compte réactivé !
+
+Bonjour ${userName},
+
+Excellente nouvelle ! Votre compte TeamMove a été réactivé avec succès.
+
+✅ STATUT : Compte actif
+📅 Date de réactivation : ${new Date().toLocaleDateString('fr-FR')}
+
+🚀 VOUS POUVEZ MAINTENANT :
+• Vous connecter à votre tableau de bord
+• Créer et gérer de nouveaux événements
+• Accéder à l'historique de vos événements
+• Communiquer avec vos participants
+• Utiliser toutes les fonctionnalités de covoiturage
+
+🔑 CONNEXION :
+${loginUrl}
+
+💡 CONSEIL :
+Profitez de cette réactivation pour mettre à jour votre profil et découvrir les nouvelles fonctionnalités !
+
+Merci de faire confiance à TeamMove.
+Équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      toName: userName,
+      subject: `🎉 Votre compte TeamMove est réactivé - ${userName}`,
+      html,
+      text
+    });
+  }
+
+  // Email de confirmation de paiement
+  async sendPaymentConfirmationEmail(
+    email: string,
+    organizationName: string,
+    planName: string,
+    amount: number
+  ): Promise<boolean> {
+    const dashboardUrl = `${this.appUrl}/dashboard`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Paiement confirmé - ${planName}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+            .content { padding: 40px 30px; }
+            .payment-summary { background: #d4edda; border: 1px solid #c3e6cb; padding: 25px; border-radius: 10px; margin: 25px 0; }
+            .amount { font-size: 32px; font-weight: bold; color: #28a745; text-align: center; margin: 20px 0; }
+            .plan-features { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .cta-button { display: inline-block; background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; margin: 20px 0; transition: transform 0.3s ease; }
+            .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666; border-top: 1px solid #e9ecef; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>✅ Paiement confirmé</h1>
+              <p>Votre abonnement est maintenant actif</p>
+            </div>
+            
+            <div class="content">
+              <p style="font-size: 18px; text-align: center; margin-bottom: 30px;">
+                Félicitations <strong>${organizationName}</strong> !
+              </p>
+              
+              <div class="payment-summary">
+                <h3 style="color: #155724; margin: 0 0 20px; text-align: center;">💳 Récapitulatif du paiement</h3>
+                <p><strong>Plan souscrit :</strong> ${planName}</p>
+                <p><strong>Organisation :</strong> ${organizationName}</p>
+                <p><strong>Date de paiement :</strong> ${new Date().toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}</p>
+                <div class="amount">${amount.toFixed(2)} €</div>
+                <p style="text-align: center; color: #155724; font-weight: bold;">Paiement traité avec succès</p>
+              </div>
+              
+              <p style="font-size: 16px; margin-bottom: 25px; text-align: center;">
+                Votre paiement a été traité avec succès et votre abonnement <strong>${planName}</strong> 
+                est maintenant actif. Vous avez accès à toutes les fonctionnalités de votre plan !
+              </p>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${dashboardUrl}" class="cta-button">
+                  🚀 Accéder à mon tableau de bord
+                </a>
+              </div>
+
+              <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h4 style="color: #0c5460; margin: 0 0 15px;">📧 Facture et support</h4>
+                <p style="margin: 0; color: #0c5460;">
+                  Vous recevrez votre facture par email dans les prochaines minutes. 
+                  Pour toute question concernant votre abonnement : <a href="mailto:${this.fromEmail}" style="color: #007bff;">${this.fromEmail}</a>
+                </p>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p><strong>Merci de votre confiance !</strong></p>
+              <p>Équipe TeamMove - Plateforme de covoiturage sportif</p>
+              <p style="font-size: 12px; color: #999; margin-top: 20px;">
+                <a href="${this.appUrl}" style="color: #28a745;">${this.appUrl}</a>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const text = `
+✅ Paiement confirmé - ${planName}
+
+Félicitations ${organizationName} !
+
+Votre paiement a été traité avec succès et votre abonnement ${planName} est maintenant actif.
+
+💳 RÉCAPITULATIF :
+• Plan : ${planName}
+• Organisation : ${organizationName}
+• Montant : ${amount.toFixed(2)} €
+• Date : ${new Date().toLocaleDateString('fr-FR')}
+
+🚀 ACCÈS : ${dashboardUrl}
+
+📧 FACTURE :
+Vous recevrez votre facture par email dans les prochaines minutes.
+
+QUESTIONS : ${this.fromEmail}
+
+Merci de votre confiance !
+Équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      toName: organizationName,
+      subject: `✅ Paiement confirmé - ${planName} (${amount.toFixed(2)} €)`,
+      html,
+      text
+    });
+  }
+
+  // Email d'avertissement événements restants faibles
+  async sendLowEventsWarning(
+    email: string,
+    organizationName: string,
+    remainingEvents: number
+  ): Promise<boolean> {
+    const upgradeUrl = `${this.appUrl}/subscription/plans`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Attention - Événements restants limités</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #333; padding: 40px 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+            .content { padding: 40px 30px; }
+            .warning-box { background: #fff3cd; border: 1px solid #ffeaa7; padding: 25px; border-radius: 10px; margin: 25px 0; }
+            .events-counter { font-size: 48px; font-weight: bold; color: #e0a800; text-align: center; margin: 20px 0; }
+            .cta-button { display: inline-block; background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; margin: 20px 0; transition: transform 0.3s ease; }
+            .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666; border-top: 1px solid #e9ecef; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>⚠️ Événements restants limités</h1>
+              <p>Votre pack événementiel arrive bientôt à épuisement</p>
+            </div>
+            
+            <div class="content">
+              <p style="font-size: 18px; text-align: center; margin-bottom: 30px;">
+                Bonjour <strong>${organizationName}</strong>,
+              </p>
+              
+              <div class="warning-box">
+                <h3 style="color: #856404; margin: 0 0 20px; text-align: center;">📊 État de votre pack</h3>
+                <div class="events-counter">${remainingEvents}</div>
+                <p style="text-align: center; font-size: 18px; color: #856404; margin: 0;">
+                  événement${remainingEvents > 1 ? 's' : ''} restant${remainingEvents > 1 ? 's' : ''} dans votre pack
+                </p>
+              </div>
+              
+              <p style="font-size: 16px; margin-bottom: 25px; text-align: center;">
+                Votre pack événementiel arrive bientôt à épuisement. Pour continuer à organiser 
+                des événements sans interruption, nous vous recommandons de renouveler 
+                votre abonnement ou de passer à un plan supérieur.
+              </p>
+
+              <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h4 style="color: #155724; margin: 0 0 15px;">💡 Solutions disponibles :</h4>
+                <ul style="color: #155724; margin: 0; padding-left: 20px;">
+                  <li><strong>Pack 10 Événements :</strong> 150€ - Idéal pour les organisateurs réguliers</li>
+                  <li><strong>Plan Pro Clubs :</strong> 19,99€/mois - Événements illimités</li>
+                  <li><strong>Plan Pro PME :</strong> 49€/mois - Fonctionnalités avancées</li>
+                </ul>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${upgradeUrl}" class="cta-button">
+                  🚀 Voir les options d'abonnement
+                </a>
+              </div>
+
+              <p style="text-align: center; margin: 30px 0; color: #666; font-size: 14px;">
+                Questions ? Contactez-nous : <a href="mailto:${this.fromEmail}" style="color: #007bff;">${this.fromEmail}</a>
+              </p>
+            </div>
+            
+            <div class="footer">
+              <p><strong>Équipe TeamMove</strong></p>
+              <p>Nous vous accompagnons dans l'organisation de vos événements</p>
+              <p style="font-size: 12px; color: #999; margin-top: 20px;">
+                <a href="${this.appUrl}" style="color: #ffc107;">${this.appUrl}</a>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const text = `
+⚠️ Événements restants limités
+
+Bonjour ${organizationName},
+
+Votre pack événementiel arrive bientôt à épuisement.
+
+📊 ÉTAT ACTUEL :
+${remainingEvents} événement${remainingEvents > 1 ? 's' : ''} restant${remainingEvents > 1 ? 's' : ''} dans votre pack
+
+💡 SOLUTIONS :
+• Pack 10 Événements : 150€
+• Plan Pro Clubs : 19,99€/mois - Événements illimités
+• Plan Pro PME : 49€/mois - Fonctionnalités avancées
+
+🚀 VOIR LES OPTIONS : ${upgradeUrl}
+
+QUESTIONS : ${this.fromEmail}
+
+Équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      toName: organizationName,
+      subject: `⚠️ Plus que ${remainingEvents} événement${remainingEvents > 1 ? 's' : ''} restant${remainingEvents > 1 ? 's' : ''} dans votre pack`,
+      html,
+      text
+    });
+  }
+
+  // Email de changement d'abonnement
+  async sendSubscriptionChangeNotification(
+    email: string,
+    organizationName: string,
+    newPlanName: string
+  ): Promise<boolean> {
+    const dashboardUrl = `${this.appUrl}/dashboard`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Changement d'abonnement confirmé</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; padding: 40px 30px; text-align: center; }
+            .content { padding: 40px 30px; }
+            .change-summary { background: #e3f2fd; border: 1px solid #bbdefb; padding: 25px; border-radius: 10px; margin: 25px 0; }
+            .cta-button { display: inline-block; background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; margin: 20px 0; }
+            .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666; border-top: 1px solid #e9ecef; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🔄 Abonnement modifié</h1>
+              <p>Votre plan a été changé avec succès</p>
+            </div>
+            
+            <div class="content">
+              <p style="font-size: 18px; text-align: center; margin-bottom: 30px;">
+                Bonjour <strong>${organizationName}</strong>,
+              </p>
+              
+              <div class="change-summary">
+                <h3 style="color: #1976d2; margin: 0 0 20px; text-align: center;">📋 Changement d'abonnement</h3>
+                <p><strong>Nouveau plan :</strong> ${newPlanName}</p>
+                <p><strong>Organisation :</strong> ${organizationName}</p>
+                <p><strong>Date de changement :</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+                <p style="text-align: center; color: #1976d2; font-weight: bold; margin-top: 20px;">
+                  ✅ Changement effectué avec succès
+                </p>
+              </div>
+              
+              <p style="text-align: center; margin: 30px 0;">
+                Votre abonnement a été modifié avec succès. Vous avez maintenant accès 
+                aux fonctionnalités de votre nouveau plan.
+              </p>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${dashboardUrl}" class="cta-button">
+                  📊 Accéder au tableau de bord
+                </a>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p><strong>Équipe TeamMove</strong></p>
+              <p style="font-size: 12px; color: #999; margin-top: 20px;">
+                <a href="${this.appUrl}" style="color: #007bff;">${this.appUrl}</a>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const text = `
+🔄 Abonnement modifié avec succès
+
+Bonjour ${organizationName},
+
+Votre abonnement a été changé avec succès.
+
+📋 NOUVEAU PLAN : ${newPlanName}
+📅 DATE : ${new Date().toLocaleDateString('fr-FR')}
+
+📊 TABLEAU DE BORD : ${dashboardUrl}
+
+Équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      toName: organizationName,
+      subject: `🔄 Abonnement modifié - ${newPlanName}`,
+      html,
+      text
+    });
+  }
+
+  // Email d'expiration d'abonnement
+  async sendSubscriptionExpirationNotification(
+    email: string,
+    organizationName: string
+  ): Promise<boolean> {
+    const upgradeUrl = `${this.appUrl}/subscription/plans`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Abonnement expiré - Retour au plan Découverte</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 40px 30px; text-align: center; }
+            .content { padding: 40px 30px; }
+            .expiration-info { background: #f8d7da; border: 1px solid #f5c6cb; padding: 25px; border-radius: 10px; margin: 25px 0; }
+            .cta-button { display: inline-block; background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; margin: 20px 0; }
+            .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666; border-top: 1px solid #e9ecef; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📉 Abonnement expiré</h1>
+              <p>Votre compte est maintenant sur le plan Découverte</p>
+            </div>
+            
+            <div class="content">
+              <p style="font-size: 18px; text-align: center; margin-bottom: 30px;">
+                Bonjour <strong>${organizationName}</strong>,
+              </p>
+              
+              <div class="expiration-info">
+                <h3 style="color: #721c24; margin: 0 0 15px; text-align: center;">⏰ Abonnement expiré</h3>
+                <p style="text-align: center;">
+                  Votre abonnement payant a expiré et votre compte a été automatiquement 
+                  rétrogradé vers le <strong>plan Découverte gratuit</strong>.
+                </p>
+              </div>
+              
+              <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h4 style="color: #856404; margin: 0 0 15px;">📋 Plan Découverte - Fonctionnalités disponibles :</h4>
+                <ul style="color: #856404; margin: 0; padding-left: 20px;">
+                  <li>1 événement maximum</li>
+                  <li>Jusqu'à 20 invitations par événement</li>
+                  <li>Gestion du covoiturage de base</li>
+                  <li>Support par email</li>
+                </ul>
+              </div>
+
+              <p style="text-align: center; margin: 30px 0;">
+                Pour retrouver toutes vos fonctionnalités et créer des événements illimités, 
+                renouvelez votre abonnement dès maintenant.
+              </p>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${upgradeUrl}" class="cta-button">
+                  🚀 Renouveler mon abonnement
+                </a>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p><strong>Équipe TeamMove</strong></p>
+              <p>Nous espérons vous retrouver bientôt avec un abonnement actif !</p>
+              <p style="font-size: 12px; color: #999; margin-top: 20px;">
+                <a href="${this.appUrl}" style="color: #dc3545;">${this.appUrl}</a>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const text = `
+📉 Abonnement expiré - ${organizationName}
+
+Bonjour ${organizationName},
+
+Votre abonnement payant a expiré et votre compte est maintenant sur le plan Découverte gratuit.
+
+📋 PLAN DÉCOUVERTE :
+• 1 événement maximum
+• Jusqu'à 20 invitations par événement  
+• Gestion du covoiturage de base
+• Support par email
+
+🚀 RENOUVELER : ${upgradeUrl}
+
+Équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      toName: organizationName,
+      subject: `📉 Abonnement expiré - Retour au plan Découverte`,
+      html,
+      text
+    });
+  }
+
 
 }
 
