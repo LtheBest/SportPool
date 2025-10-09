@@ -26,10 +26,8 @@ import cors from "cors";
 import { SUBSCRIPTION_PLANS } from "./subscription-config";
 import { SubscriptionService } from "./subscription-service";
 import { createNotification, NotificationTemplates } from "./notifications";
-import { StripeService } from "./stripe-service";
 import { StripeServiceNew } from "./stripe-service-new";
-import { registerStripeRoutes } from "./stripe-routes";
-import { stripeRoutes } from "./stripe-routes";
+import { stripeRoutesNew } from "./stripe-routes-new";
 import { featureRoutes } from "./feature-routes";
 import { accountRoutes } from "./account-routes";
 import { FeatureFlagService } from "./feature-flags";
@@ -85,9 +83,6 @@ function cleanEmailReply(content: string): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize subscription service
-  await SubscriptionService.initialize();
-  
   // Configuration CORS dynamique et optimisée pour Render
   const isProduction = process.env.NODE_ENV === 'production';
   const isRenderDeploy = process.env.RENDER === 'true' || process.env.RENDER_EXTERNAL_URL || process.env.APP_URL?.includes('onrender.com');
@@ -3962,11 +3957,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Register new Stripe routes
-  registerStripeRoutes(app);
-  
   // Register new API routes
-  app.use('/api', stripeRoutes);
+  app.use('/api', stripeRoutesNew);
   app.use('/api', featureRoutes);
   app.use('/api', accountRoutes);
 

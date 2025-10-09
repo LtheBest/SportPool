@@ -1635,6 +1635,468 @@ ${this.appUrl}
     });
   }
 
+  /**
+   * Envoyer un email de confirmation d'abonnement
+   */
+  async sendSubscriptionConfirmation(
+    userEmail: string,
+    userName: string,
+    planName: string,
+    planPrice: number,
+    expiresAt?: Date
+  ): Promise<boolean> {
+    const dashboardUrl = `${this.appUrl}/dashboard`;
+    const subscriptionUrl = `${this.appUrl}/subscription`;
+    
+    const expirationInfo = expiresAt 
+      ? `Votre abonnement expire le ${expiresAt.toLocaleDateString('fr-FR')}.`
+      : 'Votre abonnement est maintenant actif.';
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .plan-info { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+        .button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+        .features { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .feature-item { padding: 8px 0; }
+        .checkmark { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Abonnement Confirmé !</h1>
+            <p>Bienvenue dans l'expérience premium TeamMove</p>
+        </div>
+        <div class="content">
+            <h2>Bonjour ${userName},</h2>
+            <p>Félicitations ! Votre abonnement au plan <strong>${planName}</strong> a été activé avec succès.</p>
+            
+            <div class="plan-info">
+                <h3>📋 Détails de votre abonnement :</h3>
+                <p><strong>Plan :</strong> ${planName}</p>
+                <p><strong>Prix :</strong> ${planPrice}€</p>
+                <p><strong>Statut :</strong> Actif ✅</p>
+                <p>${expirationInfo}</p>
+            </div>
+
+            <div class="features">
+                <h3>🚀 Vos nouvelles fonctionnalités :</h3>
+                <div class="feature-item"><span class="checkmark">✓</span> Événements illimités</div>
+                <div class="feature-item"><span class="checkmark">✓</span> Participants illimités</div>
+                <div class="feature-item"><span class="checkmark">✓</span> Suppression d'événements</div>
+                <div class="feature-item"><span class="checkmark">✓</span> Fonctionnalités avancées</div>
+                <div class="feature-item"><span class="checkmark">✓</span> Support prioritaire</div>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${dashboardUrl}" class="button">Accéder au tableau de bord</a>
+                <a href="${subscriptionUrl}" class="button">Gérer l'abonnement</a>
+            </div>
+
+            <p>Votre facture vous sera envoyée séparément par email.</p>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 14px; color: #666;">
+                Besoin d'aide ? Contactez notre support à <a href="mailto:${this.fromEmail}">${this.fromEmail}</a>
+                <br>
+                Ou visitez notre centre d'aide : <a href="${this.appUrl}/support">${this.appUrl}/support</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+
+    const text = `
+🎉 ABONNEMENT CONFIRMÉ !
+
+Bonjour ${userName},
+
+Félicitations ! Votre abonnement au plan ${planName} a été activé avec succès.
+
+📋 DÉTAILS DE VOTRE ABONNEMENT :
+• Plan : ${planName}
+• Prix : ${planPrice}€
+• Statut : Actif ✅
+• ${expirationInfo}
+
+🚀 VOS NOUVELLES FONCTIONNALITÉS :
+✓ Événements illimités
+✓ Participants illimités
+✓ Suppression d'événements
+✓ Fonctionnalités avancées
+✓ Support prioritaire
+
+🔗 LIENS UTILES :
+• Tableau de bord : ${dashboardUrl}
+• Gérer l'abonnement : ${subscriptionUrl}
+
+Votre facture vous sera envoyée séparément par email.
+
+Besoin d'aide ?
+📧 ${this.fromEmail}
+🌐 ${this.appUrl}/support
+
+Merci de faire confiance à TeamMove !
+L'équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: userEmail,
+      toName: userName,
+      subject: `🎉 Abonnement ${planName} confirmé - TeamMove`,
+      html,
+      text
+    });
+  }
+
+  /**
+   * Envoyer un email de confirmation d'annulation d'abonnement
+   */
+  async sendSubscriptionCancellation(
+    userEmail: string,
+    userName: string
+  ): Promise<boolean> {
+    const dashboardUrl = `${this.appUrl}/dashboard`;
+    const plansUrl = `${this.appUrl}/subscription-plans`;
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f5576c; }
+        .button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+        .discovery-features { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .feature-item { padding: 8px 0; }
+        .checkmark { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Abonnement Annulé</h1>
+            <p>Votre abonnement a été annulé avec succès</p>
+        </div>
+        <div class="content">
+            <h2>Bonjour ${userName},</h2>
+            <p>Votre abonnement premium a été annulé et vous êtes maintenant sur le <strong>Plan Découverte</strong> (gratuit).</p>
+            
+            <div class="info-box">
+                <h3>📋 Votre nouveau statut :</h3>
+                <p><strong>Plan actuel :</strong> Découverte (Gratuit)</p>
+                <p><strong>Statut :</strong> Actif ✅</p>
+                <p><strong>Facturation :</strong> Aucune facturation future</p>
+            </div>
+
+            <div class="discovery-features">
+                <h3>🎯 Ce que vous pouvez toujours faire :</h3>
+                <div class="feature-item"><span class="checkmark">✓</span> Créer jusqu'à 3 événements par mois</div>
+                <div class="feature-item"><span class="checkmark">✓</span> Inviter jusqu'à 20 participants par événement</div>
+                <div class="feature-item"><span class="checkmark">✓</span> Accès aux fonctionnalités de base</div>
+                <div class="feature-item"><span class="checkmark">✓</span> Support par email</div>
+            </div>
+
+            <p>💡 <strong>Vous voulez revenir ?</strong> Vous pouvez réactiver un abonnement premium à tout moment depuis votre tableau de bord.</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${dashboardUrl}" class="button">Tableau de bord</a>
+                <a href="${plansUrl}" class="button">Voir les plans</a>
+            </div>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 14px; color: #666;">
+                Nous espérons vous revoir bientôt ! 
+                <br>
+                Besoin d'aide ? Contactez-nous à <a href="mailto:${this.fromEmail}">${this.fromEmail}</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+
+    const text = `
+📋 ABONNEMENT ANNULÉ
+
+Bonjour ${userName},
+
+Votre abonnement premium a été annulé et vous êtes maintenant sur le Plan Découverte (gratuit).
+
+📋 VOTRE NOUVEAU STATUT :
+• Plan actuel : Découverte (Gratuit)
+• Statut : Actif ✅
+• Facturation : Aucune facturation future
+
+🎯 CE QUE VOUS POUVEZ TOUJOURS FAIRE :
+✓ Créer jusqu'à 3 événements par mois
+✓ Inviter jusqu'à 20 participants par événement  
+✓ Accès aux fonctionnalités de base
+✓ Support par email
+
+💡 Vous voulez revenir ? Vous pouvez réactiver un abonnement premium à tout moment depuis votre tableau de bord.
+
+🔗 LIENS UTILES :
+• Tableau de bord : ${dashboardUrl}
+• Voir les plans : ${plansUrl}
+
+Nous espérons vous revoir bientôt !
+
+Besoin d'aide ?
+📧 ${this.fromEmail}
+
+L'équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: userEmail,
+      toName: userName,
+      subject: `📋 Abonnement annulé - Retour au Plan Découverte - TeamMove`,
+      html,
+      text
+    });
+  }
+
+  /**
+   * Envoyer un email d'échec de paiement
+   */
+  async sendPaymentFailed(
+    userEmail: string,
+    userName: string
+  ): Promise<boolean> {
+    const plansUrl = `${this.appUrl}/subscription-plans`;
+    const supportUrl = `${this.appUrl}/support`;
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .alert-box { background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; }
+        .button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>❌ Échec du Paiement</h1>
+            <p>Un problème est survenu lors du traitement de votre paiement</p>
+        </div>
+        <div class="content">
+            <h2>Bonjour ${userName},</h2>
+            <p>Nous n'avons pas pu traiter votre paiement pour votre abonnement TeamMove.</p>
+            
+            <div class="alert-box">
+                <h3>⚠️ Que s'est-il passé ?</h3>
+                <p>Le paiement n'a pas pu être finalisé. Cela peut arriver pour plusieurs raisons :</p>
+                <ul>
+                    <li>Carte bancaire expirée ou invalide</li>
+                    <li>Fonds insuffisants</li>
+                    <li>Problème technique temporaire</li>
+                    <li>Paramètres de sécurité de votre banque</li>
+                </ul>
+            </div>
+
+            <p><strong>Pas de souci !</strong> Votre compte reste sur le Plan Découverte et vous pouvez réessayer quand vous voulez.</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${plansUrl}" class="button">Réessayer le paiement</a>
+                <a href="${supportUrl}" class="button">Contacter le support</a>
+            </div>
+
+            <p>💡 <strong>Conseil :</strong> Vérifiez que votre carte bancaire est valide et que vous avez suffisamment de fonds. Si le problème persiste, contactez notre support.</p>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 14px; color: #666;">
+                Besoin d'aide ? Notre équipe support est là pour vous aider !
+                <br>
+                📧 <a href="mailto:${this.fromEmail}">${this.fromEmail}</a>
+                <br>
+                🌐 <a href="${supportUrl}">${supportUrl}</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+
+    const text = `
+❌ ÉCHEC DU PAIEMENT
+
+Bonjour ${userName},
+
+Nous n'avons pas pu traiter votre paiement pour votre abonnement TeamMove.
+
+⚠️ QUE S'EST-IL PASSÉ ?
+Le paiement n'a pas pu être finalisé. Cela peut arriver pour plusieurs raisons :
+• Carte bancaire expirée ou invalide
+• Fonds insuffisants  
+• Problème technique temporaire
+• Paramètres de sécurité de votre banque
+
+Pas de souci ! Votre compte reste sur le Plan Découverte et vous pouvez réessayer quand vous voulez.
+
+🔗 ACTIONS :
+• Réessayer le paiement : ${plansUrl}
+• Contacter le support : ${supportUrl}
+
+💡 CONSEIL : Vérifiez que votre carte bancaire est valide et que vous avez suffisamment de fonds. Si le problème persiste, contactez notre support.
+
+Besoin d'aide ?
+📧 ${this.fromEmail}
+🌐 ${supportUrl}
+
+L'équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: userEmail,
+      toName: userName,
+      subject: `❌ Échec du paiement - TeamMove`,
+      html,
+      text
+    });
+  }
+
+  /**
+   * Envoyer un email de confirmation de suppression de compte
+   */
+  async sendAccountDeletion(
+    userEmail: string,
+    userName: string
+  ): Promise<boolean> {
+    const supportUrl = `${this.appUrl}/support`;
+    const registerUrl = `${this.appUrl}/register`;
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #6c757d; }
+        .button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+        .warning-box { background: #f8d7da; padding: 15px; border-radius: 8px; margin: 20px 0; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👋 Compte Supprimé</h1>
+            <p>Votre compte TeamMove a été supprimé définitivement</p>
+        </div>
+        <div class="content">
+            <h2>Au revoir ${userName},</h2>
+            <p>Nous confirmons que votre compte TeamMove a été supprimé définitivement à votre demande.</p>
+            
+            <div class="info-box">
+                <h3>📋 Ce qui a été supprimé :</h3>
+                <ul>
+                    <li>Votre profil utilisateur et informations personnelles</li>
+                    <li>Tous vos événements créés</li>
+                    <li>Vos participations aux événements</li>
+                    <li>Votre historique de messages</li>
+                    <li>Toutes vos données personnelles</li>
+                </ul>
+            </div>
+
+            <div class="warning-box">
+                <p><strong>⚠️ Important :</strong> Cette suppression est définitive et irréversible. Toutes vos données ont été supprimées de nos serveurs conformément au RGPD.</p>
+            </div>
+
+            <p>Nous sommes désolés de vous voir partir et nous espérons que vous avez apprécié votre expérience sur TeamMove.</p>
+
+            <p><strong>🔄 Vous voulez revenir ?</strong> Vous pouvez créer un nouveau compte à tout moment, mais vous devrez repartir de zéro.</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${registerUrl}" class="button">Créer un nouveau compte</a>
+                <a href="${supportUrl}" class="button">Nous contacter</a>
+            </div>
+
+            <p>Si vous avez des questions ou des préoccupations, n'hésitez pas à nous contacter.</p>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 14px; color: #666;">
+                Cette suppression a été effectuée le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}.
+                <br>
+                Questions ? Contactez-nous à <a href="mailto:${this.fromEmail}">${this.fromEmail}</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+
+    const text = `
+👋 COMPTE SUPPRIMÉ
+
+Au revoir ${userName},
+
+Nous confirmons que votre compte TeamMove a été supprimé définitivement à votre demande.
+
+📋 CE QUI A ÉTÉ SUPPRIMÉ :
+• Votre profil utilisateur et informations personnelles
+• Tous vos événements créés
+• Vos participations aux événements
+• Votre historique de messages
+• Toutes vos données personnelles
+
+⚠️ IMPORTANT : Cette suppression est définitive et irréversible. Toutes vos données ont été supprimées de nos serveurs conformément au RGPD.
+
+Nous sommes désolés de vous voir partir et nous espérons que vous avez apprécié votre expérience sur TeamMove.
+
+🔄 VOUS VOULEZ REVENIR ? Vous pouvez créer un nouveau compte à tout moment, mais vous devrez repartir de zéro.
+
+🔗 LIENS UTILES :
+• Créer un nouveau compte : ${registerUrl}
+• Nous contacter : ${supportUrl}
+
+Si vous avez des questions ou des préoccupations, n'hésitez pas à nous contacter.
+
+Cette suppression a été effectuée le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}.
+
+Questions ?
+📧 ${this.fromEmail}
+
+Au revoir et merci d'avoir utilisé TeamMove !
+L'équipe TeamMove
+${this.appUrl}
+    `;
+
+    return await this.sendEmail({
+      to: userEmail,
+      toName: userName,
+      subject: `👋 Confirmation de suppression de compte - TeamMove`,
+      html,
+      text
+    });
+  }
+
 
 }
 

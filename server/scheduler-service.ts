@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { SubscriptionService } from './subscription-service';
 import { EmailService } from './email-service';
-import { getDaysUntilExpiry, validateSubscription } from './subscription-config';
+// import { getDaysUntilExpiry, validateSubscription } from './subscription-config'; // Ces fonctions n'existent pas
 
 // Import du storage - sera résolu à l'exécution
 let storage: any;
@@ -31,9 +31,6 @@ export class SchedulerService {
     try {
       const { storage: storageInstance } = await import('./storage');
       storage = storageInstance;
-
-      // Initialiser les services dépendants
-      await SubscriptionService.initialize();
 
       // Démarrer les tâches programmées
       this.startScheduledTasks();

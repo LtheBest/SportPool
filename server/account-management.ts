@@ -1,6 +1,6 @@
 // server/account-management.ts
 import { db } from './db';
-import { sendEmail } from './email';
+import { emailServiceEnhanced } from './email-enhanced';
 import { FeatureFlagService } from './feature-flags';
 
 export interface AccountDeletionParams {
@@ -60,7 +60,7 @@ export class AccountManagementService {
       if (notifyUser) {
         const emailEnabled = await FeatureFlagService.isFeatureEnabled('email_notifications');
         if (emailEnabled) {
-          await this.sendAccountDeletionEmail(organization.email, organization.name, reason, deletionId);
+          await emailServiceEnhanced.sendAccountDeletion(organization.email, organization.name || organization.email);
         }
       }
 
@@ -145,101 +145,7 @@ export class AccountManagementService {
     }
   }
 
-  /**
-   * Envoyer un email de confirmation de suppression
-   */
-  private static async sendAccountDeletionEmail(
-    email: string,
-    organizationName: string,
-    reason?: string,
-    deletionId?: string
-  ): Promise<void> {
-    try {
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Compte supprimé - TeamMove</title>
-            <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-                .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-                .info-box { background: #e8f4fd; border: 1px solid #bee5eb; padding: 15px; border-radius: 5px; margin: 20px 0; }
-                .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-                .deletion-id { font-family: monospace; background: #f1f1f1; padding: 5px 10px; border-radius: 3px; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>🗑️ Compte Supprimé</h1>
-                    <p>Confirmation de suppression de votre compte TeamMove</p>
-                </div>
-                
-                <div class="content">
-                    <h2>Bonjour ${organizationName},</h2>
-                    
-                    <p>Nous vous confirmons que votre compte TeamMove a été supprimé avec succès.</p>
-                    
-                    <div class="info-box">
-                        <h3>📋 Détails de la suppression</h3>
-                        <ul>
-                            <li><strong>Organisation :</strong> ${organizationName}</li>
-                            <li><strong>Email :</strong> ${email}</li>
-                            <li><strong>Date de suppression :</strong> ${new Date().toLocaleString('fr-FR')}</li>
-                            ${reason ? `<li><strong>Motif :</strong> ${reason}</li>` : ''}
-                            ${deletionId ? `<li><strong>Référence :</strong> <span class="deletion-id">${deletionId}</span></li>` : ''}
-                        </ul>
-                    </div>
-                    
-                    <h3>🔒 Que s'est-il passé ?</h3>
-                    <p>Toutes vos données ont été définitivement supprimées de nos serveurs, incluant :</p>
-                    <ul>
-                        <li>Votre profil organisation</li>
-                        <li>Tous vos événements créés</li>
-                        <li>Toutes les invitations envoyées</li>
-                        <li>Votre historique de messages</li>
-                        <li>Vos données d'abonnement</li>
-                    </ul>
-                    
-                    <h3>🔄 Vous voulez revenir ?</h3>
-                    <p>Si vous changez d'avis, vous pouvez créer un nouveau compte à tout moment sur notre plateforme. Cependant, toutes vos données précédentes ont été définitivement supprimées.</p>
-                    
-                    <div class="info-box">
-                        <p><strong>💡 Astuce :</strong> Si cette suppression était une erreur ou si vous avez des questions, contactez notre support dans les plus brefs délais.</p>
-                    </div>
-                </div>
-                
-                <div class="footer">
-                    <p>
-                        Cet email a été envoyé automatiquement par TeamMove.<br>
-                        Si vous n'avez pas demandé cette suppression, contactez immédiatement notre support.
-                    </p>
-                    <p>
-                        <a href="mailto:support@teammove.app">Support TeamMove</a> |
-                        <a href="https://teammove.fr">TeamMove.fr</a>
-                    </p>
-                </div>
-            </div>
-        </body>
-        </html>
-      `;
 
-      await sendEmail({
-        to: email,
-        subject: `🗑️ Confirmation de suppression de votre compte TeamMove - ${organizationName}`,
-        html: htmlContent,
-        category: 'account_deletion'
-      });
-
-      console.log(`📧 Account deletion email sent to: ${email}`);
-    } catch (error) {
-      console.error('Send deletion email error:', error);
-      // Ne pas bloquer la suppression si l'email échoue
-    }
-  }
 
   /**
    * Obtenir la liste des comptes pour l'admin
