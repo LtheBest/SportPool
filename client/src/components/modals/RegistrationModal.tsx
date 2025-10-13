@@ -25,7 +25,7 @@ const registrationSchema = z.object({
   type: z.enum(["club", "association", "company"], {
     required_error: "Veuillez sélectionner un type d'organisation",
   }),
-  selectedPlan: z.enum(["decouverte", "starter", "pro", "enterprise"], {
+  selectedPlan: z.enum(["decouverte", "evenementielle", "pro_club", "pro_pme", "pro_entreprise"], {
     required_error: "Veuillez choisir une offre",
   }),
   email: z.string().email("Email invalide"),
