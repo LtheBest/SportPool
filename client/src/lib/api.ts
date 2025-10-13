@@ -233,10 +233,8 @@ export const api = {
     getPlans: () => makePublicRequest("GET", "/api/subscription/plans"),
     getInfo: () => makeAuthenticatedRequest("GET", "/api/subscription/info"),
     createPayment: (planId: string, successUrl?: string, cancelUrl?: string) => 
-      makeAuthenticatedRequest("POST", "/api/subscriptions/create", { 
-        planId, 
-        successUrl, 
-        cancelUrl 
+      makeAuthenticatedRequest("POST", "/api/stripe/upgrade-subscription", { 
+        planId
       }),
     handlePaymentSuccess: (sessionId: string, organizationId: string) =>
       makeAuthenticatedRequest("POST", "/api/registration/payment-success", {
@@ -248,10 +246,8 @@ export const api = {
         organizationId
       }),
     upgrade: (planId: string, successUrl?: string, cancelUrl?: string) =>
-      makeAuthenticatedRequest("POST", "/api/subscription/upgrade-from-decouverte", {
-        planId,
-        successUrl,
-        cancelUrl
+      makeAuthenticatedRequest("POST", "/api/stripe/upgrade-subscription", {
+        planId
       }),
     cancel: () => makeAuthenticatedRequest("POST", "/api/subscription/cancel-to-decouverte"),
     canCreateEvent: () => makeAuthenticatedRequest("GET", "/api/subscription/can-create-event"),
