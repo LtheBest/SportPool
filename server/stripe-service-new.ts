@@ -43,7 +43,7 @@ export class StripeServiceNew {
                 name: plan.name,
                 description: plan.description,
               },
-              unit_amount: plan.price * 100, // Convert to centimes
+              unit_amount: plan.price, // Price is already in centimes from config
             },
             quantity: 1,
           },
