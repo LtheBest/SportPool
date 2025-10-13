@@ -145,22 +145,20 @@ export default function SubscriptionPlansPage({
     try {
       setLoading(true);
       
-      // Utiliser l'endpoint /api/subscriptions/create pour tous les cas (découverte et autres)
-      const response = await fetch('/api/subscriptions/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          planId: planId,
-          successUrl: `${window.location.origin}/subscription/plans?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/subscription/plans?payment=cancelled`,
-        }),
-      });
+      // Utiliser l'API service pour gérer automatiquement l'authentification JWT
+      const response = await api.subscription.createPayment(
+        planId,
+        `${window.location.origin}/subscription/plans?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        `${window.location.origin}/subscription/plans?payment=cancelled`
+      );
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { message: 'Erreur de communication avec le serveur' };
+        }
         
         // Si la création de la session Checkout échoue, basculer vers le formulaire de paiement embarqué
         console.warn('Checkout session creation failed, falling back to embedded payment form');

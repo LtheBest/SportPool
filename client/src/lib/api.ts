@@ -269,6 +269,10 @@ export const api = {
         successUrl,
         cancelUrl
       }),
+    upgradeSubscription: (planId: string) =>
+      makeAuthenticatedRequest("POST", "/api/stripe/upgrade-subscription", {
+        planId
+      }),
     createPaymentIntent: (planId: string, amount: number, currency: string = 'eur') =>
       makeAuthenticatedRequest("POST", "/api/stripe/create-payment-intent", {
         planId,
