@@ -89,7 +89,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
     control: form.control,
     name: "type"
   });
-  
+
   const selectedPlan = useWatch({
     control: form.control,
     name: "selectedPlan"
@@ -102,16 +102,16 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
 
   const onSubmit = async (data: any) => {
     setIsLoading(true);
-    
+
     try {
       const { confirmPassword, acceptTerms, ...registerData } = data;
-      
+
       // Ajouter le plan sélectionné aux données d'inscription
       const registrationPayload = {
         ...registerData,
         selectedPlan: data.selectedPlan
       };
-      
+
       // Use proper API request for registration (public endpoint)
       const response = await fetch(buildApiUrl("/api/register"), {
         method: "POST",
@@ -119,29 +119,29 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
         body: JSON.stringify(registrationPayload),
         credentials: "include",
       });
-      
+
       const result = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(result.message || "Erreur d'inscription");
       }
-      
+
       // Si l'inscription nécessite un paiement
       if (result.requiresPayment && result.checkoutSession) {
         // Rediriger vers Stripe Checkout
         window.location.href = result.checkoutSession.url;
         return;
       }
-      
+
       // Si c'est une inscription découverte (gratuite)
       if (result.planType === 'decouverte') {
         // Invalider les requêtes pour rafraîchir les données utilisateur
         queryClient.invalidateQueries({ queryKey: ["/api/me"] });
-        
+
         // Rediriger vers le dashboard
         setLocation("/dashboard");
         onClose();
-        
+
         toast({
           title: "Inscription réussie",
           description: "Votre compte découverte a été créé avec succès. Vous êtes maintenant connecté.",
@@ -151,7 +151,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
         queryClient.invalidateQueries({ queryKey: ["/api/me"] });
         setLocation("/dashboard");
         onClose();
-        
+
         toast({
           title: "Compte créé",
           description: result.message || "Votre compte a été créé avec l'offre Découverte.",
@@ -172,26 +172,27 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
 
   const organizationTypes = [
     {
-      value: "club",
+      value: "club_association",
       icon: "fas fa-users",
-      title: "Club sportif",
-      description: "Association sportive locale",
+      title: "Clubs & Associations",
+      description: "Structures locales et fédérées",
       color: "text-primary",
     },
     {
-      value: "association",
-      icon: "fas fa-heart",
-      title: "Association",
-      description: "Organisation à but non lucratif",
+      value: "pme",
+      icon: "fas fa-briefcase",
+      title: "PME",
+      description: "Petites et moyennes entreprises",
       color: "text-secondary",
     },
     {
-      value: "company",
-      icon: "fas fa-building",
-      title: "Entreprise",
-      description: "Société avec activités sportives",
+      value: "grande_entreprise",
+      icon: "fas fa-city",
+      title: "Grandes Entreprises",
+      description: "Groupes nationaux et internationaux",
       color: "text-accent",
     },
+
   ];
 
   return (
@@ -228,11 +229,10 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                             </FormControl>
                             <Label
                               htmlFor={type.value}
-                              className={`relative cursor-pointer flex flex-col items-center p-4 border-2 rounded-lg transition-all duration-200 ${
-                                selectedType === type.value
+                              className={`relative cursor-pointer flex flex-col items-center p-4 border-2 rounded-lg transition-all duration-200 ${selectedType === type.value
                                   ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
                                   : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
-                              }`}
+                                }`}
                             >
                               <i className={`${type.icon} text-2xl ${type.color} mb-2`}></i>
                               <div className="font-semibold text-gray-900">{type.title}</div>
@@ -273,11 +273,10 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </FormControl>
                           <Label
                             htmlFor="decouverte"
-                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedPlan === "decouverte"
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${selectedPlan === "decouverte"
                                 ? 'border-green-500 bg-green-50 shadow-lg scale-[1.02] dark:bg-green-950 dark:border-green-400'
                                 : 'border-gray-200 hover:border-green-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-green-400 dark:hover:bg-gray-800'
-                            }`}
+                              }`}
                           >
                             <Card className="border-0 shadow-none bg-transparent">
                               <CardHeader className="pb-3">
@@ -328,11 +327,10 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </FormControl>
                           <Label
                             htmlFor="evenementielle"
-                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedPlan === "evenementielle"
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${selectedPlan === "evenementielle"
                                 ? 'border-orange-500 bg-orange-50 shadow-lg scale-[1.02] dark:bg-orange-950 dark:border-orange-400'
                                 : 'border-gray-200 hover:border-orange-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-orange-400 dark:hover:bg-gray-800'
-                            }`}
+                              }`}
                           >
                             <Card className="border-0 shadow-none bg-transparent">
                               <CardHeader className="pb-3">
@@ -389,11 +387,10 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </FormControl>
                           <Label
                             htmlFor="pro_club"
-                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedPlan === "pro_club"
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${selectedPlan === "pro_club"
                                 ? 'border-blue-500 bg-blue-50 shadow-lg scale-[1.02] dark:bg-blue-950 dark:border-blue-400'
                                 : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-blue-400 dark:hover:bg-gray-800'
-                            }`}
+                              }`}
                           >
                             <Card className="border-0 shadow-none bg-transparent">
                               <CardHeader className="pb-3">
@@ -450,11 +447,10 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </FormControl>
                           <Label
                             htmlFor="pro_pme"
-                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedPlan === "pro_pme"
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${selectedPlan === "pro_pme"
                                 ? 'border-purple-500 bg-purple-50 shadow-lg scale-[1.02] dark:bg-purple-950 dark:border-purple-400'
                                 : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-purple-400 dark:hover:bg-gray-800'
-                            }`}
+                              }`}
                           >
                             <Card className="border-0 shadow-none bg-transparent">
                               <CardHeader className="pb-3">
@@ -511,11 +507,10 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                           </FormControl>
                           <Label
                             htmlFor="pro_entreprise"
-                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${
-                              selectedPlan === "pro_entreprise"
+                            className={`relative cursor-pointer block p-8 lg:p-6 xl:p-8 border-2 rounded-xl transition-all duration-200 ${selectedPlan === "pro_entreprise"
                                 ? 'border-yellow-500 bg-yellow-50 shadow-lg scale-[1.02] dark:bg-yellow-950 dark:border-yellow-400'
                                 : 'border-gray-200 hover:border-yellow-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-yellow-400 dark:hover:bg-gray-800'
-                            }`}
+                              }`}
                           >
                             <Card className="border-0 shadow-none bg-transparent">
                               <CardHeader className="pb-3">
@@ -566,7 +561,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                   </FormItem>
                 )}
               />
-              
+
               {selectedPlan && selectedPlan !== "decouverte" && (
                 <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-950 dark:border-blue-800">
                   <div className="flex items-start space-x-2">
@@ -595,7 +590,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="email"
@@ -625,7 +620,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="contactLastName"
@@ -663,10 +658,10 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                   <FormItem>
                     <FormLabel>Numéro SIREN (optionnel)</FormLabel>
                     <FormControl>
-                      <Input 
-                        {...field} 
-                        type="text" 
-                        placeholder="123456789" 
+                      <Input
+                        {...field}
+                        type="text"
+                        placeholder="123456789"
                         maxLength={9}
                         onInput={(e) => {
                           // Only allow digits
@@ -717,7 +712,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="confirmPassword"
@@ -748,18 +743,18 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
                   <div className="space-y-1 leading-none">
                     <FormLabel className="text-sm text-gray-600 cursor-pointer">
                       J'accepte les{" "}
-                      <Button 
+                      <Button
                         type="button"
-                        variant="link" 
+                        variant="link"
                         className="p-0 h-auto text-primary hover:text-blue-700 underline"
                         onClick={() => handleTermsClick('terms')}
                       >
                         conditions d'utilisation
                       </Button>{" "}
                       et la{" "}
-                      <Button 
+                      <Button
                         type="button"
-                        variant="link" 
+                        variant="link"
                         className="p-0 h-auto text-primary hover:text-blue-700 underline"
                         onClick={() => handleTermsClick('privacy')}
                       >
@@ -795,9 +790,9 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
         <div className="text-center">
           <p className="text-gray-600">
             Déjà un compte ?{" "}
-            <Button 
-              variant="link" 
-              onClick={onShowLogin} 
+            <Button
+              variant="link"
+              onClick={onShowLogin}
               className="text-primary hover:text-blue-700 p-0"
               disabled={isLoading}
             >
