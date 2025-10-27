@@ -89,7 +89,7 @@ export default function Dashboard() {
         
         {/* Keyboard shortcuts hint */}
         <div className="fixed bottom-4 right-4 z-40">
-          <button 
+          {/* <button 
             className="bg-gray-800 text-white p-3 rounded-full shadow-lg hover:bg-gray-700 transition-colors"
             onClick={() => {
               const event = new KeyboardEvent('keydown', {
@@ -101,7 +101,7 @@ export default function Dashboard() {
             title="Afficher les raccourcis clavier (Shift + ?)"
           >
             <i className="fas fa-keyboard text-lg"></i>
-          </button>
+          </button> */}
         </div>
       </div>
     </div>
