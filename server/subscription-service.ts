@@ -50,6 +50,9 @@ export class SubscriptionService {
   // Créer un abonnement ou paiement
   static async createSubscription(params: CreateSubscriptionParams): Promise<any> {
     try {
+      console.log('🎯 ======== DÉBUT CRÉATION SUBSCRIPTION ========');
+      console.log('📋 Paramètres reçus:', JSON.stringify(params, null, 2));
+      
       console.log('🏢 Recherche de l\'organisation:', params.organizationId);
       const organization = await storage.getOrganization(params.organizationId);
       if (!organization) {
@@ -60,32 +63,44 @@ export class SubscriptionService {
       console.log('📦 Recherche du plan:', params.planId);
       const plan = SUBSCRIPTION_PLANS[params.planId];
       if (!plan) {
+        console.error('❌ Plan non trouvé. Plans disponibles:', Object.keys(SUBSCRIPTION_PLANS));
         throw new Error(`Plan not found: ${params.planId}`);
       }
-      console.log('✅ Plan trouvé:', plan.name);
+      console.log('✅ Plan trouvé:', JSON.stringify({ id: plan.id, name: plan.name, type: plan.type, price: plan.price }, null, 2));
 
       console.log('⚙️  Recherche de la configuration Stripe pour:', params.planId);
       const stripeConfig = STRIPE_PRICE_CONFIG[params.planId];
       if (!stripeConfig) {
+        console.error('❌ Config Stripe non trouvée. Configs disponibles:', Object.keys(STRIPE_PRICE_CONFIG));
         throw new Error(`Stripe configuration not found for plan: ${params.planId}`);
       }
-      console.log('✅ Configuration Stripe trouvée:', stripeConfig);
+      console.log('✅ Configuration Stripe trouvée:', JSON.stringify(stripeConfig, null, 2));
 
       // Pour les offres événementielles (paiement unique)
       if (plan.type === 'evenementielle') {
-        console.log('💳 Création de paiement événementiel');
+        console.log('💳 Type détecté: ÉVÉNEMENTIEL (paiement unique)');
         return await this.createEventPackagePayment(params, plan, stripeConfig, organization);
       }
 
       // Pour les formules Pro (abonnement mensuel)
+      console.log('🔍 Vérification type Pro:', plan.type);
+      console.log('🔍 Est-ce un type Pro?', ['pro_club', 'pro_pme', 'pro_entreprise'].includes(plan.type));
+      
       if (['pro_club', 'pro_pme', 'pro_entreprise'].includes(plan.type)) {
-        console.log('💳 Création d\'abonnement Pro');
+        console.log('💳 Type détecté: PRO (abonnement mensuel)');
         return await this.createProSubscription(params, plan, stripeConfig, organization);
       }
 
+      console.error('❌ Type de plan non supporté:', plan.type);
+      console.error('❌ Types supportés: evenementielle, pro_club, pro_pme, pro_entreprise');
       throw new Error(`Plan type not supported: ${plan.type}`);
     } catch (error) {
-      console.error('❌ Erreur création abonnement:', error);
+      console.error('❌ ======== ERREUR CRÉATION SUBSCRIPTION ========');
+      console.error('❌ Erreur complète:', error);
+      if (error instanceof Error) {
+        console.error('❌ Message:', error.message);
+        console.error('❌ Stack:', error.stack);
+      }
       throw error;
     }
   }
@@ -97,32 +112,65 @@ export class SubscriptionService {
     stripeConfig: any,
     organization: any
   ): Promise<any> {
-    const session = await StripeService.createCheckoutSession({
-      mode: 'payment',
-      priceData: {
-        currency: plan.currency.toLowerCase(),
-        product_data: {
-          name: plan.name,
-          description: plan.description,
-        },
-        unit_amount: plan.price,
-      },
-      quantity: 1,
-      successUrl: params.successUrl,
-      cancelUrl: params.cancelUrl,
-      metadata: {
-        organizationId: params.organizationId,
-        planId: params.planId,
-        planType: 'evenementielle',
-      },
-      customerEmail: organization.contactEmail,
-    });
+    try {
+      console.log('🎉 ===== CRÉATION PAIEMENT ÉVÉNEMENTIEL =====');
+      console.log('📋 Configuration du plan:', {
+        id: plan.id,
+        name: plan.name,
+        type: plan.type,
+        price: plan.price,
+        currency: plan.currency
+      });
+      console.log('⚙️  Configuration Stripe:', stripeConfig);
+      console.log('👤 Organisation:', {
+        id: organization.id,
+        name: organization.name,
+        email: organization.contactEmail
+      });
 
-    return { 
-      sessionId: session.id, 
-      url: session.url,
-      mode: 'payment' 
-    };
+      const checkoutParams = {
+        mode: 'payment' as const,
+        priceData: {
+          currency: plan.currency.toLowerCase(),
+          product_data: {
+            name: plan.name,
+            description: plan.description,
+          },
+          unit_amount: plan.price,
+        },
+        quantity: 1,
+        successUrl: params.successUrl,
+        cancelUrl: params.cancelUrl,
+        metadata: {
+          organizationId: params.organizationId,
+          planId: params.planId,
+          planType: 'evenementielle',
+        },
+        customerEmail: organization.contactEmail,
+      };
+
+      console.log('🚀 Création session Stripe avec params:', JSON.stringify(checkoutParams, null, 2));
+      
+      const session = await StripeService.createCheckoutSession(checkoutParams);
+      
+      console.log('✅ Session Stripe créée avec succès:', {
+        sessionId: session.id,
+        url: session.url ? 'URL présente' : 'URL manquante'
+      });
+
+      return { 
+        sessionId: session.id, 
+        url: session.url,
+        mode: 'payment' 
+      };
+    } catch (error) {
+      console.error('❌ Erreur dans createEventPackagePayment:', error);
+      if (error instanceof Error) {
+        console.error('❌ Message d\'erreur:', error.message);
+        console.error('❌ Stack trace:', error.stack);
+      }
+      throw error;
+    }
   }
 
   // Créer un abonnement Pro
@@ -132,35 +180,69 @@ export class SubscriptionService {
     stripeConfig: any,
     organization: any
   ): Promise<any> {
-    const session = await StripeService.createCheckoutSession({
-      mode: 'subscription',
-      priceData: {
-        currency: plan.currency.toLowerCase(),
-        product_data: {
-          name: plan.name,
-          description: plan.description,
-        },
-        unit_amount: plan.price,
-        recurring: {
-          interval: stripeConfig.interval,
-        },
-      },
-      quantity: 1,
-      successUrl: params.successUrl,
-      cancelUrl: params.cancelUrl,
-      metadata: {
-        organizationId: params.organizationId,
-        planId: params.planId,
-        planType: plan.type,
-      },
-      customerEmail: organization.contactEmail,
-    });
+    try {
+      console.log('💼 ===== CRÉATION ABONNEMENT PRO =====');
+      console.log('📋 Configuration du plan:', {
+        id: plan.id,
+        name: plan.name,
+        type: plan.type,
+        price: plan.price,
+        currency: plan.currency,
+        billingInterval: plan.billingInterval
+      });
+      console.log('⚙️  Configuration Stripe:', stripeConfig);
+      console.log('👤 Organisation:', {
+        id: organization.id,
+        name: organization.name,
+        email: organization.contactEmail
+      });
 
-    return { 
-      sessionId: session.id, 
-      url: session.url,
-      mode: 'subscription' 
-    };
+      const checkoutParams = {
+        mode: 'subscription' as const,
+        priceData: {
+          currency: plan.currency.toLowerCase(),
+          product_data: {
+            name: plan.name,
+            description: plan.description,
+          },
+          unit_amount: plan.price,
+          recurring: {
+            interval: stripeConfig.interval,
+          },
+        },
+        quantity: 1,
+        successUrl: params.successUrl,
+        cancelUrl: params.cancelUrl,
+        metadata: {
+          organizationId: params.organizationId,
+          planId: params.planId,
+          planType: plan.type,
+        },
+        customerEmail: organization.contactEmail,
+      };
+
+      console.log('🚀 Création session Stripe avec params:', JSON.stringify(checkoutParams, null, 2));
+      
+      const session = await StripeService.createCheckoutSession(checkoutParams);
+      
+      console.log('✅ Session Stripe créée avec succès:', {
+        sessionId: session.id,
+        url: session.url ? 'URL présente' : 'URL manquante'
+      });
+
+      return { 
+        sessionId: session.id, 
+        url: session.url,
+        mode: 'subscription' 
+      };
+    } catch (error) {
+      console.error('❌ Erreur dans createProSubscription:', error);
+      if (error instanceof Error) {
+        console.error('❌ Message d\'erreur:', error.message);
+        console.error('❌ Stack trace:', error.stack);
+      }
+      throw error;
+    }
   }
 
   // Gérer la confirmation de paiement
