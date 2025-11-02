@@ -7,8 +7,13 @@ class TokenManager {
   private static readonly REFRESH_TOKEN_KEY = "TeamMove_refresh_token";
 
   static getAccessToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(this.ACCESS_TOKEN_KEY);
+    if (typeof window === 'undefined') {
+      console.warn('⚠️ TokenManager: window is undefined (SSR?)');
+      return null;
+    }
+    const token = localStorage.getItem(this.ACCESS_TOKEN_KEY);
+    console.log(`🔍 TokenManager.getAccessToken(): ${token ? 'Token found' : 'NO TOKEN'}`);
+    return token;
   }
 
   static getRefreshToken(): string | null {
@@ -17,8 +22,12 @@ class TokenManager {
   }
 
   static setAccessToken(token: string): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') {
+      console.warn('⚠️ Cannot set access token: window is undefined');
+      return;
+    }
     localStorage.setItem(this.ACCESS_TOKEN_KEY, token);
+    console.log('✅ Access token stored in localStorage');
   }
 
   static clearTokens(): void {
@@ -31,8 +40,11 @@ class TokenManager {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Date.now() / 1000;
-      return payload.exp < currentTime;
-    } catch {
+      const isExpired = payload.exp < currentTime;
+      console.log(`⏱️ Token expiry check: exp=${payload.exp}, now=${currentTime}, expired=${isExpired}`);
+      return isExpired;
+    } catch (error) {
+      console.error('❌ Failed to check token expiry:', error);
       return true;
     }
   }
@@ -40,8 +52,14 @@ class TokenManager {
 
 // Refresh token function
 async function refreshAccessToken(): Promise<string | null> {
+  console.log('🔄 Attempting to refresh access token...');
   const refreshToken = TokenManager.getRefreshToken();
-  if (!refreshToken) return null;
+  if (!refreshToken) {
+    console.error('❌ No refresh token available');
+    return null;
+  }
+
+  console.log(`🔑 Refresh token available: ${refreshToken.substring(0, 20)}...`);
 
   try {
     const response = await fetch(buildApiUrl("/api/refresh-token"), {
@@ -52,15 +70,20 @@ async function refreshAccessToken(): Promise<string | null> {
       body: JSON.stringify({ refreshToken }),
     });
 
+    console.log(`📡 Refresh token response: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Failed to refresh token: ${errorText}`);
       throw new Error("Failed to refresh token");
     }
 
     const data = await response.json();
+    console.log('✅ New access token received');
     TokenManager.setAccessToken(data.accessToken);
     return data.accessToken;
   } catch (error) {
-    console.error("Token refresh failed:", error);
+    console.error("❌ Token refresh failed:", error);
     TokenManager.clearTokens();
     if (typeof window !== 'undefined') {
       window.location.href = "/";
@@ -88,14 +111,17 @@ export async function apiRequest(
 
   // Get access token
   let accessToken = TokenManager.getAccessToken();
+  console.log(`🔑 Access Token from localStorage: ${accessToken ? 'Present (length: ' + accessToken.length + ')' : 'MISSING'}`);
   
   // Check if token is expired and try to refresh
   if (accessToken && TokenManager.isTokenExpired(accessToken)) {
     console.log("🔄 Access token expired, attempting refresh...");
     accessToken = await refreshAccessToken();
     if (!accessToken) {
+      console.error("❌ Token refresh failed - no access token available");
       throw new Error("401: Authentication required");
     }
+    console.log("✅ Token refreshed successfully");
   }
 
   const headers: Record<string, string> = {
@@ -106,6 +132,9 @@ export async function apiRequest(
   // Add Authorization header if we have a token
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
+    console.log(`✅ Authorization header added: Bearer ${accessToken.substring(0, 20)}...`);
+  } else {
+    console.warn("⚠️ No access token available - Authorization header NOT added");
   }
 
   const res = await fetch(fullUrl, {

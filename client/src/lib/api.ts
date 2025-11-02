@@ -44,6 +44,7 @@ export interface InvitationResponse {
 // Helper function for making API requests with JWT authentication
 // This now uses apiRequest from queryClient which handles token refresh automatically
 async function makeAuthenticatedRequest(method: string, path: string, data?: any): Promise<Response> {
+  console.log(`🔐 Making authenticated request: ${method} ${path}`);
   return apiRequest(method, path, data);
 }
 
