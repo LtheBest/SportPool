@@ -172,21 +172,21 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
 
   const organizationTypes = [
     {
-      value: "club_association",
+      value: "club",
       icon: "fas fa-users",
       title: "Clubs & Associations",
       description: "Structures locales et fédérées",
       color: "text-primary",
     },
     {
-      value: "pme",
+      value: "association",
       icon: "fas fa-briefcase",
       title: "PME",
       description: "Petites et moyennes entreprises",
       color: "text-secondary",
     },
     {
-      value: "grande_entreprise",
+      value: "company",
       icon: "fas fa-city",
       title: "Grandes Entreprises",
       description: "Groupes nationaux et internationaux",
