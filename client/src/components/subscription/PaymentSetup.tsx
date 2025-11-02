@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { apiRequest } from "@/lib/queryClient";
 
 // Initialiser Stripe avec votre clé publique
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "pk_test_51S3zPW8XM0zNL8ZMhdeyjgfrp4eKmTmzKRMqRENFwKoUjfSByTeGfWXfcf6Vr6FF9FJSBauMvjTp6cnDFDJwfPxN00VrImPBXj");
@@ -166,18 +167,12 @@ export default function PaymentSetup({ isOpen, onClose, onSuccess, targetPlan }:
 
       console.log('📦 Plan sélectionné:', plan);
 
-      // Créer la session de checkout
-      console.log('📡 Appel API /api/subscriptions/create...');
-      const response = await fetch('/api/subscriptions/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          planId: plan.id,
-          successUrl: `${window.location.origin}/dashboard?payment_success=true`,
-          cancelUrl: `${window.location.origin}/dashboard?payment_cancelled=true`,
-        }),
+      // Créer la session de checkout avec authentification
+      console.log('📡 Appel API /api/subscriptions/create avec authentification...');
+      const response = await apiRequest('POST', '/api/subscriptions/create', {
+        planId: plan.id,
+        successUrl: `${window.location.origin}/dashboard?payment_success=true`,
+        cancelUrl: `${window.location.origin}/dashboard?payment_cancelled=true`,
       });
 
       console.log('📡 Réponse API status:', response.status);
