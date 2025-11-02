@@ -355,9 +355,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = process.env.APP_URL || 'https://teammove.fr';
       
       try {
+        // Utiliser l'ID du plan (qui peut être un alias)
+        // Pour "evenementielle", on va utiliser "evenementielle-single" par défaut
+        const stripePlanId = plan.id || selectedPlan;
+        
+        console.log(`🎯 Creating checkout session for plan: ${selectedPlan} (Stripe ID: ${stripePlanId})`);
+        
         const checkoutSession = await StripeServiceNew.createCheckoutSession({
           organizationId: organization.id,
-          planId: selectedPlan,
+          planId: stripePlanId,  // Use the resolved plan ID
           successUrl: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&org_id=${organization.id}`,
           cancelUrl: `${baseUrl}/payment/cancelled?org_id=${organization.id}`,
           customerEmail: organization.email,
