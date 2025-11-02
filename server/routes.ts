@@ -2954,19 +2954,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create subscription (for new purchases or upgrades) - NEW ENDPOINT
   app.post("/api/subscriptions/create", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      console.log('🎯 Nouvelle demande de création de session de paiement');
-      console.log('👤 OrganizationId:', req.user.organizationId);
-      console.log('📦 Body:', req.body);
+      console.log('🎯 ======== NOUVELLE DEMANDE SUBSCRIPTION ========');
+      console.log('👤 User:', req.user ? { id: req.user.id, organizationId: req.user.organizationId } : 'Non authentifié');
+      console.log('📦 Body reçu:', JSON.stringify(req.body, null, 2));
+      console.log('🌐 Headers:', {
+        'content-type': req.headers['content-type'],
+        'authorization': req.headers['authorization'] ? 'Present' : 'Missing'
+      });
       
       const { planId, successUrl, cancelUrl } = req.body;
       
       if (!planId) {
-        console.log('❌ Plan ID manquant');
+        console.log('❌ Plan ID manquant dans la requête');
         return res.status(400).json({ message: "Plan ID is required" });
       }
 
       const baseUrl = process.env.APP_URL || 'http://localhost:3000';
-      console.log('🌐 Base URL:', baseUrl);
+      console.log('🌐 Base URL configurée:', baseUrl);
       
       const subscriptionParams = {
         organizationId: req.user.organizationId,
@@ -2975,22 +2979,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cancelUrl: cancelUrl || `${baseUrl}/dashboard?payment=cancelled`,
       };
       
-      console.log('📋 Paramètres de création:', subscriptionParams);
+      console.log('📋 Paramètres finaux pour création:', JSON.stringify(subscriptionParams, null, 2));
       
       const result = await SubscriptionService.createSubscription(subscriptionParams);
       
-      console.log('✅ Résultat de création:', result);
+      console.log('✅ ======== SUBSCRIPTION CRÉÉE AVEC SUCCÈS ========');
+      console.log('✅ Résultat:', JSON.stringify(result, null, 2));
+      
       res.json(result);
     } catch (error) {
-      console.error("❌ Erreur de création d'abonnement:", error);
+      console.error("❌ ======== ERREUR CRÉATION SUBSCRIPTION ========");
+      console.error("❌ Erreur complète:", error);
+      if (error instanceof Error) {
+        console.error("❌ Message:", error.message);
+        console.error("❌ Stack:", error.stack);
+      }
       
-      // Retourner des détails d'erreur plus spécifiques en développement
-      const isDev = process.env.NODE_ENV === 'development';
+      // Toujours retourner des détails d'erreur pour faciliter le débogage
+      // En production, ces détails seront dans les logs serveur
       const errorResponse = {
         message: "Failed to create subscription",
-        ...(isDev && { 
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+        error: error instanceof Error ? error.message : String(error),
+        // Inclure la stack seulement en développement
+        ...(process.env.NODE_ENV === 'development' && { 
+          stack: error instanceof Error ? error.stack : undefined,
+          details: 'Check server logs for more information'
         })
       };
       
