@@ -42,38 +42,9 @@ export interface InvitationResponse {
 }
 
 // Helper function for making API requests with JWT authentication
+// This now uses apiRequest from queryClient which handles token refresh automatically
 async function makeAuthenticatedRequest(method: string, path: string, data?: any): Promise<Response> {
-  const url = buildApiUrl(path);
-  const timeout = config.isProduction ? requestTimeout.production : requestTimeout.development;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const headers: Record<string, string> = {
-      ...defaultHeaders,
-    };
-
-    // Add JWT Authorization header
-    const authHeader = AuthService.getAuthHeader();
-    if (authHeader) {
-      headers.Authorization = authHeader;
-    }
-
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: data ? JSON.stringify(data) : undefined,
-      credentials: "include", // Keep for any legacy functionality
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
+  return apiRequest(method, path, data);
 }
 
 // Helper function for public API requests (no auth required)
@@ -234,7 +205,9 @@ export const api = {
     getInfo: () => makeAuthenticatedRequest("GET", "/api/subscription/info"),
     createPayment: (planId: string, successUrl?: string, cancelUrl?: string) => 
       makeAuthenticatedRequest("POST", "/api/stripe/upgrade-subscription", { 
-        planId
+        planId,
+        successUrl,
+        cancelUrl
       }),
     handlePaymentSuccess: (sessionId: string, organizationId: string) =>
       makeAuthenticatedRequest("POST", "/api/registration/payment-success", {
@@ -247,7 +220,9 @@ export const api = {
       }),
     upgrade: (planId: string, successUrl?: string, cancelUrl?: string) =>
       makeAuthenticatedRequest("POST", "/api/stripe/upgrade-subscription", {
-        planId
+        planId,
+        successUrl,
+        cancelUrl
       }),
     cancel: () => makeAuthenticatedRequest("POST", "/api/subscription/cancel-to-decouverte"),
     canCreateEvent: () => makeAuthenticatedRequest("GET", "/api/subscription/can-create-event"),
