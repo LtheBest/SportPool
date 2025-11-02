@@ -3957,6 +3957,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ---------- SUBSCRIPTION ROUTES ----------
+  
+  // Get subscription plans (public endpoint)
+  app.get("/api/subscription/plans", async (req, res) => {
+    try {
+      res.json({
+        plans: SUBSCRIPTION_PLANS,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Get subscription plans error:", error);
+      res.status(500).json({ message: "Failed to get subscription plans" });
+    }
+  });
+
+  // Get current subscription info (requires authentication)
+  app.get("/api/subscription/info", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const subscriptionInfo = await SubscriptionService.getSubscriptionInfo(authReq.user.organizationId);
+      res.json(subscriptionInfo);
+    } catch (error) {
+      console.error("Get subscription info error:", error);
+      res.status(500).json({ message: "Failed to get subscription info" });
+    }
+  });
+
+  // Create subscription payment session (requires authentication)
+  app.post("/api/subscriptions/create", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const { planId, successUrl, cancelUrl } = req.body;
+
+      if (!planId) {
+        return res.status(400).json({
+          message: "Plan ID requis",
+          code: "MISSING_PLAN_ID"
+        });
+      }
+
+      // Validate plan exists
+      const plan = SUBSCRIPTION_PLANS[planId];
+      if (!plan) {
+        return res.status(400).json({
+          message: "Offre sélectionnée invalide",
+          code: "INVALID_PLAN"
+        });
+      }
+
+      // Get organization details
+      const organization = await storage.getOrganization(authReq.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({
+          message: "Organisation non trouvée",
+          code: "ORG_NOT_FOUND"
+        });
+      }
+
+      // For free plan, just update subscription
+      if (planId === 'decouverte') {
+        await storage.updateOrganization(authReq.user.organizationId, {
+          subscriptionType: 'decouverte',
+          subscriptionStatus: 'active',
+        });
+
+        return res.json({
+          success: true,
+          message: "Abonnement Découverte activé",
+          requiresPayment: false
+        });
+      }
+
+      // For paid plans, create checkout session
+      const baseUrl = process.env.APP_URL || 'https://teammove.fr';
+      const defaultSuccessUrl = successUrl || `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`;
+      const defaultCancelUrl = cancelUrl || `${baseUrl}/dashboard?payment=cancelled`;
+
+      const sessionDetails = await StripeServiceNew.createCheckoutSession({
+        organizationId: authReq.user.organizationId,
+        planId,
+        successUrl: defaultSuccessUrl,
+        cancelUrl: defaultCancelUrl,
+        customerEmail: organization.email,
+      });
+
+      res.json({
+        success: true,
+        sessionId: sessionDetails.sessionId,
+        checkoutUrl: sessionDetails.url,
+        url: sessionDetails.url,
+        planId: sessionDetails.planId,
+        requiresPayment: true
+      });
+
+    } catch (error: any) {
+      console.error('Subscription creation error:', error);
+      res.status(500).json({
+        message: error.message || "Erreur lors de la création de l'abonnement",
+        code: "SUBSCRIPTION_ERROR"
+      });
+    }
+  });
+
+  // Cancel subscription and return to Découverte (requires authentication)
+  app.post("/api/subscription/cancel-to-decouverte", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      
+      await SubscriptionService.cancelSubscription(authReq.user.organizationId);
+
+      res.json({
+        success: true,
+        message: "Abonnement annulé, retour à l'offre Découverte",
+      });
+    } catch (error: any) {
+      console.error('Subscription cancellation error:', error);
+      res.status(500).json({
+        message: error.message || "Erreur lors de l'annulation de l'abonnement",
+        code: "CANCELLATION_ERROR"
+      });
+    }
+  });
+
+  // Check if can create event (requires authentication)
+  app.get("/api/subscription/can-create-event", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const permission = await SubscriptionService.canCreateEvent(authReq.user.organizationId);
+      
+      res.json(permission);
+    } catch (error) {
+      console.error("Check event permission error:", error);
+      res.status(500).json({ 
+        allowed: false, 
+        reason: "Erreur lors de la vérification des permissions" 
+      });
+    }
+  });
+
+  // Check if can send invitations (requires authentication)
+  app.post("/api/subscription/can-send-invitations", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const { count } = req.body;
+      
+      const permission = await SubscriptionService.canSendInvitations(
+        authReq.user.organizationId, 
+        count || 1
+      );
+      
+      res.json(permission);
+    } catch (error) {
+      console.error("Check invitation permission error:", error);
+      res.status(500).json({ 
+        allowed: false, 
+        reason: "Erreur lors de la vérification des permissions" 
+      });
+    }
+  });
+
   // Register new Stripe routes
   registerStripeRoutes(app);
 

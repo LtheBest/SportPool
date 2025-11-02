@@ -204,7 +204,7 @@ export const api = {
     getPlans: () => makePublicRequest("GET", "/api/subscription/plans"),
     getInfo: () => makeAuthenticatedRequest("GET", "/api/subscription/info"),
     createPayment: (planId: string, successUrl?: string, cancelUrl?: string) => 
-      makeAuthenticatedRequest("POST", "/api/stripe/upgrade-subscription", { 
+      makeAuthenticatedRequest("POST", "/api/subscriptions/create", { 
         planId,
         successUrl,
         cancelUrl
@@ -219,7 +219,7 @@ export const api = {
         organizationId
       }),
     upgrade: (planId: string, successUrl?: string, cancelUrl?: string) =>
-      makeAuthenticatedRequest("POST", "/api/stripe/upgrade-subscription", {
+      makeAuthenticatedRequest("POST", "/api/subscriptions/create", {
         planId,
         successUrl,
         cancelUrl
