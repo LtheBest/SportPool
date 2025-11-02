@@ -150,11 +150,107 @@ export const SUBSCRIPTION_PLANS: { [key: string]: SubscriptionPlan } = {
       'Conformité RGPD avancée'
     ],
     description: 'Solution entreprise complète et sur-mesure'
+  },
+
+  // Aliases pour compatibilité avec le formulaire d'inscription (underscore au lieu de tirets)
+  'pro_club': {
+    id: 'pro-club',
+    name: 'Clubs & Associations',
+    type: 'pro_club',
+    price: 1999,
+    currency: 'EUR',
+    billingInterval: 'monthly',
+    maxEvents: null,
+    maxInvitations: null,
+    validityMonths: 1,
+    features: [
+      'Événements illimités',
+      'Invitations illimitées',
+      'Profil de personnalisation avancé',
+      'Gestion multi-conducteurs',
+      'Messagerie avancée',
+      'Suivi en temps réel',
+      'Statistiques détaillées',
+      'Support prioritaire',
+      'API d\'intégration',
+      'Branding personnalisé'
+    ],
+    description: 'Conçu pour les clubs sportifs et associations'
+  },
+
+  'pro_pme': {
+    id: 'pro-pme',
+    name: 'PME',
+    type: 'pro_pme',
+    price: 4900,
+    currency: 'EUR',
+    billingInterval: 'monthly',
+    maxEvents: null,
+    maxInvitations: null,
+    validityMonths: 1,
+    features: [
+      'Tout de Clubs & Associations',
+      'Multi-utilisateurs (5 admins)',
+      'Gestion des équipes',
+      'Reporting avancé',
+      'Intégrations tierces',
+      'Support téléphonique',
+      'Formation personnalisée',
+      'SLA garanti'
+    ],
+    description: 'Idéal pour les petites et moyennes entreprises'
+  },
+
+  'pro_entreprise': {
+    id: 'pro-entreprise',
+    name: 'Grandes Entreprises',
+    type: 'pro_entreprise',
+    price: 9900,
+    currency: 'EUR',
+    billingInterval: 'monthly',
+    maxEvents: null,
+    maxInvitations: null,
+    validityMonths: 1,
+    features: [
+      'Tout de PME',
+      'Multi-utilisateurs illimités',
+      'Gestion multi-sites',
+      'API complète',
+      'SSO/SAML',
+      'Hébergement dédié (option)',
+      'Support 24/7',
+      'Account Manager dédié',
+      'Personnalisation complète',
+      'Conformité RGPD avancée'
+    ],
+    description: 'Solution entreprise complète et sur-mesure'
+  },
+
+  // Alias pour l'offre événementielle générique (par défaut on utilise pack single)
+  'evenementielle': {
+    id: 'evenementielle-single',
+    name: 'Pack Événement',
+    type: 'evenementielle',
+    price: 1500, // 15€ par défaut
+    currency: 'EUR',
+    billingInterval: 'pack_single',
+    maxEvents: 1,
+    maxInvitations: null,
+    validityMonths: 12,
+    features: [
+      '1 événement complet',
+      'Profil de personnalisation',
+      'Gestion conducteurs/passagers',
+      'Messagerie intégrée',
+      'Suivi en temps réel',
+      'Support prioritaire'
+    ],
+    description: 'Idéal pour organiser un événement ponctuel'
   }
 };
 
 // Configuration Stripe pour les nouveaux prix
-export const STRIPE_PRICE_CONFIG = {
+export const STRIPE_PRICE_CONFIG: { [key: string]: any } = {
   'evenementielle-single': {
     price: 1500,
     mode: 'payment', // Paiement unique
@@ -178,6 +274,30 @@ export const STRIPE_PRICE_CONFIG = {
     description: 'PME - 49€/mois'
   },
   'pro-entreprise': {
+    price: 9900,
+    mode: 'subscription',
+    interval: 'month',
+    description: 'Grandes Entreprises - 99€/mois'
+  },
+  // Aliases pour compatibilité formulaire d'inscription
+  'evenementielle': {
+    price: 1500,
+    mode: 'payment',
+    description: 'Pack Événement - 15€'
+  },
+  'pro_club': {
+    price: 1999,
+    mode: 'subscription',
+    interval: 'month',
+    description: 'Clubs & Associations - 19,99€/mois'
+  },
+  'pro_pme': {
+    price: 4900,
+    mode: 'subscription',
+    interval: 'month',
+    description: 'PME - 49€/mois'
+  },
+  'pro_entreprise': {
     price: 9900,
     mode: 'subscription',
     interval: 'month',

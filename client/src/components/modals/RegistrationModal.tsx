@@ -126,10 +126,21 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
         throw new Error(result.message || "Erreur d'inscription");
       }
 
+      // IMPORTANT: Stocker les tokens JWT dès que l'inscription est réussie
+      if (result.accessToken && result.refreshToken) {
+        // Utiliser localStorage pour stocker les tokens
+        localStorage.setItem('TeamMove_access_token', result.accessToken);
+        localStorage.setItem('TeamMove_refresh_token', result.refreshToken);
+        
+        console.log('✅ JWT tokens stored successfully after registration');
+      }
+
       // Si l'inscription nécessite un paiement
-      if (result.requiresPayment && result.checkoutSession) {
-        // Rediriger vers Stripe Checkout
-        window.location.href = result.checkoutSession.url;
+      if (result.requiresPayment && result.checkoutUrl) {
+        // L'utilisateur a un compte créé avec des tokens JWT stockés
+        // Maintenant on le redirige vers Stripe Checkout pour le paiement
+        console.log('🔄 Redirecting to Stripe Checkout:', result.checkoutUrl);
+        window.location.href = result.checkoutUrl;
         return;
       }
 
@@ -147,7 +158,7 @@ export default function RegistrationModal({ isOpen, onClose, onShowLogin }: Regi
           description: "Votre compte découverte a été créé avec succès. Vous êtes maintenant connecté.",
         });
       } else {
-        // Cas d'erreur de paiement temporaire
+        // Cas d'erreur de paiement temporaire ou autre
         queryClient.invalidateQueries({ queryKey: ["/api/me"] });
         setLocation("/dashboard");
         onClose();
