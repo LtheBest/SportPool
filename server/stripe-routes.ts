@@ -75,7 +75,7 @@ export function registerStripeRoutes(app: Express): void {
   app.post("/api/stripe/upgrade-subscription", requireAuth, async (req, res) => {
     try {
       const authReq = req as AuthenticatedRequest;
-      const { planId } = req.body;
+      const { planId, successUrl: customSuccessUrl, cancelUrl: customCancelUrl } = req.body;
 
       if (!planId) {
         return res.status(400).json({
@@ -119,11 +119,15 @@ export function registerStripeRoutes(app: Express): void {
 
       const baseUrl = process.env.APP_URL || 'https://teammove.fr';
       
+      // Use custom URLs if provided, otherwise use defaults
+      const successUrl = customSuccessUrl || `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = customCancelUrl || `${baseUrl}/dashboard?payment=cancelled`;
+      
       const sessionDetails = await StripeServiceNew.createCheckoutSession({
         organizationId: authReq.user.organizationId,
         planId,
-        successUrl: `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${baseUrl}/dashboard?payment=cancelled`,
+        successUrl,
+        cancelUrl,
         customerEmail: organization.email,
       });
 
@@ -131,6 +135,7 @@ export function registerStripeRoutes(app: Express): void {
         success: true,
         sessionId: sessionDetails.sessionId,
         checkoutUrl: sessionDetails.url,
+        url: sessionDetails.url, // Add 'url' field for compatibility
         planId: sessionDetails.planId,
       });
 
